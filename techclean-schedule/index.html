@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TechClean — Branch Operations Schedule</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Familjen+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1674,7 +1677,7 @@ async function doSync(silent=false){
       document.getElementById('sync-pill').className='pill live';
       document.getElementById('gs-status').textContent='⬤ Connected — last sync '+new Date().toLocaleTimeString('en-NZ');
       document.getElementById('gs-status').className='gs-status live';
-      if(data.jobs){S.jobs=data.jobs;save();renderAll()}
+      if(data.jobs){S.jobs=data.jobs;save();const _n=new Date();S.year=_n.getFullYear();S.month=_n.getMonth();renderAll();}
       if(!silent)toast('Synced ✓');
     }else throw new Error(data.error||'Unknown');
   }catch(e){
@@ -1782,6 +1785,8 @@ document.addEventListener('keydown',e=>{
 // ── APP INIT (called after PIN auth) ─────────────────────────────
 function appInit() {
   load();
+  // Always start on today's date — call after load() to ensure localStorage can't override it
+  const _boot=new Date(); S.year=_boot.getFullYear(); S.month=_boot.getMonth();
   goToday();
   updateSidebar();
   if(S.gsUrl && window.location.protocol !== 'file:') doSync(true);
