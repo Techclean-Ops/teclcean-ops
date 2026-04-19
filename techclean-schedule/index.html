@@ -439,6 +439,10 @@ body.tv-mode .month-nav button { display:none }
 body.tv-mode #cal-table { font-size:13px }
 body.tv-mode #cal-table thead th { font-size:13px; padding:10px 4px }
 body.tv-mode #cal-table tbody td { padding:6px 4px }
+body.tv-mode .cal-wrap { overflow:auto!important; max-height:calc(100vh - 120px)!important }
+body.tv-mode #panel-cal { overflow:visible!important; height:auto!important }
+body.tv-mode #main { overflow:auto!important }
+body.tv-mode #body { overflow:auto!important; height:auto!important }
 body.tv-mode .name-chip { font-size:10px; max-width:90px }
 body.tv-mode .jc-no { font-size:12px }
 body.tv-mode .jc-site { font-size:11px }
@@ -1073,8 +1077,8 @@ let S = {
   cfg: {rate:50,pmin:30,pmax:35,hpd:8},
   gsUrl: 'https://script.google.com/macros/s/AKfycbyZDkUr71_xx6KZjTnVy0XQOYjLoVvv_rEK1WezLyQs1i1eO4ycBVNuj-zkzjplaVtyEA/exec',
   branch: 'Auckland',
-  year: 2026,
-  month: 3,
+  year: new Date().getFullYear(),
+  month: new Date().getMonth(),
   workSat: false,
   workSun: false,
 };
@@ -1781,10 +1785,25 @@ function appInit() {
   goToday();
   updateSidebar();
   if(S.gsUrl && window.location.protocol !== 'file:') doSync(true);
-  // auto-sync every 90s — only when hosted (not local file)
-  if(window.location.protocol !== 'file:'){
-    setInterval(()=>{if(S.gsUrl)doSync(true)},90000);
-  }
+
+  // ── Date rollover + auto-sync — runs every 60s regardless of online status ──
+  setInterval(function(){
+    const now = new Date();
+    const nowYear = now.getFullYear();
+    const nowMonth = now.getMonth();
+    // If month/year has rolled over, auto-advance the calendar
+    if(nowYear !== S.year || nowMonth !== S.month){
+      S.year = nowYear;
+      S.month = nowMonth;
+      renderCal();
+      updateSidebar();
+    }
+    // Online sync (only if configured and hosted)
+    if(S.gsUrl && window.location.protocol !== 'file:'){
+      doSync(true);
+      setTimeout(function(){ renderCal(); updateSidebar(); }, 3000);
+    }
+  }, 60000);
 }
 
 // ── BOOT ─────────────────────────────────────────────────────────
@@ -1923,11 +1942,18 @@ function enterTvMode(){
   updateTvClock();
   // Auto-refresh from Sheets every 2 minutes
   _tvRefreshInterval = setInterval(function(){
+    // Always check for date rollover (catches midnight transitions)
+    const now = new Date();
+    const todayMon = now.toISOString().slice(0,7);
+    const curMon = new Date(S.year, S.month, 1).toISOString().slice(0,7);
+    if(todayMon !== curMon){ S.year=now.getFullYear(); S.month=now.getMonth(); }
     if(S.gsUrl && window.location.protocol !== 'file:'){
       doSync(true);
-      setTimeout(function(){ renderCal(); updateTvBar(); }, 2000);
+      setTimeout(function(){ renderCal(); updateTvBar(); updateTvClock(); }, 2000);
+    } else {
+      renderCal(); updateTvBar(); updateTvClock();
     }
-  }, 120000);
+  }, 60000);
   try{ document.documentElement.requestFullscreen(); }catch(e){}
 }
 
