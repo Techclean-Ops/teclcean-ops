@@ -1112,7 +1112,7 @@ const fmt$=v=>v?'$'+Number(v).toLocaleString('en-NZ',{minimumFractionDigits:2,ma
 const fmtN=(v,d=0)=>v!=null&&v!==''?Number(v).toLocaleString('en-NZ',{maximumFractionDigits:d}):'—';
 const fmtPct=v=>v!=null&&v!==''?(v*100).toFixed(1)+'%':'—';
 const toD=s=>{if(!s)return null;const d=new Date(s+'T00:00:00');return isNaN(d)?null:d};
-const dsOf=d=>d instanceof Date?d.toISOString().slice(0,10):d||'';
+const dsOf=d=>d instanceof Date?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`:d||'';
 const addD=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r};
 const isSat=s=>new Date(s+'T00:00:00').getDay()===6;
 const isSun=s=>new Date(s+'T00:00:00').getDay()===0;
@@ -1796,13 +1796,14 @@ function appInit() {
     const now = new Date();
     const nowYear = now.getFullYear();
     const nowMonth = now.getMonth();
-    // If month/year has rolled over, auto-advance the calendar
+    // Always advance if month/year rolled over
     if(nowYear !== S.year || nowMonth !== S.month){
       S.year = nowYear;
       S.month = nowMonth;
-      renderCal();
-      updateSidebar();
     }
+    // Always re-render so "today" highlight and sidebar stats update daily
+    renderCal();
+    updateSidebar();
     // Online sync (only if configured and hosted)
     if(S.gsUrl && window.location.protocol !== 'file:'){
       doSync(true);
@@ -1995,6 +1996,31 @@ function updateTvClock(){
 
 document.addEventListener('keydown', function(e){
   if(e.key==='Escape' && document.body.classList.contains('tv-mode')) exitTvMode();
+});
+
+// ── Re-render when tab becomes visible again (browser throttles timers on inactive tabs) ──
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'visible'){
+    const now = new Date();
+    const nowYear = now.getFullYear();
+    const nowMonth = now.getMonth();
+    if(nowYear !== S.year || nowMonth !== S.month){
+      S.year = nowYear;
+      S.month = nowMonth;
+    }
+    renderCal();
+    updateSidebar();
+    if(document.body.classList.contains('tv-mode')) updateTvBar();
+  }
+});
+
+// ── Also re-render on page show (handles back/forward cache on mobile) ──
+window.addEventListener('pageshow', function(){
+  const now = new Date();
+  S.year = now.getFullYear();
+  S.month = now.getMonth();
+  renderCal();
+  updateSidebar();
 });
 
 </script>
