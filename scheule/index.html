@@ -79,12 +79,12 @@ body{font-family:var(--font-mono);background:var(--c-bg);color:var(--c-text);fon
 .btn-icon{width:30px;height:30px;padding:0;justify-content:center;border-radius:var(--r)}
 
 /* ── BODY LAYOUT ─────────────────────────── */
-#body{display:flex;flex:1;min-height:0;overflow:hidden}
+#body{display:flex;flex:1;min-height:0;overflow:hidden;height:calc(100vh - 48px)}
 
 /* ── SIDEBAR ─────────────────────────────── */
 #sidebar{
   width:var(--sidebar);background:var(--c-surface);border-right:1px solid var(--c-border);
-  display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;
+  display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;min-height:0;
 }
 .sb-section{padding:12px 0;border-bottom:1px solid var(--c-border)}
 .sb-label{font-size:9px;font-weight:500;letter-spacing:.12em;color:var(--c-muted);padding:0 14px 8px;text-transform:uppercase}
@@ -112,7 +112,7 @@ body{font-family:var(--font-mono);background:var(--c-bg);color:var(--c-text);fon
 .cap-ok{background:var(--c-green)}.cap-warn{background:var(--c-amber)}.cap-over{background:var(--c-red)}
 
 /* ── MAIN ────────────────────────────────── */
-#main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+#main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden;min-height:0}
 
 /* tabs */
 #tabs{
@@ -128,12 +128,15 @@ body{font-family:var(--font-mono);background:var(--c-bg);color:var(--c-text);fon
 .tab.active{color:var(--c-white);border-bottom-color:var(--c-lime)}
 
 /* panels */
-.panel{display:none;flex:1;overflow-y:auto;padding:20px}
+.panel{display:none;flex:1;overflow:hidden;padding:0;flex-direction:column;min-height:0}
+.panel.active{display:flex}
+.panel-inner{padding:16px 20px 0;flex-shrink:0}
+.panel-scroll{flex:1;overflow:auto;padding:0 20px 20px}
 .panel.active{display:flex;flex-direction:column}
 
 /* ── CALENDAR PANEL ──────────────────────── */
-.cal-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-shrink:0}
-.cal-header h2{font-family:var(--font-head);font-size:20px;font-weight:700;color:var(--c-white)}
+.cal-header{display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-shrink:0}
+.cal-header h2{font-family:var(--font-head);font-size:16px;font-weight:700;color:var(--c-white)}
 .cal-header .branch-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 .month-nav{margin-left:auto;display:flex;align-items:center;gap:6px}
 .month-nav .mon-label{font-size:13px;font-weight:500;min-width:130px;text-align:center;color:var(--c-text)}
@@ -141,7 +144,7 @@ body{font-family:var(--font-mono);background:var(--c-bg);color:var(--c-text);fon
 .month-nav button:hover{border-color:var(--c-blue);color:var(--c-blue)}
 
 /* stat row */
-.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;flex-shrink:0}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:8px;flex-shrink:0}
 .stat-card{
   background:var(--c-panel);border:1px solid var(--c-border);border-radius:var(--r);
   padding:12px 14px;position:relative;overflow:hidden;
@@ -151,27 +154,28 @@ body{font-family:var(--font-mono);background:var(--c-bg);color:var(--c-text);fon
 .stat-card.orange::after{background:var(--c-orange)}
 .stat-card.green::after{background:var(--c-green)}
 .stat-card.red::after{background:var(--c-red)}
-.stat-card .sc-label{font-size:9px;letter-spacing:.1em;color:var(--c-muted);text-transform:uppercase;margin-bottom:4px}
-.stat-card .sc-val{font-family:var(--font-head);font-size:22px;font-weight:700;color:var(--c-white);line-height:1}
+.stat-card{padding:10px 12px!important}.stat-card .sc-label{font-size:9px;letter-spacing:.1em;color:var(--c-muted);text-transform:uppercase;margin-bottom:2px}
+.stat-card .sc-val{font-family:var(--font-head);font-size:18px;font-weight:700;color:var(--c-white);line-height:1}
 .stat-card .sc-sub{font-size:10px;color:var(--c-muted);margin-top:3px}
 
 /* calendar table */
-.cal-wrap{flex:1;overflow:auto;border-radius:var(--r);border:1px solid var(--c-border)}
+.cal-wrap{overflow:auto}
 #cal-table{border-collapse:collapse;width:100%;min-width:800px;font-size:11px}
 #cal-table thead th{
-  background:var(--c-panel);color:var(--c-text-dim);padding:6px 4px;
-  text-align:center;font-weight:500;font-size:10px;position:sticky;top:0;z-index:5;
-  border-bottom:1px solid var(--c-border);white-space:nowrap;
+  background:var(--c-panel);color:var(--c-white);padding:8px 4px;
+  text-align:center;font-weight:700;font-size:12px;position:sticky;top:0;z-index:5;
+  border-bottom:2px solid var(--c-border);white-space:nowrap;
 }
 #cal-table thead th.th-sticky{position:sticky;left:0;z-index:6;text-align:left;min-width:180px;padding:6px 10px;border-right:1px solid var(--c-border)}
-#cal-table thead th.th-sat{background:#1A2535;color:#7DBBD4}
-#cal-table thead th.th-sun{background:#16203A;color:#6B9EC4}
-#cal-table thead th.th-hol{background:#2A1515;color:#F87171}
+#cal-table thead th.th-sat{background:#1A2D40;color:#93C5D7;font-weight:600}
+#cal-table thead th.th-sun{background:#16253D;color:#7BA8C9;font-weight:600}
+#cal-table thead th.th-hol{background:#2A1515;color:#FCA5A5;font-weight:600}
 
 #cal-table tbody tr{border-bottom:1px solid rgba(35,46,68,.6);transition:background .1s}
 #cal-table tbody tr:hover{background:rgba(59,130,246,.05)}
 #cal-table tbody tr.row-done td{opacity:.4;text-decoration:line-through}
-#cal-table tbody td{padding:4px;vertical-align:middle;text-align:center}
+#cal-table tbody td{padding:2px;vertical-align:middle;text-align:center;min-width:32px;max-width:52px}
+#cal-table thead th:not(.th-sticky){min-width:32px;max-width:52px;padding:8px 2px}
 #cal-table tbody td.td-sticky{
   position:sticky;left:0;background:var(--c-surface);z-index:2;
   border-right:1px solid var(--c-border);text-align:left;padding:5px 10px;
@@ -181,10 +185,11 @@ body{font-family:var(--font-mono);background:var(--c-bg);color:var(--c-text);fon
 /* td-date styles defined below in updated rules */
 
 /* summary header rows */
-.tr-alloc td{background:rgba(59,130,246,.12)!important;color:#93C5FD;font-size:10px;font-weight:500;text-align:center}
-.tr-cap td  {background:rgba(14,165,160,.1)!important;color:#5EEAD4;font-size:10px;text-align:center}
-.tr-avail td{background:rgba(249,115,22,.1)!important;color:#FED7AA;font-size:10px;font-weight:500;text-align:center}
-.tr-alloc td.td-sticky,.tr-cap td.td-sticky,.tr-avail td.td-sticky{text-align:left;font-weight:600}
+.tr-alloc td{background:var(--c-surface)!important;border-bottom:1px solid var(--c-border);color:#93C5FD;font-size:10px;font-weight:500;text-align:center;position:sticky;top:38px;z-index:4}
+.tr-cap td  {background:var(--c-surface)!important;border-bottom:1px solid var(--c-border);color:#5EEAD4;font-size:10px;text-align:center;position:sticky;top:62px;z-index:4}
+.tr-avail td{background:var(--c-surface)!important;border-bottom:2px solid rgba(249,115,22,.4);color:#FED7AA;font-size:10px;font-weight:500;text-align:center;position:sticky;top:86px;z-index:4}
+.tr-alloc td.td-sticky,.tr-cap td.td-sticky,.tr-avail td.td-sticky{text-align:left;font-weight:600;z-index:5}
+.tr-done-toggle td{border-top:1px solid var(--c-border)}
 td.td-neg{background:rgba(239,68,68,.15)!important;color:#FCA5A5!important}
 
 .job-cell{display:flex;flex-direction:column;gap:1px}
@@ -370,23 +375,34 @@ td.td-neg{background:rgba(239,68,68,.15)!important;color:#FCA5A5!important}
 
 /* ── DATE CELL NAMES ──────────────────────────────── */
 .td-date{font-size:9px;width:72px;max-width:72px;padding:3px 4px;vertical-align:top;cursor:default}
-.td-date.has-job{background:rgba(34,197,94,.12);border-radius:2px}
-.td-date.td-sat{background:rgba(125,187,212,.06)}
-.td-date.td-sun{background:rgba(107,158,196,.06)}
-.td-date.td-hol{background:rgba(248,113,113,.08)}
-.td-date.td-hol-worked{background:rgba(245,158,11,.12)}
-.td-date.td-sat-off{background:rgba(125,187,212,.04);opacity:.5}
+/* Alternating job row colours — blue and orange */
+.td-date.has-job-a{background:rgba(59,130,246,.14);border-radius:2px}   /* blue */
+.td-date.has-job-b{background:rgba(249,115,22,.13);border-radius:2px}    /* orange */
+.name-chip-a{color:#93C5FD}   /* blue name */
+.name-chip-b{color:#FDBA74}   /* orange name */
+.td-date.td-sat{background:rgba(125,187,212,.04)}
+.td-date.td-sun{background:rgba(107,158,196,.04)}
+.td-date.td-hol{background:rgba(248,113,113,.05)}
+.td-date.td-hol-worked{background:rgba(245,158,11,.08)}
+.td-date.td-sat-off{background:rgba(125,187,212,.02);opacity:.5}
+.td-date.td-next-month{opacity:.4}
 .name-chip{
-  display:block;font-size:9px;line-height:1.4;color:#86EFAC;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:68px;
+  display:block;font-size:9px;line-height:1.4;color:inherit;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:44px;
   pointer-events:none;
 }
-.name-chip.override{color:#FCD34D} /* per-day override */
+.name-chip-a{color:#93C5FD!important}   /* blue row — blue names */
+.name-chip-b{color:#FDBA74!important}   /* orange row — orange names */
+.name-chip.override{color:#FCD34D!important} /* per-day override — yellow */
 .hol-label{font-size:8px;color:#FCA5A5;display:block;text-align:center}
 .hol-worked-label{font-size:8px;color:#FCD34D;display:block;text-align:center}
-.sat-off-label{font-size:8px;color:rgba(125,187,212,.5);display:block;text-align:center;font-style:italic}
-.td-date.clickable-day{cursor:pointer}
-.td-date.clickable-day:hover{background:rgba(168,200,0,.15)!important;outline:1px solid rgba(168,200,0,.5)}
+.sat-off-label{font-size:9px;color:rgba(125,187,212,.5);display:block;text-align:center;font-style:italic;line-height:2.2}
+.td-date.clickable-day{cursor:pointer;outline:1px solid rgba(168,200,0,.2)}
+.td-date.clickable-day:hover{background:rgba(168,200,0,.18)!important;outline:1px solid rgba(168,200,0,.65)!important}
+.td-date.clickable-day:active{background:rgba(168,200,0,.28)!important}
+.day-add-hint{font-size:10px;color:rgba(168,200,0,.32);display:block;text-align:center;line-height:2.2;user-select:none;pointer-events:none}
+.td-date.clickable-day:hover .day-add-hint{color:rgba(168,200,0,.75)}
+.td-date.clickable-day:hover .sat-off-label{color:rgba(168,200,0,.7)!important}
 
 /* ── DAY EDIT MODAL ──────────────────────────────── */
 .day-modal{background:var(--c-panel);border:1px solid var(--c-border-lt);border-radius:10px;width:380px;max-width:95vw;max-height:85vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.6)}
@@ -410,6 +426,59 @@ td.td-neg{background:rgba(239,68,68,.15)!important;color:#FCA5A5!important}
 .day-toggle input:checked + .day-toggle-slider{background:var(--c-lime)}
 .day-toggle input:checked + .day-toggle-slider:before{transform:translateX(16px)}
 
+
+/* ── TV / KIOSK MODE ───────────────────────────────────────────── */
+body.tv-mode #topbar { display:none }
+body.tv-mode #sidebar { display:none }
+body.tv-mode #main { margin:0; padding:0 }
+body.tv-mode #tabs { display:none }
+body.tv-mode #panel-cal { display:block!important }
+body.tv-mode .cal-header { padding:10px 16px 6px }
+body.tv-mode #cal-title { font-size:20px }
+body.tv-mode .month-nav button { display:none }
+body.tv-mode #cal-table { font-size:13px }
+body.tv-mode #cal-table thead th { font-size:13px; padding:10px 4px }
+body.tv-mode #cal-table tbody td { padding:6px 4px }
+body.tv-mode .name-chip { font-size:10px; max-width:90px }
+body.tv-mode .jc-no { font-size:12px }
+body.tv-mode .jc-site { font-size:11px }
+body.tv-mode #cal-table thead th.th-sticky { min-width:200px }
+/* TV top bar */
+#tv-bar {
+  display:none;
+  background:var(--c-surface);
+  border-bottom:2px solid var(--c-border);
+  padding:8px 20px;
+  align-items:center;
+  gap:16px;
+}
+body.tv-mode #tv-bar { display:flex }
+#tv-bar .tv-logo { height:28px; width:auto; filter:brightness(0) invert(1) }
+#tv-bar .tv-branch {
+  font-size:18px; font-weight:800; color:var(--c-white);
+  display:flex; align-items:center; gap:8px;
+}
+#tv-bar .tv-month { font-size:14px; color:var(--c-muted); margin-left:4px }
+#tv-bar .tv-spacer { flex:1 }
+#tv-bar .tv-clock {
+  font-size:20px; font-weight:700; color:var(--c-white);
+  font-family:var(--font-mono);
+}
+#tv-bar .tv-date { font-size:11px; color:var(--c-muted); text-align:right; line-height:1.4 }
+#tv-bar .tv-exit {
+  padding:4px 12px; background:rgba(255,255,255,.08);
+  border:1px solid var(--c-border); border-radius:4px;
+  color:var(--c-muted); font-size:11px; cursor:pointer;
+  transition:.15s;
+}
+#tv-bar .tv-exit:hover { color:var(--c-white); background:rgba(255,255,255,.15) }
+#tv-bar .tv-branch-btns { display:flex; gap:6px }
+#tv-bar .tv-branch-btn {
+  padding:4px 14px; border-radius:4px; border:1px solid var(--c-border);
+  background:transparent; color:var(--c-muted); font-size:11px;
+  cursor:pointer; font-family:inherit; transition:.15s;
+}
+#tv-bar .tv-branch-btn.active { color:var(--c-white); border-color:var(--c-white); background:rgba(255,255,255,.1) }
 </style>
 </head>
 <body>
@@ -454,6 +523,26 @@ td.td-neg{background:rgba(239,68,68,.15)!important;color:#FCA5A5!important}
   </div>
 </div>
 
+
+<!-- TV / KIOSK BAR (hidden until TV mode activated) -->
+<div id="tv-bar">
+  <img src="https://www.techclean.co.nz/wp-content/uploads/sites/512/2025/01/Logo-768x150-1.png" class="tv-logo" alt="TechClean" onerror="this.style.display='none'">
+  <div class="tv-branch">
+    <span id="tv-branch-name">Auckland</span>
+    <span class="tv-month" id="tv-month-name"></span>
+  </div>
+  <div class="tv-branch-btns">
+    <button class="tv-branch-btn active" id="tvb-Auckland" onclick="tvSetBranch('Auckland')">Auckland</button>
+    <button class="tv-branch-btn" id="tvb-Wellington" onclick="tvSetBranch('Wellington')">Wellington</button>
+    <button class="tv-branch-btn" id="tvb-Christchurch" onclick="tvSetBranch('Christchurch')">Christchurch</button>
+  </div>
+  <div class="tv-spacer"></div>
+  <div style="text-align:right">
+    <div class="tv-clock" id="tv-clock">--:--</div>
+    <div class="tv-date" id="tv-date"></div>
+  </div>
+  <button class="tv-exit" onclick="exitTvMode()">✕ Exit TV</button>
+</div>
 <div id="topbar">
   <div class="logo">
     <img src="https://www.techclean.co.nz/wp-content/uploads/sites/512/2025/01/Logo-768x150-1.png" 
@@ -467,6 +556,7 @@ td.td-neg{background:rgba(239,68,68,.15)!important;color:#FCA5A5!important}
   <span class="pill" id="sync-pill">OFFLINE</span>
   <div class="spacer"></div>
   <button class="btn btn-ghost btn-sm" onclick="exportCSV()">↓ CSV</button>
+  <button class="btn btn-ghost btn-sm" onclick="enterTvMode()" title="TV / Kiosk Mode">📺 TV</button>
   <button class="btn btn-teal btn-sm" onclick="doSync()">⟳ Sync</button>
   <button class="btn btn-orange" onclick="openForm()">＋ New Job</button>
 </div>
@@ -516,8 +606,9 @@ td.td-neg{background:rgba(239,68,68,.15)!important;color:#FCA5A5!important}
     </div>
 
     <!-- CALENDAR -->
-    <div class="panel active" id="panel-cal">
-      <div class="cal-header">
+    <div class="panel active" id="panel-cal" style="display:flex;flex-direction:column;overflow:hidden;height:100%;min-height:0">
+      <div style="flex-shrink:0;padding:8px 16px 0">
+      <div class="cal-header" style="margin-bottom:12px">
         <div class="branch-dot" id="cal-dot" style="background:var(--c-akl)"></div>
         <h2 id="cal-title">Auckland Calendar</h2>
         <div class="month-nav">
@@ -527,8 +618,9 @@ td.td-neg{background:rgba(239,68,68,.15)!important;color:#FCA5A5!important}
           <button class="btn btn-ghost btn-sm" onclick="goToday()" style="margin-left:4px">Today</button>
         </div>
       </div>
-      <div class="stat-row" id="stat-row"></div>
-      <div class="cal-wrap">
+      <div class="stat-row" id="stat-row" style="margin-bottom:12px"></div>
+      </div><!-- end fixed header section -->
+      <div class="cal-wrap" style="flex:1;overflow:auto;margin:0 16px 12px;border-radius:var(--r);border:1px solid var(--c-border)">
         <table id="cal-table">
           <thead id="cal-head"></thead>
           <tbody id="cal-body"></tbody>
@@ -1037,8 +1129,12 @@ function workingDays(start,finish,wSat=false,wSun=false){
 }
 
 function monthDays(y,m){
-  const days=[];let d=new Date(y,m,1);
-  while(d.getMonth()===m){days.push(dsOf(d));d=addD(d,1)}
+  const days=[];
+  // Start from first day of month
+  let d=new Date(y,m,1);
+  while(d.getMonth()===m){days.push(dsOf(d));d=addD(d,1);}
+  // Extend to end of the last week (so the final row is complete through Sunday)
+  while(d.getDay()!==1){days.push(dsOf(d));d=addD(d,1);}
   return days;
 }
 
@@ -1069,13 +1165,36 @@ function renderCal(){
   document.getElementById('cal-title').textContent=br+' Calendar';
   document.getElementById('mon-label').textContent=MONTHS[S.month]+' '+S.year;
 
-  // stats
+  // stats — prorate multi-month jobs by number of months
   const active=bJobs.filter(j=>!j.done);
-  const tVal=active.reduce((s,j)=>s+(Number(j.val)||0),0);
+
+  // Calculate this month's prorated value per job
+  function jobMonthVal(j){
+    const v = Number(j.val)||0;
+    if(!v) return 0;
+    if(!j.start||!j.finish) return v; // no dates — count full value
+    const start = new Date(j.start+'T00:00:00');
+    const finish = new Date(j.finish+'T00:00:00');
+    const msPerMonth = 30.44 * 24 * 3600 * 1000;
+    const totalMonths = Math.max(1, Math.round((finish - start) / msPerMonth));
+    if(totalMonths <= 1) return v; // single month — full value
+    // Prorate: value ÷ total months = this month's share
+    return v / totalMonths;
+  }
+
+  const tValFull = active.reduce((s,j)=>s+(Number(j.val)||0),0);
+  const tValMonth = active.reduce((s,j)=>s+jobMonthVal(j),0);
+  const hasMultiMonth = active.some(j=>{
+    if(!j.start||!j.finish) return false;
+    const ms = new Date(j.finish+'T00:00:00') - new Date(j.start+'T00:00:00');
+    return ms > 31*24*3600*1000;
+  });
   const todayA=dailyAlloc(bJobs,today);
+  const valNote = hasMultiMonth ? `<div style="font-size:9px;color:var(--c-orange);margin-top:3px">* est. this month — multi-month jobs divided by duration</div>` : '';
+
   document.getElementById('stat-row').innerHTML=`
     <div class="stat-card blue"><div class="sc-label">Active Jobs</div><div class="sc-val">${active.length}</div><div class="sc-sub">${bJobs.filter(j=>j.done).length} done</div></div>
-    <div class="stat-card orange"><div class="sc-label">Total Value</div><div class="sc-val" style="font-size:15px;line-height:1.2">${fmt$(tVal)}</div><div class="sc-sub">WFM: ${fmtN(active.reduce((s,j)=>s+(Number(j.wfm)||0),0),0)} hrs</div></div>
+    <div class="stat-card orange"><div class="sc-label">${hasMultiMonth?'Est. Value This Month*':'Total Value'}</div><div class="sc-val" style="font-size:15px;line-height:1.2">${fmt$(tValMonth)}</div><div class="sc-sub">Full pipeline: ${fmt$(tValFull)}${valNote}</div></div>
     <div class="stat-card green"><div class="sc-label">Today Allocated</div><div class="sc-val">${todayA}</div><div class="sc-sub">of ${cap} capacity</div></div>
     <div class="stat-card ${todayA>cap?'red':'blue'}"><div class="sc-label">Today Available</div><div class="sc-val">${cap-todayA}</div><div class="sc-sub">${cap?Math.round(todayA/cap*100):0}% utilised</div></div>`;
 
@@ -1083,8 +1202,12 @@ function renderCal(){
   let hdr=`<tr><th class="th-sticky">Job</th>`;
   for(const d of days){
     const dt=new Date(d+'T00:00:00');
+    const isNextMonth = dt.getMonth() !== S.month;
+    const isToday = d === dsOf(new Date());
     const cls=isHol(d)?'th-hol':isSat(d)?'th-sat':isSun(d)?'th-sun':'';
-    hdr+=`<th class="${cls}">${dt.getDate()}<br><small style="font-size:8px;font-weight:400">${DAYS[dt.getDay()]}</small></th>`;
+    const todayStyle = isToday ? ';outline:2px solid var(--c-lime);outline-offset:-2px;border-radius:2px' : '';
+    const opacity = isNextMonth ? ' style="opacity:.35'+todayStyle+'"' : (isToday ? ' style="'+todayStyle.slice(1)+'"' : '');
+    hdr+=`<th class="${cls}"${opacity}>${dt.getDate()}<br><small style="font-size:9px;font-weight:500;opacity:.8">${DAYS[dt.getDay()]}</small></th>`;
   }
   document.getElementById('cal-head').innerHTML=hdr+'</tr>';
 
@@ -1104,15 +1227,31 @@ function renderCal(){
   body+=days.map(d=>{const a=cap-allocMap[d];return`<td class="${a<0?'td-neg':''}">${a}</td>`}).join('');
   body+='</tr>';
 
-  // job rows
-  const sorted=[...bJobs].sort((a,b)=>(a.start||'').localeCompare(b.start||''));
+  // job rows — active jobs first, done jobs collapsed at bottom
+  const _allSorted=[...bJobs].sort((a,b)=>(a.start||'').localeCompare(b.start||''));
+  const _activeJobs=_allSorted.filter(j=>!j.done);
+  const _doneJobs=_allSorted.filter(j=>j.done);
+  const sorted=[..._activeJobs,..._doneJobs];
+
+  let _jobColorIdx=0;
+  let _doneToggleAdded=false;
+
   for(const j of sorted){
-    body+=`<tr class="${j.done?'row-done':''}" data-id="${j.id}">`;
+    // Insert toggle row before first done job
+    if(j.done && !_doneToggleAdded){
+      _doneToggleAdded=true;
+      body+=`<tr id="done-toggle-row"><td class="td-sticky" colspan="999" onclick="toggleDoneJobs()" style="cursor:pointer;padding:6px 12px;background:rgba(255,255,255,.03);color:var(--c-muted);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;border-top:1px solid var(--c-border)">
+        <span id="done-toggle-icon">▶</span>&nbsp; ${_doneJobs.length} completed job${_doneJobs.length!==1?'s':''} — click to show</td></tr>`;
+    }
+    const _jcol = j.done ? '' : (_jobColorIdx%2===0?'a':'b');
+    if(!j.done) _jobColorIdx++;
+    body+=`<tr class="${j.done?'row-done tr-done-job':''}" data-id="${j.id}" data-jcol="${_jcol}" ${j.done?'style="display:none"':''}>`;
     body+=`<td class="td-sticky">
-      <div class="job-cell" onclick="editJob('${j.id}')" style="cursor:pointer">
+      <div class="job-cell" onclick="editJob('${j.id}')" style="cursor:pointer;border-left:3px solid ${_jcol==='a'?'rgba(59,130,246,.5)':_jcol==='b'?'rgba(249,115,22,.5)':'transparent'};padding-left:6px">
         <div class="jc-no">${j.jobno||'—'}${j.project?` <span style="font-size:9px;color:var(--c-lime);opacity:.8">◆ ${j.project}</span>`:''}</div>
         ${j.client?`<div style="font-size:10px;color:var(--c-text-dim);max-width:140px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-weight:500">${j.client}</div>`:''}
         <div class="jc-site">${j.site||'No site'}</div>
+        ${j.val?`<div style="font-size:10px;color:var(--c-lime);font-weight:600;letter-spacing:.01em">$${Math.round(j.val).toLocaleString('en-NZ')}</div>`:''}
         <div class="jc-actions">
           <button class="done-btn ${j.done?'is-done':''}" onclick="event.stopPropagation();toggleDone('${j.id}')">${j.done?'✓ Done':'○ Done'}</button>
         </div>
@@ -1120,6 +1259,9 @@ function renderCal(){
     </td>`;
     for(const d of days){
       let cls='td-date';
+      // Dim days that spill into next month
+      const cellMonth = new Date(d+'T00:00:00').getMonth();
+      if(cellMonth !== S.month) cls+=' td-next-month';
       const jobOn=jobActiveOnDay(j,d);
       const isHolDay=isHol(d);
       const isSatDay=isSat(d);
@@ -1128,21 +1270,25 @@ function renderCal(){
       else if(isHolDay&&jobOn)cls+=' td-hol-worked';
       else if(isSatDay)cls+=' td-sat';
       else if(isSunDay)cls+=' td-sun';
-      if(jobOn&&!j.done)cls+=' has-job';
+      if(jobOn&&!j.done)cls+=' has-job-'+_jcol;
       const dayNames=jobOn&&!j.done?getStaffForDay(j,d).split(',').map(s=>s.trim()).filter(s=>s):[];
       const isOverride=j.dayOverrides&&j.dayOverrides[d]!==undefined&&j.dayOverrides[d]!=='__OFF__';
       let cellContent='';
       if(isHolDay&&!jobOn){
         cellContent='<span class="hol-label">HOL</span>';
       } else if(isHolDay&&jobOn){
-        cellContent='<span class="hol-worked-label">HOL✓</span>'+dayNames.map(n=>'<span class="name-chip override">'+n+'</span>').join('');
+        cellContent='<span class="hol-worked-label">HOL✓</span>'+dayNames.map(n=>'<span class="name-chip name-chip-'+_jcol+' override">'+n+'</span>').join('');
       } else if(dayNames.length){
-        cellContent=dayNames.map(n=>'<span class="name-chip'+(isOverride?' override':'')+'">'+n+'</span>').join('');
+        cellContent=dayNames.map(n=>'<span class="name-chip name-chip-'+_jcol+(isOverride?' override':'')+'">'+n+'</span>').join('');
       } else if(isSatDay&&!j.workSat&&!(j.dayOverrides&&j.dayOverrides[d])){
         cellContent='<span class="sat-off-label">—</span>';
       }
       const inRange=j.start&&j.finish&&toD(d)>=toD(j.start)&&toD(d)<=toD(j.finish);
       const clickable=!j.done&&inRange;
+      // Subtle "+" hint on empty clickable weekday cells so users know they can click
+      if(clickable&&!cellContent&&!isSatDay&&!isSunDay&&!isHolDay){
+        cellContent='<span class="day-add-hint">+</span>';
+      }
       if(clickable)cls+=' clickable-day';
       if(clickable){
         body+='<td class="'+cls+'" onclick="openDayModal(\'' +j.id+ '\',\'' +d+ '\')" style="cursor:pointer">'+cellContent+'</td>';
@@ -1755,6 +1901,70 @@ function changeAdminPin(){
   ['admin-pin-current','admin-pin-new','admin-pin-confirm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
   toast('Admin PIN updated ✓');
 }
+
+// ── TV / KIOSK MODE ──────────────────────────────────────────────────
+let _tvClockInterval = null;
+let _tvRefreshInterval = null;
+
+
+function toggleDoneJobs(){
+  const rows = document.querySelectorAll('.tr-done-job');
+  const icon = document.getElementById('done-toggle-icon');
+  const isHidden = rows.length && rows[0].style.display==='none';
+  rows.forEach(function(r){ r.style.display = isHidden ? '' : 'none'; });
+  if(icon) icon.textContent = isHidden ? '▼' : '▶';
+}
+
+function enterTvMode(){
+  document.body.classList.add('tv-mode');
+  showPanel('cal');
+  updateTvBar();
+  _tvClockInterval = setInterval(updateTvClock, 1000);
+  updateTvClock();
+  // Auto-refresh from Sheets every 2 minutes
+  _tvRefreshInterval = setInterval(function(){
+    if(S.gsUrl && window.location.protocol !== 'file:'){
+      doSync(true);
+      setTimeout(function(){ renderCal(); updateTvBar(); }, 2000);
+    }
+  }, 120000);
+  try{ document.documentElement.requestFullscreen(); }catch(e){}
+}
+
+function exitTvMode(){
+  document.body.classList.remove('tv-mode');
+  clearInterval(_tvClockInterval);
+  clearInterval(_tvRefreshInterval);
+  try{ document.exitFullscreen(); }catch(e){}
+}
+
+function tvSetBranch(br){
+  setBranch(br);
+  ['Auckland','Wellington','Christchurch'].forEach(function(b){
+    const btn = document.getElementById('tvb-'+b);
+    if(btn) btn.classList.toggle('active', b===br);
+  });
+  updateTvBar();
+}
+
+function updateTvBar(){
+  const brEl = document.getElementById('tv-branch-name');
+  if(brEl) brEl.textContent = S.branch;
+  const moEl = document.getElementById('tv-month-name');
+  if(moEl) moEl.textContent = MONTHS[S.month] + ' ' + S.year;
+}
+
+function updateTvClock(){
+  const now = new Date();
+  const cl = document.getElementById('tv-clock');
+  if(cl) cl.textContent = now.toLocaleTimeString('en-NZ',{hour:'2-digit',minute:'2-digit'});
+  const dt = document.getElementById('tv-date');
+  if(dt) dt.textContent = now.toLocaleDateString('en-NZ',{weekday:'long',day:'numeric',month:'long'});
+}
+
+document.addEventListener('keydown', function(e){
+  if(e.key==='Escape' && document.body.classList.contains('tv-mode')) exitTvMode();
+});
 
 </script>
 
