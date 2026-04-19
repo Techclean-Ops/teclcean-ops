@@ -1,0 +1,1795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TechClean — Branch Operations Schedule</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Familjen+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  /* TechClean Brand — Light Charcoal + Lime Green */
+  --c-bg:#2B2D2F;
+  --c-surface:#333538;
+  --c-panel:#3C3F42;
+  --c-border:#4A4D50;
+  --c-border-lt:#5A5D61;
+  --c-navy:#2B2D2F;
+  --c-blue:#A8C800;
+  --c-blue-lt:#EEF5C0;
+  --c-teal:#A8C800;
+  --c-teal-lt:#EEF5C0;
+  --c-orange:#E8720C;
+  --c-orange-lt:#FDE8D3;
+  --c-green:#4CAF50;
+  --c-green-dk:#2E7D32;
+  --c-green-lt:#E8F5E9;
+  --c-red:#EF4444;
+  --c-red-lt:#FEF2F2;
+  --c-amber:#F59E0B;
+  --c-amber-lt:#FFFBEB;
+  --c-muted:#78797C;
+  --c-text:#F0F0F0;
+  --c-text-dim:#A8AAAD;
+  --c-white:#FFFFFF;
+  --c-akl:#E8720C;
+  --c-wel:#A8C800;
+  --c-chc:#4CAF50;
+  --c-lime:#A8C800;
+  --c-lime-dk:#7A9200;
+  --font-head:'Familjen Grotesk',sans-serif;
+  --font-mono:'DM Mono',monospace;
+  --r:6px;
+  --sidebar:240px;
+}
+
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--font-mono);background:var(--c-bg);color:var(--c-text);font-size:13px;display:flex;flex-direction:column}
+
+/* ── TOPBAR ──────────────────────────────── */
+#topbar{
+  height:48px;background:#222325;border-bottom:2px solid var(--c-lime);
+  display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0;
+  position:relative;z-index:50;
+}
+#topbar .logo{
+  font-family:var(--font-head);font-weight:700;font-size:16px;color:var(--c-white);
+  display:flex;align-items:center;gap:8px;
+}
+#topbar .logo .dot{width:8px;height:8px;background:var(--c-lime);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.85)}}
+#topbar .pill{
+  font-size:10px;font-weight:500;padding:2px 8px;border-radius:20px;
+  background:rgba(239,68,68,.15);color:var(--c-red);letter-spacing:.05em;
+  border:1px solid rgba(239,68,68,.3);
+}
+#topbar .pill.live{background:rgba(34,197,94,.15);color:var(--c-green);border-color:rgba(34,197,94,.3)}
+#topbar .spacer{flex:1}
+.btn{
+  font-family:var(--font-mono);font-size:11px;font-weight:500;
+  padding:6px 14px;border:none;border-radius:var(--r);cursor:pointer;
+  transition:all .15s;letter-spacing:.02em;display:inline-flex;align-items:center;gap:6px;
+}
+.btn-primary{background:var(--c-lime);color:#1A1A1A;font-weight:700}.btn-primary:hover{background:var(--c-lime-dk);color:#fff}
+.btn-teal{background:var(--c-lime);color:#1A1A1A;font-weight:700}.btn-teal:hover{background:var(--c-lime-dk);color:#fff}
+.btn-orange{background:var(--c-orange);color:#fff}.btn-orange:hover{background:#EA6600}
+.btn-ghost{background:transparent;color:var(--c-text-dim);border:1px solid var(--c-border)}.btn-ghost:hover{border-color:var(--c-border-lt);color:var(--c-text)}
+.btn-sm{padding:4px 10px;font-size:10px}
+.btn-danger{background:var(--c-red);color:#fff}.btn-danger:hover{background:#DC2626}
+.btn-icon{width:30px;height:30px;padding:0;justify-content:center;border-radius:var(--r)}
+
+/* ── BODY LAYOUT ─────────────────────────── */
+#body{display:flex;flex:1;min-height:0;overflow:hidden}
+
+/* ── SIDEBAR ─────────────────────────────── */
+#sidebar{
+  width:var(--sidebar);background:var(--c-surface);border-right:1px solid var(--c-border);
+  display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;
+}
+.sb-section{padding:12px 0;border-bottom:1px solid var(--c-border)}
+.sb-label{font-size:9px;font-weight:500;letter-spacing:.12em;color:var(--c-muted);padding:0 14px 8px;text-transform:uppercase}
+.sb-item{
+  display:flex;align-items:center;gap:8px;padding:7px 14px;cursor:pointer;
+  color:var(--c-text-dim);font-size:12px;transition:.12s;border-left:3px solid transparent;
+  position:relative;
+}
+.sb-item:hover{background:rgba(255,255,255,.04);color:var(--c-text)}
+.sb-item.active{background:rgba(168,200,0,.1);color:var(--c-lime);border-left-color:var(--c-lime)}
+.sb-item .sb-icon{font-size:14px;width:18px;text-align:center}
+.sb-item .sb-badge{
+  margin-left:auto;font-size:9px;font-weight:500;min-width:18px;height:18px;
+  display:flex;align-items:center;justify-content:center;border-radius:10px;padding:0 5px;
+}
+.badge-akl{background:rgba(232,114,12,.2);color:var(--c-akl)}
+.badge-wel{background:rgba(168,200,0,.2);color:var(--c-wel)}
+.badge-chc{background:rgba(76,175,80,.2);color:var(--c-chc)}
+
+/* capacity bars in sidebar */
+.sb-cap{padding:6px 14px}
+.sb-cap-label{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:10px;color:var(--c-text-dim)}
+.sb-cap-bar{height:4px;background:var(--c-border);border-radius:2px;overflow:hidden}
+.sb-cap-fill{height:100%;border-radius:2px;transition:width .4s}
+.cap-ok{background:var(--c-green)}.cap-warn{background:var(--c-amber)}.cap-over{background:var(--c-red)}
+
+/* ── MAIN ────────────────────────────────── */
+#main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+
+/* tabs */
+#tabs{
+  display:flex;background:var(--c-surface);border-bottom:1px solid var(--c-border);
+  padding:0 20px;gap:0;flex-shrink:0;
+}
+.tab{
+  font-family:var(--font-head);font-size:12px;font-weight:600;padding:12px 18px;
+  cursor:pointer;color:var(--c-muted);border-bottom:2px solid transparent;
+  margin-bottom:-1px;transition:.12s;text-transform:uppercase;letter-spacing:.06em;
+}
+.tab:hover{color:var(--c-text)}
+.tab.active{color:var(--c-white);border-bottom-color:var(--c-lime)}
+
+/* panels */
+.panel{display:none;flex:1;overflow-y:auto;padding:20px}
+.panel.active{display:flex;flex-direction:column}
+
+/* ── CALENDAR PANEL ──────────────────────── */
+.cal-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-shrink:0}
+.cal-header h2{font-family:var(--font-head);font-size:20px;font-weight:700;color:var(--c-white)}
+.cal-header .branch-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.month-nav{margin-left:auto;display:flex;align-items:center;gap:6px}
+.month-nav .mon-label{font-size:13px;font-weight:500;min-width:130px;text-align:center;color:var(--c-text)}
+.month-nav button{background:var(--c-panel);border:1px solid var(--c-border);color:var(--c-text);width:28px;height:28px;border-radius:4px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:.12s}
+.month-nav button:hover{border-color:var(--c-blue);color:var(--c-blue)}
+
+/* stat row */
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px;flex-shrink:0}
+.stat-card{
+  background:var(--c-panel);border:1px solid var(--c-border);border-radius:var(--r);
+  padding:12px 14px;position:relative;overflow:hidden;
+}
+.stat-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.stat-card.blue::after{background:var(--c-lime)}
+.stat-card.orange::after{background:var(--c-orange)}
+.stat-card.green::after{background:var(--c-green)}
+.stat-card.red::after{background:var(--c-red)}
+.stat-card .sc-label{font-size:9px;letter-spacing:.1em;color:var(--c-muted);text-transform:uppercase;margin-bottom:4px}
+.stat-card .sc-val{font-family:var(--font-head);font-size:22px;font-weight:700;color:var(--c-white);line-height:1}
+.stat-card .sc-sub{font-size:10px;color:var(--c-muted);margin-top:3px}
+
+/* calendar table */
+.cal-wrap{flex:1;overflow:auto;border-radius:var(--r);border:1px solid var(--c-border)}
+#cal-table{border-collapse:collapse;width:100%;min-width:800px;font-size:11px}
+#cal-table thead th{
+  background:var(--c-panel);color:var(--c-text-dim);padding:6px 4px;
+  text-align:center;font-weight:500;font-size:10px;position:sticky;top:0;z-index:5;
+  border-bottom:1px solid var(--c-border);white-space:nowrap;
+}
+#cal-table thead th.th-sticky{position:sticky;left:0;z-index:6;text-align:left;min-width:180px;padding:6px 10px;border-right:1px solid var(--c-border)}
+#cal-table thead th.th-sat{background:#1A2535;color:#7DBBD4}
+#cal-table thead th.th-sun{background:#16203A;color:#6B9EC4}
+#cal-table thead th.th-hol{background:#2A1515;color:#F87171}
+
+#cal-table tbody tr{border-bottom:1px solid rgba(35,46,68,.6);transition:background .1s}
+#cal-table tbody tr:hover{background:rgba(59,130,246,.05)}
+#cal-table tbody tr.row-done td{opacity:.4;text-decoration:line-through}
+#cal-table tbody td{padding:4px;vertical-align:middle;text-align:center}
+#cal-table tbody td.td-sticky{
+  position:sticky;left:0;background:var(--c-surface);z-index:2;
+  border-right:1px solid var(--c-border);text-align:left;padding:5px 10px;
+}
+#cal-table tbody tr:hover td.td-sticky{background:#151E30}
+
+/* td-date styles defined below in updated rules */
+
+/* summary header rows */
+.tr-alloc td{background:rgba(59,130,246,.12)!important;color:#93C5FD;font-size:10px;font-weight:500;text-align:center}
+.tr-cap td  {background:rgba(14,165,160,.1)!important;color:#5EEAD4;font-size:10px;text-align:center}
+.tr-avail td{background:rgba(249,115,22,.1)!important;color:#FED7AA;font-size:10px;font-weight:500;text-align:center}
+.tr-alloc td.td-sticky,.tr-cap td.td-sticky,.tr-avail td.td-sticky{text-align:left;font-weight:600}
+td.td-neg{background:rgba(239,68,68,.15)!important;color:#FCA5A5!important}
+
+.job-cell{display:flex;flex-direction:column;gap:1px}
+.job-cell .jc-no{font-weight:500;color:var(--c-white);font-size:11px}
+.job-cell .jc-site{font-size:10px;color:var(--c-muted);max-width:155px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.job-cell .jc-actions{display:flex;gap:4px;margin-top:2px}
+.done-btn{
+  font-family:var(--font-mono);font-size:9px;padding:1px 6px;border-radius:3px;
+  border:none;cursor:pointer;transition:.12s;
+  background:rgba(34,197,94,.15);color:var(--c-green);
+}
+.done-btn.is-done{background:rgba(100,116,139,.15);color:var(--c-muted)}
+.done-btn:hover{filter:brightness(1.2)}
+
+/* ── STAFF OPT PANEL ─────────────────────── */
+.branch-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;flex-shrink:0}
+.branch-card{background:var(--c-panel);border:1px solid var(--c-border);border-radius:var(--r);overflow:hidden}
+.bc-head{padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
+.bc-head h3{font-family:var(--font-head);font-size:13px;font-weight:700;color:var(--c-white)}
+.bc-head .bc-cap{font-size:10px;color:var(--c-muted)}
+.bc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px 14px 14px}
+.bc-metric .bcm-l{font-size:9px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.08em}
+.bc-metric .bcm-v{font-family:var(--font-head);font-size:17px;font-weight:700;color:var(--c-white);line-height:1.1}
+.bc-bar-wrap{grid-column:1/-1;background:var(--c-border);height:5px;border-radius:3px;overflow:hidden;margin-top:2px}
+.bc-bar{height:100%;border-radius:3px;transition:width .5s}
+
+.opt-section{background:var(--c-panel);border:1px solid var(--c-border);border-radius:var(--r);margin-bottom:16px;overflow:hidden}
+.opt-sect-head{
+  padding:8px 14px;display:flex;align-items:center;justify-content:space-between;
+  border-bottom:2px solid var(--c-lime);background:rgba(168,200,0,.06);
+}
+.opt-sect-head h3{font-family:var(--font-head);font-size:12px;font-weight:700;color:var(--c-text);text-transform:uppercase;letter-spacing:.06em}
+.opt-table{width:100%;border-collapse:collapse;font-size:11px}
+.opt-table thead th{
+  background:var(--c-bg);color:var(--c-muted);padding:7px 10px;
+  font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.1em;text-align:left;
+  border-bottom:1px solid var(--c-border);
+}
+.opt-table thead th.r{text-align:right}
+.opt-table tbody td{padding:6px 10px;border-bottom:1px solid rgba(35,46,68,.5);color:var(--c-text)}
+.opt-table tbody td.r{text-align:right;font-variant-numeric:tabular-nums}
+.opt-table tbody tr{cursor:pointer;transition:background .1s}
+.opt-table tbody tr:hover{background:rgba(255,255,255,.03)}
+.opt-table tbody tr.opt-done td{opacity:.35}
+.opt-table tbody tr.opt-total td{background:var(--c-bg);color:var(--c-text);font-weight:600;cursor:default;border-top:1px solid var(--c-border)}
+.opt-table tbody tr.opt-total:hover{background:var(--c-bg)}
+
+.pill{display:inline-flex;align-items:center;font-size:9px;font-weight:600;padding:2px 7px;border-radius:10px;letter-spacing:.04em}
+.pill-on   {background:rgba(34,197,94,.15);color:#86EFAC}
+.pill-over {background:rgba(239,68,68,.15);color:#FCA5A5}
+.pill-under{background:rgba(245,158,11,.15);color:#FCD34D}
+.pill-none {background:rgba(100,116,139,.15);color:var(--c-muted)}
+
+.lp-on   {color:#86EFAC;font-weight:600}
+.lp-over {color:#FCA5A5;font-weight:600}
+.lp-under{color:#FCD34D;font-weight:600}
+
+/* ── SETUP PANEL ─────────────────────────── */
+.setup-card{background:var(--c-panel);border:1px solid var(--c-border);border-radius:var(--r);padding:20px;margin-bottom:16px}
+.setup-card h3{font-family:var(--font-head);font-size:15px;font-weight:700;color:var(--c-white);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--c-border)}
+.staff-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.staff-col h4{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px}
+.staff-list{display:flex;flex-direction:column;gap:3px;max-height:220px;overflow-y:auto}
+.staff-item{display:flex;align-items:center;gap:6px;padding:4px 8px;background:rgba(255,255,255,.03);border-radius:3px;font-size:11px}
+.staff-item button{margin-left:auto;background:none;border:none;color:var(--c-red);cursor:pointer;font-size:13px;line-height:1;padding:0 2px;opacity:.6;transition:.12s}
+.staff-item button:hover{opacity:1}
+.add-row{display:flex;gap:6px;margin-top:8px}
+.add-row input{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--c-border);border-radius:4px;color:var(--c-text);font-family:var(--font-mono);font-size:11px;padding:5px 8px;outline:none;transition:.12s}
+.add-row input:focus{border-color:var(--c-blue)}
+
+.assume-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:9px;font-weight:500;text-transform:uppercase;letter-spacing:.1em;color:var(--c-muted)}
+.field input,.field select,.field textarea{
+  background:rgba(255,255,255,.05);border:1px solid var(--c-border);border-radius:4px;
+  color:var(--c-text);font-family:var(--font-mono);font-size:12px;padding:7px 10px;outline:none;
+  transition:.12s;
+}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--c-lime);background:rgba(168,200,0,.05)}
+.field select option{background:var(--c-panel)}
+.field textarea{resize:vertical;min-height:56px}
+
+.gs-box{background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.2);border-radius:var(--r);padding:16px}
+.gs-box p{font-size:11px;color:var(--c-text-dim);line-height:1.7;margin-bottom:10px}
+.gs-box strong{color:var(--c-text)}
+.gs-status{font-size:11px;margin-top:10px}
+.gs-status.live{color:var(--c-green)}
+.gs-status.off{color:var(--c-muted)}
+
+/* ── MODAL ───────────────────────────────── */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:200;align-items:center;justify-content:center}
+.overlay.open{display:flex}
+.modal{background:var(--c-panel);border:1px solid var(--c-border-lt);border-radius:10px;width:560px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.6)}
+.modal-head{padding:14px 18px;border-bottom:2px solid var(--c-lime);display:flex;align-items:center;justify-content:space-between;background:rgba(168,200,0,.06)}
+.modal-head h3{font-family:var(--font-head);font-size:15px;font-weight:700;color:var(--c-white)}
+.modal-head button{background:none;border:none;color:var(--c-muted);font-size:20px;cursor:pointer;line-height:1;transition:.12s}
+.modal-head button:hover{color:var(--c-text)}
+.modal-body{padding:18px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-body .full{grid-column:1/-1}
+.modal-foot{padding:14px 18px;border-top:1px solid var(--c-border);display:flex;align-items:center;justify-content:flex-end;gap:8px}
+.modal-foot .left{margin-right:auto}
+
+.wknd-btns{display:flex;gap:8px}
+.wknd-btn{
+  font-family:var(--font-mono);font-size:11px;padding:6px 14px;
+  border-radius:4px;border:1px solid var(--c-border);background:transparent;
+  color:var(--c-muted);cursor:pointer;transition:.15s;
+}
+.wknd-btn.w-sat{border-color:rgba(125,187,212,.5);background:rgba(125,187,212,.1);color:#7DBBD4}
+.wknd-btn.w-sun{border-color:rgba(107,158,196,.5);background:rgba(107,158,196,.1);color:#6B9EC4}
+
+/* ── TOAST ───────────────────────────────── */
+.toast{
+  position:fixed;bottom:20px;right:20px;z-index:999;
+  background:var(--c-panel);border:1px solid var(--c-border);
+  border-radius:var(--r);padding:10px 16px;font-size:12px;
+  transform:translateY(60px);opacity:0;transition:all .25s;
+  max-width:300px;box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.t-ok{border-left:3px solid var(--c-green)}
+.toast.t-err{border-left:3px solid var(--c-red)}
+
+/* scrollbar */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--c-border-lt);border-radius:3px}
+
+/* ── PIN SCREEN ──────────────────────────────── */
+#pin-screen{
+  position:fixed;inset:0;background:var(--c-bg);z-index:9999;
+  display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:0;
+}
+#pin-screen.hidden{display:none}
+.pin-card{
+  background:var(--c-surface);border:1px solid var(--c-border-lt);
+  border-radius:12px;padding:40px 48px;width:360px;max-width:92vw;
+  box-shadow:0 32px 80px rgba(0,0,0,.6);text-align:center;
+}
+.pin-logo{
+  font-family:var(--font-head);font-weight:700;font-size:22px;
+  color:var(--c-white);margin-bottom:4px;display:flex;align-items:center;
+  justify-content:center;gap:10px;
+}
+.pin-logo .dot{width:10px;height:10px;background:var(--c-lime);border-radius:50%}
+.pin-subtitle{font-size:11px;color:var(--c-muted);margin-bottom:32px;letter-spacing:.04em}
+.pin-label{font-size:10px;color:var(--c-text-dim);text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;text-align:left}
+.pin-dots{
+  display:flex;justify-content:center;gap:14px;margin-bottom:28px;
+}
+.pin-dot{
+  width:14px;height:14px;border-radius:50%;
+  border:2px solid var(--c-border-lt);background:transparent;
+  transition:all .2s;
+}
+.pin-dot.filled{background:var(--c-blue);border-color:var(--c-blue);transform:scale(1.15)}
+.pin-dot.error{background:var(--c-red);border-color:var(--c-red)}
+.pin-pad{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;
+}
+.pin-key{
+  font-family:var(--font-head);font-size:20px;font-weight:600;
+  background:var(--c-panel);border:1px solid var(--c-border);border-radius:8px;
+  color:var(--c-white);height:56px;cursor:pointer;transition:all .12s;
+  display:flex;align-items:center;justify-content:center;
+  -webkit-tap-highlight-color:transparent;user-select:none;
+}
+.pin-key:hover{background:var(--c-border-lt);border-color:var(--c-blue)}
+.pin-key:active{transform:scale(.94);background:var(--c-blue)}
+.pin-key.pin-del{font-size:14px;color:var(--c-muted)}
+.pin-key.pin-del:hover{color:var(--c-red);border-color:var(--c-red)}
+.pin-key.pin-zero{grid-column:2}
+.pin-shake{animation:shake .35s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+.pin-error-msg{font-size:11px;color:var(--c-red);height:16px;margin-top:4px;transition:opacity .3s}
+.pin-attempts{font-size:10px;color:var(--c-muted);margin-top:12px}
+.pin-admin-row{margin-top:20px;padding-top:16px;border-top:1px solid var(--c-border);display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pin-admin-row label{font-size:10px;color:var(--c-muted);text-align:left}
+.pin-change-link{font-size:10px;color:var(--c-blue);background:none;border:none;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.pin-change-link:hover{color:var(--c-teal)}
+
+
+/* ── DATE CELL NAMES ──────────────────────────────── */
+.td-date{font-size:9px;width:72px;max-width:72px;padding:3px 4px;vertical-align:top;cursor:default}
+.td-date.has-job{background:rgba(34,197,94,.12);border-radius:2px}
+.td-date.td-sat{background:rgba(125,187,212,.06)}
+.td-date.td-sun{background:rgba(107,158,196,.06)}
+.td-date.td-hol{background:rgba(248,113,113,.08)}
+.td-date.td-hol-worked{background:rgba(245,158,11,.12)}
+.td-date.td-sat-off{background:rgba(125,187,212,.04);opacity:.5}
+.name-chip{
+  display:block;font-size:9px;line-height:1.4;color:#86EFAC;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:68px;
+  pointer-events:none;
+}
+.name-chip.override{color:#FCD34D} /* per-day override */
+.hol-label{font-size:8px;color:#FCA5A5;display:block;text-align:center}
+.hol-worked-label{font-size:8px;color:#FCD34D;display:block;text-align:center}
+.sat-off-label{font-size:8px;color:rgba(125,187,212,.5);display:block;text-align:center;font-style:italic}
+.td-date.clickable-day{cursor:pointer}
+.td-date.clickable-day:hover{background:rgba(168,200,0,.15)!important;outline:1px solid rgba(168,200,0,.5)}
+
+/* ── DAY EDIT MODAL ──────────────────────────────── */
+.day-modal{background:var(--c-panel);border:1px solid var(--c-border-lt);border-radius:10px;width:380px;max-width:95vw;max-height:85vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.6)}
+.day-modal-head{padding:12px 16px;border-bottom:1px solid var(--c-border);display:flex;align-items:center;justify-content:space-between}
+.day-modal-head h3{font-family:var(--font-head);font-size:14px;font-weight:700;color:var(--c-white)}
+.day-modal-head button{background:none;border:none;color:var(--c-muted);font-size:18px;cursor:pointer}
+.day-modal-body{padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.day-staff-list{display:flex;flex-direction:column;gap:4px}
+.day-staff-item{display:flex;align-items:center;gap:8px;padding:5px 8px;background:rgba(255,255,255,.04);border-radius:4px;font-size:12px}
+.day-staff-item input[type=checkbox]{accent-color:var(--c-green);width:14px;height:14px;cursor:pointer}
+.day-staff-item label{cursor:pointer;flex:1;color:var(--c-text)}
+.day-staff-item.checked label{color:#86EFAC;font-weight:500}
+.day-modal-footer{padding:12px 16px;border-top:1px solid var(--c-border);display:flex;gap:8px;justify-content:flex-end}
+.day-section-label{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--c-muted);margin-bottom:4px}
+.day-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--c-border)}
+.day-toggle-row label{font-size:11px;color:var(--c-text)}
+.day-toggle{position:relative;width:36px;height:20px;display:inline-block}
+.day-toggle input{opacity:0;width:0;height:0}
+.day-toggle-slider{position:absolute;inset:0;background:var(--c-border);border-radius:10px;cursor:pointer;transition:.2s}
+.day-toggle-slider:before{content:'';position:absolute;width:14px;height:14px;left:3px;top:3px;background:white;border-radius:50%;transition:.2s}
+.day-toggle input:checked + .day-toggle-slider{background:var(--c-lime)}
+.day-toggle input:checked + .day-toggle-slider:before{transform:translateX(16px)}
+
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+
+<!-- PIN SCREEN -->
+<div id="pin-screen">
+  <div class="pin-card">
+    <div class="pin-logo" style="flex-direction:column;gap:8px">
+      <div style="display:flex;align-items:center;gap:0;letter-spacing:.08em">
+        <span style="font-size:32px;font-weight:900;color:#F0F0F0;font-family:'Familjen Grotesk',sans-serif">TECH</span><span style="font-size:32px;font-weight:900;color:#EF4444;font-family:'Familjen Grotesk',sans-serif">CLEAN</span>
+      </div>
+    </div>
+    <div class="pin-subtitle">BRANCH OPERATIONS SCHEDULE — SECURE ACCESS</div>
+    <div class="pin-label">Enter your access PIN</div>
+    <div class="pin-dots" id="pin-dots">
+      <div class="pin-dot" id="pd0"></div>
+      <div class="pin-dot" id="pd1"></div>
+      <div class="pin-dot" id="pd2"></div>
+      <div class="pin-dot" id="pd3"></div>
+    </div>
+    <div class="pin-pad">
+      <button class="pin-key" onclick="pinKey(1)">1</button>
+      <button class="pin-key" onclick="pinKey(2)">2</button>
+      <button class="pin-key" onclick="pinKey(3)">3</button>
+      <button class="pin-key" onclick="pinKey(4)">4</button>
+      <button class="pin-key" onclick="pinKey(5)">5</button>
+      <button class="pin-key" onclick="pinKey(6)">6</button>
+      <button class="pin-key" onclick="pinKey(7)">7</button>
+      <button class="pin-key" onclick="pinKey(8)">8</button>
+      <button class="pin-key" onclick="pinKey(9)">9</button>
+      <button class="pin-key pin-del" onclick="pinDel()">⌫</button>
+      <button class="pin-key pin-zero" onclick="pinKey(0)">0</button>
+    </div>
+    <div class="pin-error-msg" id="pin-msg"></div>
+    <div class="pin-attempts" id="pin-attempts"></div>
+    <div class="pin-admin-row">
+      <label>Admin: change PIN in Setup tab after login</label>
+      <button class="pin-change-link" onclick="pinShowHint()">Forgot PIN?</button>
+    </div>
+  </div>
+</div>
+
+<div id="topbar">
+  <div class="logo">
+    <img src="https://www.techclean.co.nz/wp-content/uploads/sites/512/2025/01/Logo-768x150-1.png" 
+         alt="TechClean" style="height:32px;width:auto;object-fit:contain;filter:brightness(0) invert(1)"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+    <div style="display:none;align-items:center;gap:6px">
+      <div class="dot"></div>
+      <span style="font-weight:800;color:#F0F0F0">Tech</span><span style="font-weight:800;color:#A8C800">Clean</span>
+    </div>
+  </div>
+  <span class="pill" id="sync-pill">OFFLINE</span>
+  <div class="spacer"></div>
+  <button class="btn btn-ghost btn-sm" onclick="exportCSV()">↓ CSV</button>
+  <button class="btn btn-teal btn-sm" onclick="doSync()">⟳ Sync</button>
+  <button class="btn btn-orange" onclick="openForm()">＋ New Job</button>
+</div>
+
+<!-- BODY -->
+<div id="body">
+
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="sb-section">
+      <div class="sb-label">Calendars</div>
+      <div class="sb-item active" id="snav-Auckland" onclick="setBranch('Auckland')">
+        <span class="sb-icon">📅</span>Auckland
+        <span class="sb-badge badge-akl" id="sbadge-Auckland">0</span>
+      </div>
+      <div class="sb-item" id="snav-Wellington" onclick="setBranch('Wellington')">
+        <span class="sb-icon">📅</span>Wellington
+        <span class="sb-badge badge-wel" id="sbadge-Wellington">0</span>
+      </div>
+      <div class="sb-item" id="snav-Christchurch" onclick="setBranch('Christchurch')">
+        <span class="sb-icon">📅</span>Christchurch
+        <span class="sb-badge badge-chc" id="sbadge-Christchurch">0</span>
+      </div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-label">Today's Capacity</div>
+      <div id="sb-caps"></div>
+    </div>
+
+    <div class="sb-section">
+      <div class="sb-item" id="snav-opt" onclick="showPanel('opt')">
+        <span class="sb-icon">📊</span>Staff Optimisation
+      </div>
+      <div class="sb-item" id="snav-setup" onclick="showPanel('setup')">
+        <span class="sb-icon">⚙️</span>Setup 🔒
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <div id="main">
+    <div id="tabs">
+      <div class="tab active" data-tab="cal" onclick="showPanel('cal')">Calendar</div>
+      <div class="tab" data-tab="opt" onclick="showPanel('opt')">Staff Optimisation</div>
+      <div class="tab" data-tab="setup" onclick="showPanel('setup')">⚙ Setup 🔒</div>
+    </div>
+
+    <!-- CALENDAR -->
+    <div class="panel active" id="panel-cal">
+      <div class="cal-header">
+        <div class="branch-dot" id="cal-dot" style="background:var(--c-akl)"></div>
+        <h2 id="cal-title">Auckland Calendar</h2>
+        <div class="month-nav">
+          <button onclick="changeMonth(-1)">‹</button>
+          <span class="mon-label" id="mon-label"></span>
+          <button onclick="changeMonth(1)">›</button>
+          <button class="btn btn-ghost btn-sm" onclick="goToday()" style="margin-left:4px">Today</button>
+        </div>
+      </div>
+      <div class="stat-row" id="stat-row"></div>
+      <div class="cal-wrap">
+        <table id="cal-table">
+          <thead id="cal-head"></thead>
+          <tbody id="cal-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- OPT -->
+    <div class="panel" id="panel-opt">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-shrink:0">
+        <h2 style="font-family:var(--font-head);font-size:20px;font-weight:700;color:var(--c-white)">Staff Optimisation</h2>
+        <button class="btn btn-ghost btn-sm" onclick="exportCSV()">↓ CSV</button>
+      </div>
+      <div class="branch-cards" id="branch-cards"></div>
+      <div id="opt-tables"></div>
+    </div>
+
+    <!-- SETUP -->
+    <div class="panel" id="panel-setup">
+      <div class="setup-card">
+        <h3>Google Sheets Connection</h3>
+        <div class="gs-box">
+          <p><strong>Step 1:</strong> Create a Google Sheet. Add tabs named: <em>Auckland, Wellington, Christchurch, Staff, Log</em></p>
+          <p><strong>Step 2:</strong> Extensions → Apps Script → paste the script below → Deploy as Web App (execute as: Me, access: Anyone with Google Account)</p>
+          <p><strong>Step 3:</strong> Copy the deployed Web App URL into the field below and click Connect.</p>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <input type="text" id="gs-url" placeholder="https://script.google.com/macros/s/…/exec" style="flex:1;background:rgba(255,255,255,.05);border:1px solid var(--c-border);border-radius:4px;color:var(--c-text);font-family:var(--font-mono);font-size:11px;padding:7px 10px;outline:none">
+            <button class="btn btn-primary" onclick="connectGS()">Connect</button>
+            <button class="btn btn-ghost" onclick="copyScript()">Copy Script</button>
+          </div>
+          <div class="gs-status off" id="gs-status">⬤ Not connected — data stored locally in browser</div>
+        </div>
+      </div>
+      
+      <div class="setup-card">
+        <h3>Access PIN</h3>
+        <div style="display:flex;flex-direction:column;gap:12px;max-width:320px">
+          <p style="font-size:11px;color:var(--c-muted);line-height:1.6">Change the 4-digit PIN all staff use to access the app. Share the new PIN with your team after changing it.</p>
+          <div class="field">
+            <label>Current PIN</label>
+            <input type="password" id="pin-current" placeholder="Current 4-digit PIN" maxlength="4" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label>New PIN</label>
+            <input type="password" id="pin-new" placeholder="New 4-digit PIN" maxlength="4" inputmode="numeric">
+          </div>
+          <div class="field">
+            <label>Confirm New PIN</label>
+            <input type="password" id="pin-confirm" placeholder="Repeat new PIN" maxlength="4" inputmode="numeric">
+          </div>
+          <button class="btn btn-primary" onclick="changePin()" style="align-self:flex-start">Update PIN</button>
+        </div>
+      </div>
+
+            <div class="setup-card">
+        <h3>Admin PIN <span style="font-size:11px;color:var(--c-muted);font-weight:400">— required to access Setup</span></h3>
+        <div style="display:flex;flex-direction:column;gap:12px;max-width:320px">
+          <p style="font-size:11px;color:var(--c-muted);line-height:1.6">The admin PIN is separate from the staff PIN. Only administrators who need to change settings, manage staff, or connect Google Sheets need this PIN.</p>
+          <div class="field"><label>Current Admin PIN</label><input type="password" id="admin-pin-current" placeholder="Current 4-digit admin PIN" maxlength="4" inputmode="numeric"></div>
+          <div class="field"><label>New Admin PIN</label><input type="password" id="admin-pin-new" placeholder="New 4-digit admin PIN" maxlength="4" inputmode="numeric"></div>
+          <div class="field"><label>Confirm New Admin PIN</label><input type="password" id="admin-pin-confirm" placeholder="Repeat new admin PIN" maxlength="4" inputmode="numeric"></div>
+          <button class="btn btn-primary" onclick="changeAdminPin()" style="align-self:flex-start">Update Admin PIN</button>
+          <p style="font-size:10px;color:var(--c-muted)">Default admin PIN: <strong style="color:var(--c-text)">9999</strong></p>
+        </div>
+      </div>
+
+      <div class="setup-card">
+        <h3>Staff Register</h3>
+        <div class="staff-cols" id="staff-cols"></div>
+      </div>
+      <div class="setup-card">
+        <h3>Assumptions</h3>
+        <div class="assume-grid">
+          <div class="field"><label>Labour Rate ($/hr)</label><input type="number" id="set-rate" value="50" onchange="saveSettings()"></div>
+          <div class="field"><label>Target Min %</label><input type="number" id="set-pmin" value="30" onchange="saveSettings()"></div>
+          <div class="field"><label>Target Max %</label><input type="number" id="set-pmax" value="35" onchange="saveSettings()"></div>
+          <div class="field"><label>Hours per Day</label><input type="number" id="set-hpd" value="8" onchange="saveSettings()"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- DAY EDIT MODAL -->
+<div class="overlay" id="day-overlay">
+  <div class="day-modal">
+    <div class="day-modal-head">
+      <h3 id="day-modal-title">Edit Day</h3>
+      <button onclick="closeDayModal()">✕</button>
+    </div>
+    <div class="day-modal-body" id="day-modal-body"></div>
+    <div class="day-modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeDayModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDayEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- JOB MODAL -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modal-title">New Job</h3>
+      <button onclick="closeForm()">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="f-id">
+      <div class="field"><label>Job No.</label><input type="text" id="f-jobno" placeholder="J014XXX"></div>
+      <div class="field"><label>Class</label>
+        <select id="f-class"><option>A</option><option>B</option><option>C</option></select>
+      </div>
+      <div class="field full"><label>Site / Address</label><input type="text" id="f-site" placeholder="123 Example St, Auckland"></div>
+      <div class="field full"><label>Client</label><input type="text" id="f-client" placeholder="Client name"></div>
+      <div class="field"><label>Job Value ($)</label><input type="number" id="f-val" step="0.01" placeholder="0.00"></div>
+      <div class="field"><label>WFM Hours</label><input type="number" id="f-wfm" placeholder="0"></div>
+      <div class="field"><label>No. Staff</label><input type="number" id="f-staff" min="1" placeholder="1"></div>
+      <div class="field"><label>Duration (Days)</label><input type="number" id="f-dur" min="1" placeholder="1"></div>
+      <div class="field"><label>Branch</label>
+        <select id="f-branch" onchange="updateSuggestions()">
+          <option>Auckland</option><option>Wellington</option><option>Christchurch</option>
+        </select>
+      </div>
+      <div class="field"><label>Start Date</label><input type="date" id="f-start"></div>
+      <div class="field"><label>Finish Date</label><input type="date" id="f-finish"></div>
+      <div class="field full"><label>Resource(s) — comma separated</label>
+        <input type="text" id="f-res" placeholder="Cory, Sam, Bea" list="res-dl">
+        <datalist id="res-dl"></datalist>
+      </div>
+      <div class="field full"><label>Project <span style="font-weight:400;color:var(--c-muted)">(optional — groups related jobs on dashboard)</span></label>
+        <div style="position:relative">
+          <input type="text" id="f-project" placeholder="Pick existing or type new project…" autocomplete="off"
+                 oninput="showProjectDropdown(this.value)" onfocus="showProjectDropdown(this.value)"
+                 onblur="setTimeout(()=>hideProjectDropdown(),200)"
+                 style="width:100%">
+          <div id="project-dropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--c-panel);border:1px solid var(--c-border-lt);border-radius:4px;z-index:50;max-height:160px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,.3)"></div>
+        </div>
+      </div>
+      <div class="field full">
+        <label>Weekend &amp; Holiday Work</label>
+        <div style="font-size:11px;color:var(--c-muted);background:rgba(59,130,246,.06);border:1px solid rgba(59,130,246,.15);border-radius:4px;padding:8px 10px;line-height:1.6">
+          After saving, <strong style="color:var(--c-text)">click any Saturday, Sunday or Holiday cell</strong> in the calendar to toggle it on/off and assign staff for that specific day.
+        </div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <div class="left"><button class="btn btn-danger btn-sm" id="del-btn" onclick="delJob()" style="display:none">Delete</button></div>
+      <button class="btn btn-ghost btn-sm" onclick="closeForm()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveJob()">Save Job</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// STATE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const HOLIDAYS = new Set(['2026-01-01','2026-01-02','2026-02-06','2026-04-03','2026-04-06',
+  '2026-04-27','2026-06-01','2026-10-26','2026-12-25','2026-12-28']);
+const BRANCH_COLORS = {Auckland:'#F97316',Wellington:'#3B82F6',Christchurch:'#22C55E'};
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PER-DAY STAFF EDITING
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let _dayEdit = null; // {jobId, dateStr, origResource, workThisSat, workThisHol}
+
+function openDayModal(jobId, dateStr) {
+  const job = S.jobs.find(j => j.id === jobId);
+  if (!job) return;
+  const dt   = new Date(dateStr + 'T00:00:00');
+  const sat  = dt.getDay() === 6;
+  const sun  = dt.getDay() === 0;
+  const hol  = HOLIDAYS.has(dateStr);
+  const isWknd = sat || sun || hol;
+  const dayName = dt.toLocaleDateString('en-NZ', {weekday:'long', day:'numeric', month:'short'});
+  const overrides = job.dayOverrides || {};
+  const override  = overrides[dateStr];
+  const dayIsOn   = override !== undefined ? override !== '__OFF__' : !isWknd;
+  const currentRes = (dayIsOn && override !== undefined && override !== '__OFF__') ? override : (dayIsOn && !isWknd ? (job.resource||'') : '');
+
+  _dayEdit = { jobId, dateStr, sat, sun, hol };
+  document.getElementById('day-modal-title').textContent = job.jobno + ' — ' + dayName;
+
+  const branchStaff = S.staff[job.branch] || [];
+  const currentNames = currentRes.split(',').map(s=>s.trim().toLowerCase()).filter(s=>s);
+
+  // Day type badge
+  let badge = '';
+  if (hol) badge = '<div style="font-size:10px;color:#FCA5A5;margin-bottom:10px;padding:4px 8px;background:rgba(239,68,68,.1);border-radius:4px;display:inline-block">⚠ Public Holiday</div>';
+  else if (sat) badge = '<div style="font-size:10px;color:#7DBBD4;margin-bottom:10px;padding:4px 8px;background:rgba(125,187,212,.1);border-radius:4px;display:inline-block">Saturday</div>';
+  else if (sun) badge = '<div style="font-size:10px;color:#6B9EC4;margin-bottom:10px;padding:4px 8px;background:rgba(107,158,196,.1);border-radius:4px;display:inline-block">Sunday</div>';
+
+  // ON/OFF toggle for weekends/holidays only
+  let toggleRow = '';
+  if (isWknd) {
+    const label = hol ? 'Work this public holiday?' : sat ? 'Work this Saturday?' : 'Work this Sunday?';
+    toggleRow = '<div class="day-toggle-row" style="margin-bottom:12px">' +
+      '<label style="font-size:13px;font-weight:600;color:var(--c-white)">' + label + '</label>' +
+      '<label class="day-toggle"><input type="checkbox" id="day-on-toggle"' + (dayIsOn ? ' checked' : '') + ' onchange="onDayToggleChange()"><span class="day-toggle-slider"></span></label>' +
+      '</div>';
+  }
+
+  // Staff checkboxes
+  const staffRows = branchStaff.map(function(name) {
+    const isChecked = currentNames.indexOf(name.toLowerCase()) !== -1;
+    const key = name.replace(/[^a-zA-Z0-9]/g, '_');
+    return '<div class="day-staff-item' + (isChecked ? ' checked' : '') + '" id="dsi-' + key + '">' +
+      '<input type="checkbox" id="dsc-' + key + '"' + (isChecked ? ' checked' : '') + ' onchange="toggleDayStaff(this,\'' + key + '\')">' +
+      '<label for="dsc-' + key + '">' + name + '</label>' +
+      '</div>';
+  }).join('');
+
+  const staffSection = '<div id="day-staff-section" style="' + (isWknd && !dayIsOn ? 'opacity:.35;pointer-events:none' : '') + '">' +
+    '<div class="day-section-label">Staff on site this day</div>' +
+    '<div class="day-staff-list">' + staffRows + '</div>' +
+    '<div class="day-section-label" style="margin-top:8px">Add someone not on register</div>' +
+    '<div class="add-row">' +
+    '<input type="text" id="day-extra-name" placeholder="Name…" style="flex:1;background:rgba(255,255,255,.05);border:1px solid var(--c-border);border-radius:4px;color:var(--c-text);font-family:var(--font-mono);font-size:11px;padding:6px 8px;outline:none">' +
+    '<button class="btn btn-ghost btn-sm" onclick="addDayExtraName()">+</button>' +
+    '</div>' +
+    '<div id="day-extra-list" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px"></div>' +
+    '</div>';
+
+  document.getElementById('day-modal-body').innerHTML = badge + toggleRow + staffSection;
+  document.getElementById('day-overlay').classList.add('open');
+
+  // Restore extra names (names not in register)
+  const extraNames = currentNames.filter(function(n) {
+    return branchStaff.map(function(s){return s.toLowerCase()}).indexOf(n) === -1;
+  });
+  extraNames.forEach(function(n){ addDayExtraNameVal(n); });
+}
+
+function onDayToggleChange() {
+  const on = document.getElementById('day-on-toggle') && document.getElementById('day-on-toggle').checked;
+  const section = document.getElementById('day-staff-section');
+  if (section) {
+    section.style.opacity = on ? '1' : '.35';
+    section.style.pointerEvents = on ? '' : 'none';
+  }
+}
+
+function saveDayEdit() {
+  if (!_dayEdit) return;
+  const { jobId, dateStr, sat, sun, hol } = _dayEdit;
+  const job = S.jobs.find(j => j.id === jobId);
+  if (!job) return;
+  if (!job.dayOverrides) job.dayOverrides = {};
+
+  const isWknd = sat || sun || hol;
+  const onToggle = document.getElementById('day-on-toggle');
+  const dayOn = isWknd ? !!(onToggle && onToggle.checked) : true;
+
+  if (!dayOn) {
+    job.dayOverrides[dateStr] = '__OFF__';
+    save(); closeDayModal(); renderAll();
+    toast('Day marked as not working');
+    return;
+  }
+
+  const branchStaff = S.staff[job.branch] || [];
+  const checked = branchStaff.filter(function(name) {
+    const cb = document.getElementById('dsc-' + name.replace(/[^a-zA-Z0-9]/g, '_'));
+    return cb && cb.checked;
+  });
+  const extras = Array.from(document.querySelectorAll('#day-extra-list [data-name]')).map(function(el){return el.dataset.name});
+  const all = checked.concat(extras).filter(function(s){return s});
+
+  job.dayOverrides[dateStr] = all.join(', ');
+  save(); closeDayModal(); renderAll();
+  toast(all.length + ' staff saved for this day ✓');
+}
+
+
+function addDayExtraName() {
+  const inp = document.getElementById('day-extra-name');
+  if (!inp) return;
+  const n = inp.value.trim();
+  if (!n) return;
+  addDayExtraNameVal(n);
+  inp.value = '';
+}
+
+function addDayExtraNameVal(n) {
+  const list = document.getElementById('day-extra-list');
+  if (!list) return;
+  const tag = document.createElement('span');
+  tag.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:rgba(59,130,246,.15);color:var(--c-blue);border-radius:4px;padding:2px 8px;font-size:11px;';
+  tag.dataset.name = n;
+  tag.innerHTML = n + ' <button onclick="this.parentElement.remove()" style="background:none;border:none;color:inherit;cursor:pointer;font-size:13px;padding:0 2px;line-height:1">×</button>';
+  list.appendChild(tag);
+}
+
+function closeDayModal() {
+  document.getElementById('day-overlay').classList.remove('open');
+  _dayEdit = null;
+}
+
+// Updated workingDays to respect per-day overrides
+function jobActiveOnDay(job, dateStr) {
+  const overrides = job.dayOverrides || {};
+  // Explicit per-day override always wins
+  if (overrides[dateStr] !== undefined) {
+    return overrides[dateStr] !== '__OFF__';
+  }
+  // Holidays: only if explicitly overridden above
+  if (isHol(dateStr)) return false;
+  // Sat/Sun: only if explicitly overridden above (no global toggle)
+  if (isSat(dateStr)) return false;
+  if (isSun(dateStr)) return false;
+  // Weekday: check within date range
+  const start = toD(job.start), finish = toD(job.finish);
+  if (!start || !finish) return false;
+  const dt = toD(dateStr);
+  return dt >= start && dt <= finish;
+}
+
+function getStaffForDay(job, dateStr) {
+  const overrides = job.dayOverrides || {};
+  if (overrides[dateStr] !== undefined && overrides[dateStr] !== '__OFF__') {
+    return overrides[dateStr]; // per-day override
+  }
+  return job.resource || '';
+}
+
+// Recalculate alloc using new per-day logic
+function dailyAllocV2(branchJobs, ds) {
+  let t = 0;
+  for (const j of branchJobs) {
+    if (j.done || j._del) continue;
+    if (jobActiveOnDay(j, ds)) t += staffCount(getStaffForDay(j, ds));
+  }
+  return t;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PIN AUTH
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const DEFAULT_PIN = '2026'; // Change this before deploying!
+let pinEntry = '';
+let pinAttempts = 0;
+const MAX_ATTEMPTS = 5;
+const SESSION_KEY = 'aops_auth';
+const SESSION_DURATION = 8 * 60 * 60 * 1000; // 8 hours
+
+function getPin() {
+  return String(localStorage.getItem('aops_pin') || DEFAULT_PIN);
+}
+
+function checkSession() {
+  try {
+    const s = JSON.parse(sessionStorage.getItem(SESSION_KEY) || '{}');
+    if (s.auth && s.expires && Date.now() < s.expires) return true;
+  } catch(e) {}
+  return false;
+}
+
+function grantSession() {
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+    auth: true,
+    expires: Date.now() + SESSION_DURATION,
+  }));
+  document.getElementById('pin-screen').classList.add('hidden');
+  // init the app now that we're authenticated
+  appInit();
+}
+
+function pinKey(n) {
+  if (pinEntry.length >= 4) return;
+  pinEntry += String(n);
+  updatePinDots();
+  if (pinEntry.length === 4) {
+    setTimeout(checkPin, 120);
+  }
+}
+
+function pinDel() {
+  pinEntry = pinEntry.slice(0, -1);
+  updatePinDots();
+  document.getElementById('pin-msg').textContent = '';
+}
+
+function updatePinDots() {
+  for (let i = 0; i < 4; i++) {
+    const dot = document.getElementById('pd' + i);
+    dot.classList.toggle('filled', i < pinEntry.length);
+    dot.classList.remove('error');
+  }
+}
+
+function checkPin() {
+  if (pinEntry === getPin()) {
+    pinAttempts = 0;
+    // Flash green briefly then unlock
+    for (let i = 0; i < 4; i++) {
+      const dot = document.getElementById('pd' + i);
+      dot.style.background = 'var(--c-green)';
+      dot.style.borderColor = 'var(--c-green)';
+    }
+    setTimeout(grantSession, 300);
+  } else {
+    pinAttempts++;
+    pinEntry = '';
+    for (let i = 0; i < 4; i++) {
+      document.getElementById('pd' + i).classList.add('error');
+    }
+    const card = document.querySelector('.pin-card');
+    card.classList.add('pin-shake');
+    setTimeout(() => {
+      card.classList.remove('pin-shake');
+      updatePinDots();
+    }, 400);
+    const remaining = MAX_ATTEMPTS - pinAttempts;
+    if (remaining <= 0) {
+      document.getElementById('pin-msg').textContent = 'Too many attempts. Refresh to try again.';
+      document.getElementById('pin-attempts').textContent = '';
+      document.querySelectorAll('.pin-key').forEach(k => k.disabled = true);
+    } else {
+      document.getElementById('pin-msg').textContent = 'Incorrect PIN';
+      document.getElementById('pin-attempts').textContent = remaining < MAX_ATTEMPTS ? `${remaining} attempt${remaining!==1?'s':''} remaining` : '';
+    }
+  }
+}
+
+function pinShowHint() {
+  alert('Contact your system administrator for PIN reset.\n\nDefault PIN: 2026\n(Change it in Setup after logging in)');
+}
+
+// keyboard support on PIN screen
+document.addEventListener('keydown', e => {
+  if (document.getElementById('pin-screen').classList.contains('hidden')) return;
+  if (e.key >= '0' && e.key <= '9') pinKey(e.key);
+  if (e.key === 'Backspace' || e.key === 'Delete') pinDel();
+  if (e.key === 'Enter' && pinEntry.length === 4) checkPin();
+});
+
+// ── PRE-LOADED DATA FROM EXCEL ───────────────────────────────────────
+const PRELOAD_JOBS = [{"id":"jhko070ie","branch":"Auckland","jobno":"J013858","jclass":"B","site":"Oponoi School","val":17717.56,"wfm":80.0,"staff":3,"dur":3,"start":"2026-04-07","finish":"2026-04-09","resource":"Cory, Sam","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jaxqspu03","branch":"Auckland","jobno":"J013831","jclass":"B","site":"Ruawai College","val":30554.0,"wfm":191.0,"staff":4,"dur":6,"start":"2026-04-07","finish":"2026-04-12","resource":"Bea, Fiti, Sani","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jbw4jfmsk","branch":"Auckland","jobno":"J013832","jclass":"B","site":"Ruawai Primary","val":25383.0,"wfm":160.0,"staff":5,"dur":6,"start":"2026-04-07","finish":"2026-04-12","resource":"Meliton, Nate","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"ja0fotz3c","branch":"Auckland","jobno":"J013828","jclass":"A","site":"Netherton School","val":26135.24,"wfm":160.0,"staff":5,"dur":6,"start":"2026-04-07","finish":"2026-04-12","resource":"Kirwan, Alfredo, Charlie","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jx8aii9tb","branch":"Auckland","jobno":"J013830","jclass":"A","site":"Bayswater School","val":29870.0,"wfm":250.0,"staff":3,"dur":4,"start":"2026-04-07","finish":"2026-04-10","resource":"KIM, Allen, Hanif","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jr84fwfdk","branch":"Auckland","jobno":"J013833","jclass":"B","site":"Whangamarino School","val":16557.76,"wfm":96.0,"staff":3,"dur":3,"start":"2026-04-07","finish":"2026-04-16","resource":"Vili, Pani","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jshjwru5e","branch":"Auckland","jobno":"J014092","jclass":"B","site":"kihikihi School","val":1995.4,"wfm":12.0,"staff":2,"dur":1,"start":"2026-04-14","finish":"2026-04-14","resource":"Bea, Sani","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"j8qywiydg","branch":"Auckland","jobno":"J014155","jclass":"B","site":"42 Hebron road","val":1073.0,"wfm":8.0,"staff":2,"dur":1,"start":"2026-04-15","finish":"2026-04-15","resource":"Bea,Sani","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jagnoaziw","branch":"Wellington","jobno":"J013909","jclass":"A","site":"305 Heretuanga street (Hastings)","val":207445.0,"wfm":1203.0,"staff":3,"dur":50,"start":"2026-04-07","finish":"2026-04-10","resource":"Jojo, Silao, Andrew","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jkx0iswng","branch":"Wellington","jobno":"J014053","jclass":"A","site":"9 Ngatura road Whanganui","val":7037.5,"wfm":43.0,"staff":2,"dur":1,"start":"2026-04-07","finish":"2026-04-08","resource":"Julio, Anthony","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jtw4nx5zo","branch":"Wellington","jobno":"J014115","jclass":"A","site":"113a park road - Toilet & Laundry","val":8080.0,"wfm":68.0,"staff":2,"dur":3,"start":"2026-04-08","finish":"2026-04-10","resource":"Julio, Anthony","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"juua6fq7u","branch":"Wellington","jobno":"J014116","jclass":"A","site":"113a park road - Additional bathroom","val":10148.0,"wfm":64.0,"staff":3,"dur":4,"start":"2026-04-08","finish":"2026-04-11","resource":"Julio, Anthony","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jse1jwknk","branch":"Wellington","jobno":"J014054","jclass":"B","site":"Hokowhitu Library","val":44871.67,"wfm":385.0,"staff":5,"dur":9,"start":"2026-04-07","finish":"2026-04-17","resource":"Nick, Sio, John","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"joau51ed6","branch":"Wellington","jobno":"J014055","jclass":"B","site":"Hokowhitu Library","val":101436.67,"wfm":900.0,"staff":5,"dur":5,"start":"2026-04-13","finish":"2026-04-17","resource":"Julio, Andrew, Silao, Anthony, Sio","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jhte8dkm3","branch":"Wellington","jobno":"J014073","jclass":"B","site":"17 Greer Cres","val":4887.6,"wfm":40.0,"staff":3,"dur":2,"start":"2026-04-07","finish":"2026-04-08","resource":"Wai, Fiti, Joseph","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jy8vlyw6g","branch":"Wellington","jobno":"J014074","jclass":"B","site":"17 Greer Cres","val":1896.1,"wfm":14.0,"staff":3,"dur":2,"start":"2026-04-07","finish":"2026-04-08","resource":"Wai, Fiti, Joseph","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jsi8jt68k","branch":"Wellington","jobno":"J014125","jclass":"A","site":"58 Kamahi street","val":15954.4,"wfm":136.0,"staff":3,"dur":3,"start":"2026-04-09","finish":"2026-04-11","resource":"Wai, Fiti","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jprj22yp1","branch":"Wellington","jobno":"J014134","jclass":"Bio","site":"216 George street - Bio clean","val":1358.0,"wfm":10.0,"staff":1,"dur":1,"start":"2026-04-07","finish":"2026-04-07","resource":"Darcy","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"j3nihfzxo","branch":"Wellington","jobno":"J013533","jclass":"Fire strip","site":"84 Heretuanga - Fire strip out","val":6130.0,"wfm":60.0,"staff":2,"dur":2,"start":"2026-04-08","finish":"2026-04-09","resource":"Darcy, Joseph","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jzb9fthfp","branch":"Wellington","jobno":"J014138","jclass":"M","site":"452A Fergusson","val":155.5,"wfm":1.5,"staff":1,"dur":0,"start":"2026-04-10","finish":"2026-04-10","resource":"Darcy","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jdd8uhdtp","branch":"Wellington","jobno":"J014139","jclass":"M","site":"51 Churton cres","val":846.0,"wfm":6.0,"staff":1,"dur":0,"start":"2026-04-10","finish":"2026-04-10","resource":"Darcy","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jcx7cb2fg","branch":"Wellington","jobno":"J013938","jclass":"B","site":"56 Leicester street","val":11442.0,"wfm":87.0,"staff":4,"dur":2,"start":"2026-04-11","finish":"2026-04-12","resource":"Nick, Joseph, Sio, John","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jor6qiv3a","branch":"Wellington","jobno":"J014104","jclass":"A","site":"18 Trelissick","val":5719.0,"wfm":56.0,"staff":5,"dur":3,"start":"2026-04-13","finish":"2026-04-15","resource":"Jojo, Joseph","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jxowl1yfz","branch":"Wellington","jobno":"J014105","jclass":"A","site":"30 Mills","val":11335.0,"wfm":90.0,"staff":1,"dur":1,"start":"2026-04-13","finish":"2026-04-15","resource":"Wai, Fiti, Adney","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jedq7i9ib","branch":"Wellington","jobno":"J013595","jclass":"A","site":"Naenae intermediate","val":14447.5,"wfm":166.0,"staff":4,"dur":4,"start":"2026-04-13","finish":"2026-04-16","resource":"Meliton, Nick, John, Nate","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jihrcoidg","branch":"Wellington","jobno":"J014141","jclass":"A","site":"32 The terrace","val":2955.5,"wfm":30.0,"staff":2,"dur":2,"start":"2026-04-16","finish":"2026-04-18","resource":"Wai, Fiti","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jj515jeja","branch":"Wellington","jobno":"J014142 - J014145","jclass":"M","site":"56 Gibbons","val":9745.0,"wfm":85.0,"staff":5,"dur":2,"start":"2026-04-13","finish":"2026-04-17","resource":"Sooula","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jdmoy2x26","branch":"Wellington","jobno":"J014146","jclass":"M","site":"18 Blueberry","val":1179.0,"wfm":9.0,"staff":1,"dur":1,"start":"2026-04-13","finish":"2026-04-13","resource":"Darcy","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"j2ja54275","branch":"Wellington","jobno":"J014148","jclass":"B","site":"5 Carlisle","val":7408.0,"wfm":60.0,"staff":3,"dur":2,"start":"2026-04-20","finish":"2026-04-21","resource":"julio,sooula,joseph","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jrroyjxs6","branch":"Wellington","jobno":"J014149","jclass":"B","site":"9 Bruce","val":7379.3,"wfm":70.0,"staff":2,"dur":2,"start":"2026-04-22","finish":"2026-04-23","resource":"julio,sooula,joseph","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jar6ry5pp","branch":"Wellington","jobno":"J014150","jclass":"A","site":"46 Strand","val":7321.8,"wfm":55.0,"staff":1,"dur":2,"start":"2026-04-20","finish":"2026-04-21","resource":"Wai,fiti","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jhojbngcb","branch":"Wellington","jobno":"J014151","jclass":"A","site":"32 Motueka","val":7046.0,"wfm":53.0,"staff":1,"dur":2,"start":"2026-04-22","finish":"2026-04-23","resource":"wai","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"j5lrk6al4","branch":"Wellington","jobno":"J014152","jclass":"B","site":"23 Ocean road","val":7108.6,"wfm":66.0,"staff":3,"dur":2,"start":"2026-04-24","finish":"2026-04-25","resource":"Sooula,Joseph,Julio","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jl886t02n","branch":"Wellington","jobno":"J014153","jclass":"A","site":"25 Ocean road","val":5532.1,"wfm":39.0,"staff":1,"dur":2,"start":"2026-04-24","finish":"2026-04-25","resource":"wai","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jwewlkkeh","branch":"Wellington","jobno":"J014154","jclass":"A","site":"20 Rauhine street","val":1785.5,"wfm":12.0,"staff":1,"dur":1,"start":"2026-04-24","finish":"2026-04-24","resource":"Julio","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jvrxm3obm","branch":"Wellington","jobno":"J014156","jclass":"B","site":"St James ave","val":1937.2,"wfm":12.0,"staff":2,"dur":1,"start":"2026-04-28","finish":"2026-04-28","resource":"joseph,Sooula","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"j1qe17u18","branch":"Wellington","jobno":"J014157","jclass":"A","site":"31 Woodmancote","val":8617.1,"wfm":60.0,"staff":2,"dur":3,"start":"2026-04-28","finish":"2026-04-30","resource":"wai,fiti","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jtn73ye1l","branch":"Wellington","jobno":"J014158","jclass":"B","site":"65 Kowhai","val":2215.0,"wfm":20.0,"staff":2,"dur":1,"start":"2026-04-29","finish":"2026-04-29","resource":"jospeh,sooula","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jti2xe6iu","branch":"Wellington","jobno":"J014160","jclass":"A","site":"69 Slacks rd","val":9325.0,"wfm":62.0,"staff":2,"dur":3,"start":"2026-04-28","finish":"2026-04-30","resource":"Julio,nick","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jx4cclccx","branch":"Christchurch","jobno":"J014000","jclass":"B","site":"CHCH mens prison , Chch PH/ CU","val":13860.0,"wfm":132.0,"staff":2,"dur":3,"start":"2026-04-07","finish":"2026-04-09","resource":"kaleb,Matt G","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"j13miwv6u","branch":"Christchurch","jobno":"J014004","jclass":"A","site":"95 Hanover St , Dunedin","val":374057.6,"wfm":2738.0,"staff":5,"dur":61,"start":"2026-03-23","finish":"2026-05-31","resource":"Tyler,Mickai,Mitch, Ngawera,roy","workSat":true,"workSun":true,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jjmb16odd","branch":"Christchurch","jobno":"J014002","jclass":"B","site":"158 Barrington St ,Chch","val":2664.0,"wfm":33.0,"staff":0,"dur":0,"start":"","finish":"","resource":"","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jgrrqcylx","branch":"Christchurch","jobno":"J014015","jclass":"A","site":"36 Doncaster  St ,Chch","val":4375.0,"wfm":48.0,"staff":0,"dur":0,"start":"","finish":"","resource":"","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jy9yh9y3g","branch":"Christchurch","jobno":"J014082","jclass":"B","site":"15 Homer Place , Nelson","val":7555.0,"wfm":115.0,"staff":3,"dur":3,"start":"2026-04-07","finish":"2026-04-09","resource":"cody,craig,rangi","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"j6xdmry4x","branch":"Christchurch","jobno":"J014083","jclass":"B","site":"355 Nayland St, Nelson","val":22029.0,"wfm":268.0,"staff":3,"dur":1,"start":"2026-04-10","finish":"2026-04-10","resource":"cody,craig,rangi","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"j2tlg656x","branch":"Christchurch","jobno":"J014084","jclass":"B","site":"169 Selwyn St , Chch","val":9400.0,"wfm":76.0,"staff":0,"dur":0,"start":"","finish":"","resource":"","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jxjoqe76g","branch":"Christchurch","jobno":"J014065","jclass":"A/B","site":"2 Rugby St  , Chch","val":5438.0,"wfm":18.0,"staff":2,"dur":3,"start":"2026-04-07","finish":"2026-04-10","resource":"roy,nick,P,Darren","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"j4n3n1hci","branch":"Christchurch","jobno":"J014107","jclass":"A/B","site":"7 Homer St , Nelson","val":12032.0,"wfm":96.0,"staff":3,"dur":4,"start":"2026-04-07","finish":"2026-04-10","resource":"Cody,criag,rangi","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jt34ybpo4","branch":"Christchurch","jobno":"J014117","jclass":"B","site":"23 Govers Rd , CHC","val":9045.0,"wfm":110.0,"staff":5,"dur":2,"start":"2026-04-09","finish":"2026-04-10","resource":"Corty,roy Micah,Adam,gus,sam","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"joa7yzwdz","branch":"Christchurch","jobno":"J014009","jclass":"A","site":"310 Frasers Rd , Ashburton","val":4640.0,"wfm":50.0,"staff":0,"dur":0,"start":"","finish":"","resource":"","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jepixx2xk","branch":"Christchurch","jobno":"J014135","jclass":"A","site":"15 Rowley Ave , Chch","val":4388.0,"wfm":36.0,"staff":0,"dur":0,"start":"","finish":"","resource":"","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jfa04uli2","branch":"Christchurch","jobno":"J014133","jclass":"B","site":"818 Wairakei Rd  , Chch","val":785.0,"wfm":3.0,"staff":0,"dur":0,"start":"","finish":"","resource":"","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"j54b7o5d8","branch":"Christchurch","jobno":"J014136","jclass":"A","site":"72 Canada St , Timaru","val":11003.0,"wfm":65.0,"staff":0,"dur":0,"start":"","finish":"","resource":"","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"joimh4c5c","branch":"Christchurch","jobno":"J014140","jclass":"B","site":"267 Hills Rd , Chch -charge up","val":4200.0,"wfm":40.0,"staff":0,"dur":0,"start":"","finish":"","resource":"","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jmw3xhavh","branch":"Christchurch","jobno":"J014129","jclass":"A","site":"83 Merrin St , Chch","val":3810.0,"wfm":28.0,"staff":0,"dur":0,"start":"","finish":"","resource":"","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jjrl4u8bs","branch":"Christchurch","jobno":"J014106","jclass":"A","site":"2a Copenhagen Pl , Chch","val":10035.0,"wfm":57.0,"staff":0,"dur":0,"start":"","finish":"","resource":"","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"},{"id":"jhixkn9ai","branch":"Christchurch","jobno":"J014137","jclass":"A","site":"42 Pannell Ave  , Chch","val":2937.0,"wfm":6.0,"staff":0,"dur":0,"start":"2026-04-08","finish":"2026-04-08","resource":"corey,adam","workSat":false,"workSun":false,"done":false,"ts":"2026-04-18T00:00:00.000Z"}];
+const PRELOAD_STAFF = {"Auckland":["Alfrado","Allen","Bea","Charlie","Cory","Fiti","Hanif","KIM","Kirwan","Nate","Pani","Sam","Sani","Vili"],"Wellington":["Adney","Andrew","Anthony","Darcy","Fiti","Joel","John","Jojo","Joseph","Julio","Meliton","Nate","Nick","Silao","Sio","Sooula","Wai"],"Christchurch":["Adam","Alan","Cody","Corey","Craig","Darren","Gus","Jamie","Kaleb","Mackai","Matt G","Micah","Mitch","Nate","Nathan","Ngawera","Nick","Rangi","Roy","Tanya","Tyler"]};
+
+let S = {
+  jobs: [],
+  staff: JSON.parse(JSON.stringify(PRELOAD_STAFF)),
+  cfg: {rate:50,pmin:30,pmax:35,hpd:8},
+  gsUrl: 'https://script.google.com/macros/s/AKfycbyZDkUr71_xx6KZjTnVy0XQOYjLoVvv_rEK1WezLyQs1i1eO4ycBVNuj-zkzjplaVtyEA/exec',
+  branch: 'Auckland',
+  year: 2026,
+  month: 3,
+  workSat: false,
+  workSun: false,
+};
+
+function load(){
+  try{
+    const d=JSON.parse(localStorage.getItem('aops_v1')||'{}');
+    // If local storage has data, use it; otherwise use preloaded Excel data
+    if(d.jobs && d.jobs.length > 0) S.jobs=d.jobs;
+    else { S.jobs=JSON.parse(JSON.stringify(PRELOAD_JOBS)); }
+    if(d.staff) S.staff=d.staff;
+    else { S.staff=JSON.parse(JSON.stringify(PRELOAD_STAFF)); }
+    if(d.cfg)    S.cfg=d.cfg;
+    if(d.gsUrl)  S.gsUrl=d.gsUrl;
+  }catch(e){
+    // If anything fails, fall back to preloaded data
+    S.jobs=JSON.parse(JSON.stringify(PRELOAD_JOBS));
+    S.staff=JSON.parse(JSON.stringify(PRELOAD_STAFF));
+  }
+}
+function save(){localStorage.setItem('aops_v1',JSON.stringify({jobs:S.jobs,staff:S.staff,cfg:S.cfg,gsUrl:S.gsUrl}))}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// UTILS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const uid=()=>'j'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const fmt$=v=>v?'$'+Number(v).toLocaleString('en-NZ',{minimumFractionDigits:2,maximumFractionDigits:2}):'—';
+const fmtN=(v,d=0)=>v!=null&&v!==''?Number(v).toLocaleString('en-NZ',{maximumFractionDigits:d}):'—';
+const fmtPct=v=>v!=null&&v!==''?(v*100).toFixed(1)+'%':'—';
+const toD=s=>{if(!s)return null;const d=new Date(s+'T00:00:00');return isNaN(d)?null:d};
+const dsOf=d=>d instanceof Date?d.toISOString().slice(0,10):d||'';
+const addD=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r};
+const isSat=s=>new Date(s+'T00:00:00').getDay()===6;
+const isSun=s=>new Date(s+'T00:00:00').getDay()===0;
+const isHol=s=>HOLIDAYS.has(s);
+
+function workingDays(start,finish,wSat=false,wSun=false){
+  const days=[];
+  if(!start||!finish)return days;
+  let cur=toD(start), end=toD(finish);
+  if(!cur||!end)return days;
+  while(cur<=end){
+    const s=dsOf(cur);
+    if(!isHol(s)){
+      if(isSat(s)&&!wSat){cur=addD(cur,1);continue}
+      if(isSun(s)&&!wSun){cur=addD(cur,1);continue}
+      days.push(s);
+    }
+    cur=addD(cur,1);
+  }
+  return days;
+}
+
+function monthDays(y,m){
+  const days=[];let d=new Date(y,m,1);
+  while(d.getMonth()===m){days.push(dsOf(d));d=addD(d,1)}
+  return days;
+}
+
+const staffCount=r=>r?r.split(',').filter(s=>s.trim()).length:0;
+
+function dailyAlloc(branchJobs,ds){
+  return dailyAllocV2(branchJobs, ds);
+}
+
+function toast(msg,type='ok'){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className=`toast show t-${type}`;
+  setTimeout(()=>el.className='toast',3000);
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// CALENDAR
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function renderCal(){
+  const br=S.branch;
+  const bJobs=S.jobs.filter(j=>j.branch===br&&!j._del);
+  const days=monthDays(S.year,S.month);
+  const cap=S.staff[br].length;
+  const today=dsOf(new Date());
+  const color=BRANCH_COLORS[br];
+
+  document.getElementById('cal-dot').style.background=color;
+  document.getElementById('cal-title').textContent=br+' Calendar';
+  document.getElementById('mon-label').textContent=MONTHS[S.month]+' '+S.year;
+
+  // stats
+  const active=bJobs.filter(j=>!j.done);
+  const tVal=active.reduce((s,j)=>s+(Number(j.val)||0),0);
+  const todayA=dailyAlloc(bJobs,today);
+  document.getElementById('stat-row').innerHTML=`
+    <div class="stat-card blue"><div class="sc-label">Active Jobs</div><div class="sc-val">${active.length}</div><div class="sc-sub">${bJobs.filter(j=>j.done).length} done</div></div>
+    <div class="stat-card orange"><div class="sc-label">Total Value</div><div class="sc-val" style="font-size:15px;line-height:1.2">${fmt$(tVal)}</div><div class="sc-sub">WFM: ${fmtN(active.reduce((s,j)=>s+(Number(j.wfm)||0),0),0)} hrs</div></div>
+    <div class="stat-card green"><div class="sc-label">Today Allocated</div><div class="sc-val">${todayA}</div><div class="sc-sub">of ${cap} capacity</div></div>
+    <div class="stat-card ${todayA>cap?'red':'blue'}"><div class="sc-label">Today Available</div><div class="sc-val">${cap-todayA}</div><div class="sc-sub">${cap?Math.round(todayA/cap*100):0}% utilised</div></div>`;
+
+  // header
+  let hdr=`<tr><th class="th-sticky">Job</th>`;
+  for(const d of days){
+    const dt=new Date(d+'T00:00:00');
+    const cls=isHol(d)?'th-hol':isSat(d)?'th-sat':isSun(d)?'th-sun':'';
+    hdr+=`<th class="${cls}">${dt.getDate()}<br><small style="font-size:8px;font-weight:400">${DAYS[dt.getDay()]}</small></th>`;
+  }
+  document.getElementById('cal-head').innerHTML=hdr+'</tr>';
+
+  // alloc/cap/avail rows
+  const allocMap={};
+  for(const d of days) allocMap[d]=dailyAllocV2(bJobs,d);
+
+  let body='';
+  // Alloc row
+  body+=`<tr class="tr-alloc"><td class="td-sticky">STAFF ALLOCATED</td>`;
+  body+=days.map(d=>`<td>${allocMap[d]||0}</td>`).join('');body+='</tr>';
+  // Cap row
+  body+=`<tr class="tr-cap"><td class="td-sticky">BRANCH CAPACITY</td>`;
+  body+=days.map(()=>`<td>${cap}</td>`).join('');body+='</tr>';
+  // Avail row
+  body+=`<tr class="tr-avail"><td class="td-sticky">AVAILABLE</td>`;
+  body+=days.map(d=>{const a=cap-allocMap[d];return`<td class="${a<0?'td-neg':''}">${a}</td>`}).join('');
+  body+='</tr>';
+
+  // job rows
+  const sorted=[...bJobs].sort((a,b)=>(a.start||'').localeCompare(b.start||''));
+  for(const j of sorted){
+    body+=`<tr class="${j.done?'row-done':''}" data-id="${j.id}">`;
+    body+=`<td class="td-sticky">
+      <div class="job-cell" onclick="editJob('${j.id}')" style="cursor:pointer">
+        <div class="jc-no">${j.jobno||'—'}${j.project?` <span style="font-size:9px;color:var(--c-lime);opacity:.8">◆ ${j.project}</span>`:''}</div>
+        ${j.client?`<div style="font-size:10px;color:var(--c-text-dim);max-width:140px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-weight:500">${j.client}</div>`:''}
+        <div class="jc-site">${j.site||'No site'}</div>
+        <div class="jc-actions">
+          <button class="done-btn ${j.done?'is-done':''}" onclick="event.stopPropagation();toggleDone('${j.id}')">${j.done?'✓ Done':'○ Done'}</button>
+        </div>
+      </div>
+    </td>`;
+    for(const d of days){
+      let cls='td-date';
+      const jobOn=jobActiveOnDay(j,d);
+      const isHolDay=isHol(d);
+      const isSatDay=isSat(d);
+      const isSunDay=isSun(d);
+      if(isHolDay&&!jobOn)cls+=' td-hol';
+      else if(isHolDay&&jobOn)cls+=' td-hol-worked';
+      else if(isSatDay)cls+=' td-sat';
+      else if(isSunDay)cls+=' td-sun';
+      if(jobOn&&!j.done)cls+=' has-job';
+      const dayNames=jobOn&&!j.done?getStaffForDay(j,d).split(',').map(s=>s.trim()).filter(s=>s):[];
+      const isOverride=j.dayOverrides&&j.dayOverrides[d]!==undefined&&j.dayOverrides[d]!=='__OFF__';
+      let cellContent='';
+      if(isHolDay&&!jobOn){
+        cellContent='<span class="hol-label">HOL</span>';
+      } else if(isHolDay&&jobOn){
+        cellContent='<span class="hol-worked-label">HOL✓</span>'+dayNames.map(n=>'<span class="name-chip override">'+n+'</span>').join('');
+      } else if(dayNames.length){
+        cellContent=dayNames.map(n=>'<span class="name-chip'+(isOverride?' override':'')+'">'+n+'</span>').join('');
+      } else if(isSatDay&&!j.workSat&&!(j.dayOverrides&&j.dayOverrides[d])){
+        cellContent='<span class="sat-off-label">—</span>';
+      }
+      const inRange=j.start&&j.finish&&toD(d)>=toD(j.start)&&toD(d)<=toD(j.finish);
+      const clickable=!j.done&&inRange;
+      if(clickable)cls+=' clickable-day';
+      if(clickable){
+        body+='<td class="'+cls+'" onclick="openDayModal(\'' +j.id+ '\',\'' +d+ '\')" style="cursor:pointer">'+cellContent+'</td>';
+      } else {
+        body+='<td class="'+cls+'">'+cellContent+'</td>';
+      }
+    }
+    body+='</tr>';
+  }
+
+  if(!sorted.length){
+    body+=`<tr><td colspan="${days.length+1}" style="text-align:center;padding:40px;color:var(--c-muted);font-size:12px">No jobs in ${br} — click <strong style="color:var(--c-lime)">＋ New Job</strong> to start</td></tr>`;
+  }
+
+  document.getElementById('cal-body').innerHTML=body;
+  updateSidebar();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// STAFF OPT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function renderOpt(){
+  const {rate,pmin,pmax,hpd}=S.cfg;
+  const PMID=(pmin+pmax)/200;
+
+  // branch summary cards
+  let cards='';
+  for(const [br,col] of [['Auckland','#F97316'],['Wellington','#3B82F6'],['Christchurch','#22C55E']]){
+    const jobs=S.jobs.filter(j=>j.branch===br&&!j._del&&!j.done);
+    const cap=S.staff[br].length;
+    const tVal=jobs.reduce((s,j)=>s+(Number(j.val)||0),0);
+    const tWfm=jobs.reduce((s,j)=>s+(Number(j.wfm)||0),0);
+    const tSched=jobs.reduce((s,j)=>{const f=Number(j.staff)||0,d=Number(j.dur)||0;return s+(f&&d?f*d*hpd:Number(j.wfm)||0)},0);
+    const lp=tVal?tSched*rate/tVal:0;
+    const barW=Math.min(100,Math.round(lp*100));
+    const barCls=lp>pmax/100?'over':lp<pmin/100?'warn':'ok';
+    const lpCls=lp>pmax/100?'lp-over':lp<pmin/100?'lp-under':'lp-on';
+    cards+=`<div class="branch-card">
+      <div class="bc-head"><h3>${br}</h3><span class="bc-cap">${cap} staff</span></div>
+      <div class="bc-grid">
+        <div class="bc-metric"><div class="bcm-l">Jobs</div><div class="bcm-v">${jobs.length}</div></div>
+        <div class="bc-metric"><div class="bcm-l">Value</div><div class="bcm-v" style="font-size:13px">${fmt$(tVal)}</div></div>
+        <div class="bc-metric"><div class="bcm-l">WFM Hrs</div><div class="bcm-v">${fmtN(tWfm,0)}</div></div>
+        <div class="bc-metric"><div class="bcm-l">Labour %</div><div class="bcm-v ${lpCls}">${fmtPct(lp)}</div></div>
+        <div class="bc-bar-wrap"><div class="bc-bar ${barCls}" style="width:${barW}%;background:${col}aa"></div></div>
+      </div>
+    </div>`;
+  }
+  document.getElementById('branch-cards').innerHTML=cards;
+
+  // per-branch tables
+  let tables='';
+  for(const br of ['Auckland','Wellington','Christchurch']){
+    const jobs=S.jobs.filter(j=>j.branch===br&&!j._del);
+    const cap=S.staff[br].length;
+    let rows='',tV=0,tW=0,tS=0,tI=0,nOn=0,nOv=0,nUn=0,nNo=0;
+
+    for(const j of jobs){
+      if(j._del)continue;
+      const v=Number(j.val)||0,w=Number(j.wfm)||0;
+      const f=Number(j.staff)||0,d=Number(j.dur)||0;
+      const sched=f&&d?f*d*hpd:w;
+      const ideal=v?v*PMID/rate:0;
+      const lp=sched&&v?sched*rate/v:null;
+      let status,scls,lcls;
+      if(lp===null){status='NO DATA';scls='pill-none';nNo++;lcls=''}
+      else if(lp>pmax/100){status='OVER ▲';scls='pill-over';nOv++;lcls='lp-over'}
+      else if(lp<pmin/100){status='UNDER ▼';scls='pill-under';nUn++;lcls='lp-under'}
+      else{status='ON TARGET ✓';scls='pill-on';nOn++;lcls='lp-on'}
+      if(!j.done){tV+=v;tW+=w;tS+=sched;tI+=ideal}
+      rows+=`<tr class="${j.done?'opt-done':''}" onclick="editJob('${j.id}')">
+        <td>${j.jobno||'—'}</td>
+        <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${j.site||'—'}</td>
+        <td class="r">${fmt$(v)}</td>
+        <td class="r">${fmtN(w,0)}</td>
+        <td class="r">${f||'—'}</td>
+        <td class="r">${d||'—'}</td>
+        <td class="r">${fmtN(sched,0)}</td>
+        <td class="r">${fmtN(ideal,0)}</td>
+        <td class="r ${lcls}">${fmtPct(lp)}</td>
+        <td><span class="pill ${scls}">${status}</span></td>
+        <td>${j.jclass||'—'}</td>
+      </tr>`;
+    }
+    const totLp=tS&&tV?tS*rate/tV:null;
+    rows+=`<tr class="opt-total">
+      <td colspan="2">TOTAL — ${jobs.filter(j=>!j.done&&!j._del).length} active jobs</td>
+      <td class="r">${fmt$(tV)}</td>
+      <td class="r">${fmtN(tW,0)}</td>
+      <td colspan="2"></td>
+      <td class="r">${fmtN(tS,0)}</td>
+      <td class="r">${fmtN(tI,0)}</td>
+      <td class="r">${fmtPct(totLp)}</td>
+      <td colspan="2" style="color:var(--c-muted)">✓${nOn} ▲${nOv} ▼${nUn} —${nNo}</td>
+    </tr>`;
+    tables+=`<div class="opt-section">
+      <div class="opt-sect-head">
+        <h3 style="color:${BRANCH_COLORS[br]}">${br} — ${cap} staff capacity</h3>
+        <span style="font-size:10px;color:var(--c-muted)">Target ${pmin}–${pmax}%</span>
+      </div>
+      <table class="opt-table">
+        <thead><tr>
+          <th>Job No.</th><th>Site</th>
+          <th class="r">Value</th><th class="r">WFM Hrs</th>
+          <th class="r">Staff</th><th class="r">Days</th>
+          <th class="r">Sched Hrs</th><th class="r">Ideal Hrs</th>
+          <th class="r">Labour %</th><th>Status</th><th>Class</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }
+  document.getElementById('opt-tables').innerHTML=tables;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SETUP
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function renderSetup(){
+  const {rate,pmin,pmax,hpd}=S.cfg;
+  document.getElementById('set-rate').value=rate;
+  document.getElementById('set-pmin').value=pmin;
+  document.getElementById('set-pmax').value=pmax;
+  document.getElementById('set-hpd').value=hpd;
+  document.getElementById('gs-url').value=S.gsUrl||'';
+
+  let html='';
+  for(const [br,col] of [['Auckland','var(--c-akl)'],['Wellington','var(--c-wel)'],['Christchurch','var(--c-chc)']]){
+    html+=`<div class="staff-col">
+      <h4 style="color:${col}">${br} (${S.staff[br].length})</h4>
+      <div class="staff-list">
+        ${S.staff[br].map((n,i)=>`<div class="staff-item">
+          <span>${n}</span>
+          <button onclick="rmStaff('${br}',${i})">✕</button>
+        </div>`).join('')}
+      </div>
+      <div class="add-row">
+        <input type="text" id="add-${br}" placeholder="Add name…" onkeydown="if(event.key==='Enter')addStaff('${br}')">
+        <button class="btn btn-primary btn-sm" onclick="addStaff('${br}')">＋</button>
+      </div>
+    </div>`;
+  }
+  document.getElementById('staff-cols').innerHTML=html;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// SIDEBAR
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function updateSidebar(){
+  let capsHtml='';
+  for(const br of ['Auckland','Wellington','Christchurch']){
+    const jobs=S.jobs.filter(j=>j.branch===br&&!j._del);
+    document.getElementById('sbadge-'+br).textContent=jobs.filter(j=>!j.done).length;
+    const cap=S.staff[br].length;
+    const today=dsOf(new Date());
+    const alloc=dailyAlloc(jobs,today);
+    const pct=cap?Math.min(100,Math.round(alloc/cap*100)):0;
+    const cls=pct>90?'cap-over':pct>70?'cap-warn':'cap-ok';
+    capsHtml+=`<div class="sb-cap">
+      <div class="sb-cap-label"><span style="color:${BRANCH_COLORS[br]}">${br}</span><span>${alloc}/${cap}</span></div>
+      <div class="sb-cap-bar"><div class="sb-cap-fill ${cls}" style="width:${pct}%"></div></div>
+    </div>`;
+  }
+  document.getElementById('sb-caps').innerHTML=capsHtml;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// FORM
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function openForm(br){
+  document.getElementById('modal-title').textContent='New Job';
+  document.getElementById('f-id').value='';
+  ['f-jobno','f-site','f-client','f-val','f-wfm','f-staff','f-dur','f-start','f-finish','f-res','f-project'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-class').value='A';
+  document.getElementById('f-branch').value=br||S.branch;
+  document.getElementById('del-btn').style.display='none';
+  updateSuggestions();
+  document.getElementById('overlay').classList.add('open');
+  document.getElementById('f-jobno').focus();
+}
+
+function editJob(id){
+  const j=S.jobs.find(j=>j.id===id);if(!j)return;
+  document.getElementById('modal-title').textContent='Edit Job';
+  document.getElementById('f-id').value=id;
+  document.getElementById('f-jobno').value=j.jobno||'';
+  document.getElementById('f-class').value=j.jclass||'A';
+  document.getElementById('f-site').value=j.site||'';
+  document.getElementById('f-client').value=j.client||'';
+  document.getElementById('f-val').value=j.val||'';
+  document.getElementById('f-wfm').value=j.wfm||'';
+  document.getElementById('f-staff').value=j.staff||'';
+  document.getElementById('f-dur').value=j.dur||'';
+  document.getElementById('f-branch').value=j.branch||S.branch;
+  document.getElementById('f-start').value=j.start||'';
+  document.getElementById('f-finish').value=j.finish||'';
+  document.getElementById('f-res').value=j.resource||'';
+  document.getElementById('f-project').value=j.project||'';
+  document.getElementById('del-btn').style.display='inline-flex';
+  updateSuggestions();
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeForm(){document.getElementById('overlay').classList.remove('open')}
+
+function saveJob(){
+  const id=document.getElementById('f-id').value;
+  const jobno=document.getElementById('f-jobno').value.trim();
+  if(!jobno){toast('Job number required','err');return}
+  const job={
+    id:id||uid(),jobno,jclass:document.getElementById('f-class').value,
+    site:document.getElementById('f-site').value.trim(),
+    client:document.getElementById('f-client').value.trim(),
+    val:parseFloat(document.getElementById('f-val').value)||0,
+    wfm:parseFloat(document.getElementById('f-wfm').value)||0,
+    staff:parseInt(document.getElementById('f-staff').value)||0,
+    dur:parseInt(document.getElementById('f-dur').value)||0,
+    branch:document.getElementById('f-branch').value,
+    start:document.getElementById('f-start').value,
+    finish:document.getElementById('f-finish').value,
+    resource:document.getElementById('f-res').value.trim(),
+    project:document.getElementById('f-project').value.trim(),
+    workSat:S.workSat,workSun:S.workSun,
+    done:id?(S.jobs.find(j=>j.id===id)||{}).done:false,
+    ts:new Date().toISOString(),
+  };
+  if(id){const i=S.jobs.findIndex(j=>j.id===id);if(i>=0)S.jobs[i]=job}
+  else S.jobs.push(job);
+  save();closeForm();renderAll();
+  toast(id?'Job updated ✓':'Job added ✓');
+  if(S.gsUrl)autoSync();
+}
+
+function delJob(){
+  const id=document.getElementById('f-id').value;
+  if(!id||!confirm('Delete this job?'))return;
+  const i=S.jobs.findIndex(j=>j.id===id);if(i>=0)S.jobs[i]._del=true;
+  save();closeForm();renderAll();toast('Deleted');
+}
+
+function toggleDone(id){
+  const j=S.jobs.find(j=>j.id===id);if(!j)return;
+  j.done=!j.done;save();renderAll();toast(j.done?'Marked done ✓':'Unmarked');
+}
+
+function toggleW(k){if(k==='sat')S.workSat=!S.workSat;else S.workSun=!S.workSun;updateWkndBtns()}
+function updateWkndBtns(){
+  // Sat/Sun toggles now handled per-day in the calendar — no global buttons
+}
+function updateSuggestions(){
+  const br=document.getElementById('f-branch').value;
+  document.getElementById('res-dl').innerHTML=(S.staff[br]||[]).map(n=>`<option value="${n}">`).join('');
+}
+
+function getProjectNames(){
+  return [...new Set(S.jobs.filter(j=>j.project&&j.project.trim()).map(j=>j.project.trim()))].sort();
+}
+
+function showProjectDropdown(val){
+  const dd = document.getElementById('project-dropdown');
+  if(!dd) return;
+  const all = getProjectNames();
+  const filtered = val ? all.filter(p=>p.toLowerCase().includes(val.toLowerCase())) : all;
+  if(!filtered.length){ dd.style.display='none'; return; }
+  dd.innerHTML = filtered.map(p=>`
+    <div onclick="selectProject('${p.replace(/'/g,"&#39;")}')"
+         style="padding:8px 12px;cursor:pointer;font-size:12px;color:var(--c-text);border-bottom:1px solid var(--c-border)"
+         onmouseover="this.style.background='rgba(168,200,0,.1)'"
+         onmouseout="this.style.background=''">${p}</div>`).join('');
+  dd.style.display='block';
+}
+
+function hideProjectDropdown(){
+  const dd = document.getElementById('project-dropdown');
+  if(dd) dd.style.display='none';
+}
+
+function selectProject(name){
+  const inp = document.getElementById('f-project');
+  if(inp) inp.value = name;
+  hideProjectDropdown();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// NAV
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function setBranch(br){
+  S.branch=br;
+  ['Auckland','Wellington','Christchurch'].forEach(b=>{
+    document.getElementById('snav-'+b).classList.toggle('active',b===br);
+  });
+  showPanel('cal');
+}
+
+function showPanel(name){
+  // Block setup unless admin session is active
+  if(name==='setup' && !checkAdminSession()){
+    openAdminPin();
+    return;
+  }
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  document.querySelector(`.tab[data-tab="${name}"]`)?.classList.add('active');
+  ['snav-opt','snav-setup'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  if(name==='opt'){document.getElementById('snav-opt').classList.add('active');renderOpt()}
+  else if(name==='setup'){document.getElementById('snav-setup').classList.add('active');renderSetup()}
+  else if(name==='cal')renderCal();
+}
+
+function changeMonth(d){
+  S.month+=d;
+  if(S.month>11){S.month=0;S.year++}
+  if(S.month<0){S.month=11;S.year--}
+  renderCal();
+}
+
+function goToday(){const n=new Date();S.year=n.getFullYear();S.month=n.getMonth();renderCal()}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// STAFF
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function addStaff(br){
+  const el=document.getElementById('add-'+br);
+  const n=el.value.trim();if(!n)return;
+  if(!S.staff[br].includes(n)){S.staff[br].push(n);S.staff[br].sort();save();renderSetup();updateSidebar();toast(`${n} added`)}
+  el.value='';
+}
+function rmStaff(br,i){
+  if(!confirm(`Remove ${S.staff[br][i]} from ${br}?`))return;
+  S.staff[br].splice(i,1);save();renderSetup();updateSidebar();toast('Removed');
+}
+
+function saveSettings(){
+  S.cfg.rate=parseFloat(document.getElementById('set-rate').value)||50;
+  S.cfg.pmin=parseFloat(document.getElementById('set-pmin').value)||30;
+  S.cfg.pmax=parseFloat(document.getElementById('set-pmax').value)||35;
+  S.cfg.hpd=parseFloat(document.getElementById('set-hpd').value)||8;
+  save();toast('Settings saved');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// EXPORT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function exportCSV(){
+  const {rate,hpd}=S.cfg;
+  const hdr=['Branch','Job No.','Class','Client','Site','Value ($)','WFM Hrs','Staff','Duration','Start','Finish','Resources','Work Sat','Work Sun','Done','Project','Sched Hrs','Labour %'];
+  const rows=S.jobs.filter(j=>!j._del).map(j=>{
+    const f=Number(j.staff)||0,d=Number(j.dur)||0;
+    const sched=f&&d?f*d*hpd:Number(j.wfm)||0;
+    const lp=sched&&Number(j.val)?(sched*rate/Number(j.val)*100).toFixed(1)+'%':'';
+    return[j.branch,j.jobno,j.jclass,j.site,j.val,j.wfm,j.staff,j.dur,j.start,j.finish,j.resource,j.workSat?'Y':'',j.workSun?'Y':'',j.done?'Y':'',sched,lp];
+  });
+  const csv=[hdr,...rows].map(r=>r.map(c=>`"${String(c??'').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));
+  a.download=`asbestos_jobs_${dsOf(new Date())}.csv`;a.click();
+  toast('CSV exported ✓');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// GOOGLE SHEETS SYNC
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function connectGS(){
+  const url=document.getElementById('gs-url').value.trim();
+  if(!url.includes('script.google.com')){toast('Invalid URL','err');return}
+  S.gsUrl=url;save();doSync();
+}
+
+async function doSync(silent=false){
+  if(!S.gsUrl){if(!silent)toast('No Sheets URL — go to Setup','err');return}
+  document.getElementById('sync-pill').textContent='SYNCING…';
+  try{
+    const body=JSON.stringify({action:'sync',jobs:S.jobs.filter(j=>!j._del),staff:S.staff,ts:new Date().toISOString()});
+    const res=await fetch(S.gsUrl,{method:'POST',body});
+    const data=await res.json();
+    if(data.ok){
+      document.getElementById('sync-pill').textContent='LIVE';
+      document.getElementById('sync-pill').className='pill live';
+      document.getElementById('gs-status').textContent='⬤ Connected — last sync '+new Date().toLocaleTimeString('en-NZ');
+      document.getElementById('gs-status').className='gs-status live';
+      if(data.jobs){S.jobs=data.jobs;save();renderAll()}
+      if(!silent)toast('Synced ✓');
+    }else throw new Error(data.error||'Unknown');
+  }catch(e){
+    document.getElementById('sync-pill').textContent='OFFLINE';
+    document.getElementById('sync-pill').className='pill';
+    if(!silent)toast('Sync failed: '+e.message,'err');
+  }
+}
+
+function autoSync(){if(window.location.protocol!=='file:') setTimeout(()=>doSync(true),500)}
+
+function copyScript(){
+  const s=`// ═══════════════════════════════════════════════════════
+// AsbestosOps — Google Apps Script Backend
+// Deploy: Extensions > Apps Script > New script
+// Paste this, save, then: Deploy > New Deployment > Web App
+// Execute as: Me | Access: Anyone with Google Account
+// Copy the Web App URL into the app's Setup tab
+// ═══════════════════════════════════════════════════════
+
+const SHEET_ID = 'PASTE_YOUR_GOOGLE_SHEET_ID_HERE';
+// Find Sheet ID in the URL: docs.google.com/spreadsheets/d/[THIS_PART]/edit
+
+function doPost(e) {
+  try {
+    const data = JSON.parse(e.postData.contents);
+    if (data.action === 'sync') return handleSync(data);
+    throw new Error('Unknown action');
+  } catch(err) {
+    return json({ok:false, error:err.message});
+  }
+}
+
+function handleSync(data) {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  
+  // Write jobs per branch
+  for (const branch of ['Auckland','Wellington','Christchurch']) {
+    let sheet = ss.getSheetByName(branch);
+    if (!sheet) sheet = ss.insertSheet(branch);
+    sheet.clearContents();
+    
+    const headers = ['ID','Job No','Class','Site','Value','WFM Hrs','Staff',
+                     'Duration','Start','Finish','Resources','Work Sat',
+                     'Work Sun','Done','Timestamp'];
+    sheet.getRange(1,1,1,headers.length).setValues([headers])
+         .setFontWeight('bold').setBackground('#1A3C5E').setFontColor('#FFFFFF');
+    
+    const rows = (data.jobs||[])
+      .filter(j => j.branch === branch)
+      .map(j => [j.id, j.jobno, j.jclass, j.site, j.val||0, j.wfm||0,
+                 j.staff||0, j.dur||0, j.start||'', j.finish||'',
+                 j.resource||'', j.workSat?'Y':'', j.workSun?'Y':'',
+                 j.done?'Y':'', j.ts||'']);
+    
+    if (rows.length) {
+      sheet.getRange(2,1,rows.length,headers.length).setValues(rows);
+      // Alternating row colours
+      rows.forEach((_, i) => {
+        if (i % 2 === 0)
+          sheet.getRange(i+2, 1, 1, headers.length).setBackground('#F8F9FA');
+      });
+    }
+  }
+  
+  // Write to Log sheet
+  let log = ss.getSheetByName('Log');
+  if (!log) log = ss.insertSheet('Log');
+  log.appendRow([new Date(), 'Sync', (data.jobs||[]).length + ' jobs', data.ts]);
+  
+  // Return all current jobs so app stays in sync with sheet data
+  return json({ok: true, jobs: data.jobs, synced: new Date().toISOString()});
+}
+
+function doGet(e) { return doPost(e); }
+
+function json(obj) {
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}`;
+  navigator.clipboard.writeText(s).then(()=>toast('Apps Script copied to clipboard ✓'));
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// RENDER ALL + INIT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function renderAll(){
+  const a=document.querySelector('.panel.active');
+  if(!a)return;
+  const id=a.id.replace('panel-','');
+  if(id==='cal')renderCal();
+  else if(id==='opt')renderOpt();
+  else if(id==='setup')renderSetup();
+  updateSidebar();
+}
+
+// keyboard: N = new job
+document.addEventListener('keydown',e=>{
+  if(e.key==='n'&&!e.ctrlKey&&!e.metaKey&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)){
+    openForm();
+  }
+});
+
+// ── APP INIT (called after PIN auth) ─────────────────────────────
+function appInit() {
+  load();
+  goToday();
+  updateSidebar();
+  if(S.gsUrl && window.location.protocol !== 'file:') doSync(true);
+  // auto-sync every 90s — only when hosted (not local file)
+  if(window.location.protocol !== 'file:'){
+    setInterval(()=>{if(S.gsUrl)doSync(true)},90000);
+  }
+}
+
+// ── BOOT ─────────────────────────────────────────────────────────
+if (checkSession()) {
+  // Already authenticated this session
+  document.getElementById('pin-screen').classList.add('hidden');
+  appInit();
+}
+// else: PIN screen is shown, appInit() called after correct PIN
+
+function changePin() {
+  const cur = document.getElementById('pin-current').value.trim();
+  const nw  = document.getElementById('pin-new').value.trim();
+  const cnf = document.getElementById('pin-confirm').value.trim();
+  if (cur !== getPin()) { toast('Current PIN is incorrect', 'err'); return; }
+  if (nw.length !== 4 || !/^\d{4}$/.test(nw)) { toast('New PIN must be exactly 4 digits', 'err'); return; }
+  if (nw !== cnf) { toast('New PINs do not match', 'err'); return; }
+  localStorage.setItem('aops_pin', nw);
+  document.getElementById('pin-current').value = '';
+  document.getElementById('pin-new').value = '';
+  document.getElementById('pin-confirm').value = '';
+  toast('PIN updated ✓ — share with your team');
+}
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ADMIN PIN — Setup page protection
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const DEFAULT_ADMIN_PIN = '9999';
+const ADMIN_SESSION_KEY = 'aops_admin_auth';
+const ADMIN_SESSION_DURATION = 4 * 60 * 60 * 1000;
+let adminPinEntry = '';
+let adminAttempts = 0;
+
+function getAdminPin(){return String(localStorage.getItem('aops_admin_pin')||DEFAULT_ADMIN_PIN)}
+
+function checkAdminSession(){
+  try{const s=JSON.parse(sessionStorage.getItem(ADMIN_SESSION_KEY)||'{}');if(s.auth&&s.expires&&Date.now()<s.expires)return true}catch(e){}
+  return false;
+}
+
+function grantAdminSession(){
+  sessionStorage.setItem(ADMIN_SESSION_KEY,JSON.stringify({auth:true,expires:Date.now()+ADMIN_SESSION_DURATION}));
+  document.getElementById('admin-overlay').classList.remove('open');
+  // Now open setup for real
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-setup').classList.add('active');
+  document.querySelector('.tab[data-tab="setup"]')?.classList.add('active');
+  document.getElementById('snav-opt')?.classList.remove('active');
+  document.getElementById('snav-setup')?.classList.add('active');
+  renderSetup();
+}
+
+function openAdminPin(){
+  adminPinEntry='';adminAttempts=0;
+  updateAdminDots();
+  const msg=document.getElementById('admin-pin-msg');if(msg)msg.textContent='';
+  document.querySelectorAll('#admin-overlay .pin-key').forEach(k=>k.disabled=false);
+  document.getElementById('admin-overlay').classList.add('open');
+}
+
+function closeAdminPin(){
+  document.getElementById('admin-overlay').classList.remove('open');
+  adminPinEntry='';
+}
+
+function adminPinKey(n){
+  if(adminPinEntry.length>=4)return;
+  adminPinEntry+=String(n);
+  updateAdminDots();
+  if(adminPinEntry.length===4)setTimeout(checkAdminPin,120);
+}
+
+function adminPinDel(){
+  adminPinEntry=adminPinEntry.slice(0,-1);
+  updateAdminDots();
+  const msg=document.getElementById('admin-pin-msg');if(msg)msg.textContent='';
+}
+
+function updateAdminDots(){
+  for(let i=0;i<4;i++){
+    const dot=document.getElementById('ad'+i);if(!dot)return;
+    dot.classList.toggle('filled',i<adminPinEntry.length);
+    dot.classList.remove('error');
+  }
+}
+
+function checkAdminPin(){
+  if(adminPinEntry===getAdminPin()){
+    adminAttempts=0;
+    for(let i=0;i<4;i++){const dot=document.getElementById('ad'+i);if(dot){dot.style.background='var(--c-green)';dot.style.borderColor='var(--c-green)'}}
+    setTimeout(grantAdminSession,300);
+  } else {
+    adminAttempts++;adminPinEntry='';
+    for(let i=0;i<4;i++){const dot=document.getElementById('ad'+i);if(dot)dot.classList.add('error')}
+    const msg=document.getElementById('admin-pin-msg');
+    if(adminAttempts>=5){
+      if(msg)msg.textContent='Too many attempts. Refresh to try again.';
+      document.querySelectorAll('#admin-overlay .pin-key').forEach(k=>k.disabled=true);
+    } else {
+      if(msg)msg.textContent='Incorrect PIN — '+(5-adminAttempts)+' attempts left';
+      setTimeout(updateAdminDots,400);
+    }
+  }
+}
+
+function changeAdminPin(){
+  const cur=document.getElementById('admin-pin-current')?.value.trim();
+  const nw=document.getElementById('admin-pin-new')?.value.trim();
+  const cnf=document.getElementById('admin-pin-confirm')?.value.trim();
+  if(cur!==getAdminPin()){toast('Current admin PIN is incorrect','err');return}
+  if(!nw||nw.length!==4||!/^\d{4}$/.test(nw)){toast('New PIN must be exactly 4 digits','err');return}
+  if(nw!==cnf){toast('PINs do not match','err');return}
+  localStorage.setItem('aops_admin_pin',nw);
+  ['admin-pin-current','admin-pin-new','admin-pin-confirm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  toast('Admin PIN updated ✓');
+}
+
+</script>
+
+<!-- ADMIN PIN OVERLAY -->
+<div class="overlay" id="admin-overlay">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-head">
+      <h3 style="color:#EF4444">⚙ Admin Access</h3>
+      <button onclick="closeAdminPin()">✕</button>
+    </div>
+    <div style="padding:24px;text-align:center">
+      <p style="font-size:11px;color:var(--c-muted);margin-bottom:20px">Enter the admin PIN to access Setup</p>
+      <div class="pin-dots" id="admin-dots" style="justify-content:center;margin-bottom:20px">
+        <div class="pin-dot" id="ad0"></div>
+        <div class="pin-dot" id="ad1"></div>
+        <div class="pin-dot" id="ad2"></div>
+        <div class="pin-dot" id="ad3"></div>
+      </div>
+      <div class="pin-pad" style="max-width:240px;margin:0 auto 12px">
+        <button class="pin-key" onclick="adminPinKey('1')">1</button>
+        <button class="pin-key" onclick="adminPinKey('2')">2</button>
+        <button class="pin-key" onclick="adminPinKey('3')">3</button>
+        <button class="pin-key" onclick="adminPinKey('4')">4</button>
+        <button class="pin-key" onclick="adminPinKey('5')">5</button>
+        <button class="pin-key" onclick="adminPinKey('6')">6</button>
+        <button class="pin-key" onclick="adminPinKey('7')">7</button>
+        <button class="pin-key" onclick="adminPinKey('8')">8</button>
+        <button class="pin-key" onclick="adminPinKey('9')">9</button>
+        <button class="pin-key pin-del" onclick="adminPinDel()">⌫</button>
+        <button class="pin-key pin-zero" onclick="adminPinKey('0')">0</button>
+      </div>
+      <div class="pin-error-msg" id="admin-pin-msg"></div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
