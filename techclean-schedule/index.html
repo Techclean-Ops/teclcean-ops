@@ -132,6 +132,7 @@ body{font-family:var(--font-mono);background:var(--c-bg);color:var(--c-text);fon
 
 /* panels */
 .panel{display:none;flex:1;overflow:hidden;padding:0;flex-direction:column;min-height:0}
+#panel-setup{overflow-y:auto!important}
 .panel.active{display:flex}
 .panel-inner{padding:16px 20px 0;flex-shrink:0}
 .panel-scroll{flex:1;overflow:auto;padding:0 20px 20px}
@@ -646,7 +647,7 @@ body.tv-mode #tv-bar { display:flex }
     </div>
 
     <!-- SETUP -->
-    <div class="panel" id="panel-setup">
+    <div class="panel" id="panel-setup" style="overflow-y:auto!important;padding:20px">
       <div class="setup-card">
         <h3>Google Sheets Connection</h3>
         <div class="gs-box">
@@ -1677,7 +1678,27 @@ async function doSync(silent=false){
       document.getElementById('sync-pill').className='pill live';
       document.getElementById('gs-status').textContent='⬤ Connected — last sync '+new Date().toLocaleTimeString('en-NZ');
       document.getElementById('gs-status').className='gs-status live';
-      if(data.jobs){S.jobs=data.jobs;save();const _n=new Date();S.year=_n.getFullYear();S.month=_n.getMonth();renderAll();}
+      if(data.jobs){
+        // Merge server jobs with local — server wins on core fields but preserve local-only fields
+        const localMap = {};
+        S.jobs.forEach(j=>{ if(j.id) localMap[j.id]=j; });
+        const merged = data.jobs.map(sj=>{
+          const local = localMap[sj.id] || {};
+          return Object.assign({}, local, sj,
+            // Preserve local-only fields that GAS doesn't store
+            {dayOverrides: local.dayOverrides||{},
+             project: sj.project||local.project||'',
+             client: sj.client||local.client||''}
+          );
+        });
+        // Also keep any local jobs not yet on server (just added, not synced yet)
+        const serverIds = new Set(data.jobs.map(j=>j.id));
+        S.jobs.filter(j=>j.id&&!serverIds.has(j.id)&&!j._del).forEach(j=>merged.push(j));
+        S.jobs = merged;
+        save();
+        const _n=new Date();S.year=_n.getFullYear();S.month=_n.getMonth();
+        renderAll();
+      }
       if(!silent)toast('Synced ✓');
     }else throw new Error(data.error||'Unknown');
   }catch(e){
