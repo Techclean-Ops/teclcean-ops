@@ -1183,19 +1183,30 @@ function initDashboard(){
   cleanUserJobs();
   // Background fetch — never calls nav(), never interrupts the user's current tab
   fetchScheduleFromSheets().then(function(){
-    cleanUserJobs();
-    updateDataStatus();
-    renderUnallocated();
-    // Re-render current visible page with fresh data
-    const activePage = document.querySelector('.page.active');
-    if(activePage && activePage.id !== 'page-dashboard'){
-      const pageId = activePage.id.replace('page-','');
-      const renders={schedule:renderSchedule,jobs:renderJobRegister,monthly:renderLabour,
-        staff:renderStaff,progress:renderProgress,quotes:renderQuotes};
-      if(renders[pageId]) renders[pageId]();
-    } else {
-      renderDashboard();
+    try {
+      cleanUserJobs();
+      updateDataStatus();
+      renderUnallocated();
+      // Re-render current visible page with fresh data
+      const activePage = document.querySelector('.page.active');
+      if(activePage && activePage.id !== 'page-dashboard'){
+        const pageId = activePage.id.replace('page-','');
+        const renders={schedule:renderSchedule,jobs:renderJobRegister,monthly:renderLabour,
+          staff:renderStaff,progress:renderProgress,quotes:renderQuotes};
+        if(renders[pageId]) renders[pageId]();
+      } else {
+        // Only re-render dashboard if it's currently visible
+        const dashPage = document.getElementById('page-dashboard');
+        if(dashPage && dashPage.classList.contains('active')){
+          renderDashboard();
+        }
+      }
+    } catch(e){
+      console.error('[fetchScheduleFromSheets] re-render error:', e);
+      showToast('Live data loaded but render failed: '+e.message,'err');
     }
+  }).catch(function(e){
+    console.warn('[fetchScheduleFromSheets] fetch error:', e);
   });
   updateDataStatus();
 }
