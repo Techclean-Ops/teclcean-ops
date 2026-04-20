@@ -1682,8 +1682,25 @@ async function doSync(silent=false){
         // Merge server jobs with local — server wins on core fields but preserve local-only fields
         const localMap = {};
         S.jobs.forEach(j=>{ if(j.id) localMap[j.id]=j; });
+        // Helper to normalise dates from GAS (may come as Date objects or weird strings)
+        function normDate(v){
+          if(!v) return '';
+          const s = String(v);
+          // Already YYYY-MM-DD
+          if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+          // Try parsing as date and reformat
+          const d = new Date(s);
+          if(!isNaN(d)){
+            const y=d.getFullYear(), mo=String(d.getMonth()+1).padStart(2,'0'), dy=String(d.getDate()).padStart(2,'0');
+            return y+'-'+mo+'-'+dy;
+          }
+          return '';
+        }
         const merged = data.jobs.map(sj=>{
           const local = localMap[sj.id] || {};
+          // Normalise dates from server
+          sj.start = normDate(sj.start);
+          sj.finish = normDate(sj.finish);
           return Object.assign({}, local, sj,
             // Preserve local-only fields that GAS doesn't store
             {dayOverrides: local.dayOverrides||{},
