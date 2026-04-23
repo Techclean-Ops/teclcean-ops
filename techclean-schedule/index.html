@@ -495,6 +495,15 @@ body.tv-mode #tv-bar { display:flex }
   cursor:pointer; font-family:inherit; transition:.15s;
 }
 #tv-bar .tv-branch-btn.active { color:var(--c-white); border-color:var(--c-white); background:rgba(255,255,255,.1) }
+
+.chk-all{color:var(--c-on);font-weight:600}
+.chk-part{color:var(--c-warn)}
+.chk-none{color:var(--c-muted)}
+
+.tr-proj-header td { background: rgba(163,230,53,.05); }
+.tr-proj-header:hover td { background: rgba(163,230,53,.10); }
+.tr-proj-child td.td-sticky { background: rgba(163,230,53,.03); }
+.tr-proj-child td { opacity: 0.92; }
 </style>
 </head>
 <body>
@@ -793,6 +802,33 @@ body.tv-mode #tv-bar { display:flex }
         </div>
       </div>
     </div>
+      <div class="field full">
+        <label>Schedule Pattern <span style="font-weight:400;color:var(--c-muted)">(for part-time or intermittent work)</span></label>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:400;cursor:pointer"><input type="radio" name="sched-pattern" id="sp-full" value="full" checked style="accent-color:var(--c-akl)"> Full days</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:400;cursor:pointer"><input type="radio" name="sched-pattern" id="sp-alt" value="alt" style="accent-color:var(--c-akl)"> Every other day</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;font-weight:400;cursor:pointer"><input type="radio" name="sched-pattern" id="sp-custom" value="custom" style="accent-color:var(--c-akl)"> Custom (n on / m off)</label>
+        </div>
+        <div id="sched-custom-row" style="display:none;margin-top:8px;display:none;gap:8px;align-items:center;font-size:12px">
+          <span style="color:var(--c-muted)">Work</span>
+          <input type="number" id="sp-on" min="1" max="14" value="1" style="width:52px;padding:4px 6px;background:var(--c-bg);border:1px solid var(--c-border-lt);border-radius:4px;color:var(--c-text);font-size:12px">
+          <span style="color:var(--c-muted)">day(s), then off</span>
+          <input type="number" id="sp-off" min="1" max="14" value="1" style="width:52px;padding:4px 6px;background:var(--c-bg);border:1px solid var(--c-border-lt);border-radius:4px;color:var(--c-text);font-size:12px">
+          <span style="color:var(--c-muted)">day(s)</span>
+        </div>
+      </div>
+      <div class="field full">
+        <label>Job Checklist</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;margin-top:4px">
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;cursor:pointer"><input type="checkbox" id="chk_quote" style="width:14px;height:14px;accent-color:var(--c-akl)"> Quote Number</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;cursor:pointer"><input type="checkbox" id="chk_folder" style="width:14px;height:14px;accent-color:var(--c-akl)"> Job Folder Number</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;cursor:pointer"><input type="checkbox" id="chk_arcp" style="width:14px;height:14px;accent-color:var(--c-akl)"> ARCP Completed</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;cursor:pointer"><input type="checkbox" id="chk_notified" style="width:14px;height:14px;accent-color:var(--c-akl)"> Notified</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;cursor:pointer"><input type="checkbox" id="chk_waste" style="width:14px;height:14px;accent-color:var(--c-akl)"> Waste</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;cursor:pointer"><input type="checkbox" id="chk_siteapp" style="width:14px;height:14px;accent-color:var(--c-akl)"> Site App Pro Setup</label>
+          <label style="display:flex;align-items:center;gap:6px;font-size:12px;font-weight:400;cursor:pointer"><input type="checkbox" id="chk_clearance" style="width:14px;height:14px;accent-color:var(--c-akl)"> Clearance</label>
+        </div>
+      </div>
     <div class="modal-foot">
       <div class="left"><button class="btn btn-danger btn-sm" id="del-btn" onclick="delJob()" style="display:none">Delete</button></div>
       <button class="btn btn-ghost btn-sm" onclick="closeForm()">Cancel</button>
@@ -961,14 +997,38 @@ function jobActiveOnDay(job, dateStr) {
   }
   // Holidays: only if explicitly overridden above
   if (isHol(dateStr)) return false;
-  // Sat/Sun: only if explicitly overridden above (no global toggle)
+  // Sat/Sun: only if explicitly overridden above
   if (isSat(dateStr)) return false;
   if (isSun(dateStr)) return false;
-  // Weekday: check within date range
+  // Check within date range
   const start = toD(job.start), finish = toD(job.finish);
   if (!start || !finish) return false;
   const dt = toD(dateStr);
-  return dt >= start && dt <= finish;
+  if (dt < start || dt > finish) return false;
+  // Apply schedule pattern
+  const sp = job.schedPattern || {type:'full'};
+  if (sp.type === 'full') return true;
+  // Count weekdays from job start to determine pattern position
+  const startDate = new Date(job.start + 'T00:00:00');
+  const thisDate = new Date(dateStr + 'T00:00:00');
+  let weekdayIndex = 0;
+  let cur = new Date(startDate);
+  while (cur < thisDate) {
+    const dow = cur.getDay();
+    if (dow !== 0 && dow !== 6 && !isHol(dsOf(cur))) weekdayIndex++;
+    cur.setDate(cur.getDate() + 1);
+  }
+  if (sp.type === 'alt') {
+    // Every other weekday: 0=on, 1=off, 2=on, ...
+    return weekdayIndex % 2 === 0;
+  }
+  if (sp.type === 'custom') {
+    const on = Math.max(1, sp.on || 1);
+    const off = Math.max(1, sp.off || 1);
+    const cycle = on + off;
+    return (weekdayIndex % cycle) < on;
+  }
+  return true;
 }
 
 function getStaffForDay(job, dateStr) {
@@ -1116,14 +1176,37 @@ function load(){
     if(d.staff) S.staff=d.staff;
     else { S.staff=JSON.parse(JSON.stringify(PRELOAD_STAFF)); }
     if(d.cfg) S.cfg=d.cfg;
+    if(d.branch){
+      S.branch=d.branch; // restore branch so Wellington/Christchurch don't reset to Auckland
+    } else if(d.jobs && d.jobs.length > 0){
+      // Infer branch from the majority of saved jobs (handles upgrade from v48)
+      const counts={Auckland:0,Wellington:0,Christchurch:0};
+      d.jobs.forEach(j=>{ if(counts[j.branch]!==undefined) counts[j.branch]++; });
+      const inferred=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0];
+      if(inferred && inferred[1]>0) S.branch=inferred[0];
+    }
     // gsUrl: hardcoded value is always used — ensures all devices get updates automatically
     // (individual override still possible via Setup tab, stored separately)
   }catch(e){
     S.jobs=JSON.parse(JSON.stringify(PRELOAD_JOBS));
     S.staff=JSON.parse(JSON.stringify(PRELOAD_STAFF));
   }
+  applyClientMap(); // restore client field that GAS doesn't store
 }
-function save(){localStorage.setItem('aops_v1',JSON.stringify({jobs:S.jobs,staff:S.staff,cfg:S.cfg}))}
+function save(){
+  // Save clientMap separately — client field is not stored in GAS sheet
+  // so we persist it in localStorage keyed by job ID to survive syncs
+  const clientMap={};
+  S.jobs.filter(j=>j.client).forEach(j=>{ clientMap[j.id]=j.client; });
+  localStorage.setItem('aops_clients',JSON.stringify(clientMap));
+  localStorage.setItem('aops_v1',JSON.stringify({jobs:S.jobs,staff:S.staff,cfg:S.cfg,branch:S.branch}));
+}
+function applyClientMap(){
+  try{
+    const cm=JSON.parse(localStorage.getItem('aops_clients')||'{}');
+    S.jobs.forEach(j=>{ if(cm[j.id] && !j.client) j.client=cm[j.id]; });
+  }catch(e){}
+}
 // gsUrl is hardcoded in S — never saved to localStorage so all devices always use latest
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1256,28 +1339,38 @@ function renderCal(){
   body+=days.map(d=>{const a=cap-allocMap[d];return`<td class="${a<0?'td-neg':''}">${a}</td>`}).join('');
   body+='</tr>';
 
-  // job rows — active jobs first, done jobs collapsed at bottom
+  // job rows — group by project, then active before done
   const _allSorted=[...bJobs].sort((a,b)=>(a.start||'').localeCompare(b.start||''));
   const _activeJobs=_allSorted.filter(j=>!j.done);
   const _doneJobs=_allSorted.filter(j=>j.done);
-  const sorted=[..._activeJobs,..._doneJobs];
+
+  // Build project groups for active jobs
+  // Jobs without project stay standalone; jobs with same project are grouped
+  const _projectGroups={}; // projectName -> [jobs]
+  const _standaloneJobs=[]; // jobs without project
+  for(const j of _activeJobs){
+    const p=j.project?j.project.trim():'';
+    if(p){
+      if(!_projectGroups[p]) _projectGroups[p]=[];
+      _projectGroups[p].push(j);
+    } else {
+      _standaloneJobs.push(j);
+    }
+  }
 
   let _jobColorIdx=0;
   let _doneToggleAdded=false;
 
-  for(const j of sorted){
-    // Insert toggle row before first done job
-    if(j.done && !_doneToggleAdded){
-      _doneToggleAdded=true;
-      body+=`<tr id="done-toggle-row"><td class="td-sticky" colspan="999" onclick="toggleDoneJobs()" style="cursor:pointer;padding:6px 12px;background:rgba(255,255,255,.03);color:var(--c-muted);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;border-top:1px solid var(--c-border)">
-        <span id="done-toggle-icon">▶</span>&nbsp; ${_doneJobs.length} completed job${_doneJobs.length!==1?'s':''} — click to show</td></tr>`;
-    }
+  // Helper to render the sticky <td> for a job row
+  function renderJobRow(j, isGrouped){
     const _jcol = j.done ? '' : (_jobColorIdx%2===0?'a':'b');
     if(!j.done) _jobColorIdx++;
-    body+=`<tr class="${j.done?'row-done tr-done-job':''}" data-id="${j.id}" data-jcol="${_jcol}" ${j.done?'style="display:none"':''}>`;
-    body+=`<td class="td-sticky">
-      <div class="job-cell" onclick="editJob('${j.id}')" style="cursor:pointer;border-left:3px solid ${_jcol==='a'?'rgba(59,130,246,.5)':_jcol==='b'?'rgba(249,115,22,.5)':'transparent'};padding-left:6px">
-        <div class="jc-no">${j.jobno||'—'}${j.project?` <span style="font-size:9px;color:var(--c-lime);opacity:.8">◆ ${j.project}</span>`:''}</div>
+    const sp=j.schedPattern;
+    const spLabel=sp&&sp.type==='alt'?'<span style="font-size:9px;color:var(--c-orange);margin-left:4px">⚡alt</span>':
+                  sp&&sp.type==='custom'?`<span style="font-size:9px;color:var(--c-orange);margin-left:4px">⚡${sp.on}on/${sp.off}off</span>`:'';
+    return {jcol:_jcol, td:`<td class="td-sticky">
+      <div class="job-cell" onclick="editJob('${j.id}')" style="cursor:pointer;border-left:3px solid ${_jcol==='a'?'rgba(59,130,246,.5)':_jcol==='b'?'rgba(249,115,22,.5)':'transparent'};padding-left:${isGrouped?'14px':'6px'}">
+        <div class="jc-no">${j.jobno||'—'}${spLabel}</div>
         ${j.client?`<div style="font-size:10px;color:var(--c-text-dim);max-width:140px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-weight:500">${j.client}</div>`:''}
         <div class="jc-site">${j.site||'No site'}</div>
         ${j.val?`<div style="font-size:10px;color:var(--c-lime);font-weight:600;letter-spacing:.01em">$${Math.round(j.val).toLocaleString('en-NZ')}</div>`:''}
@@ -1285,55 +1378,136 @@ function renderCal(){
           <button class="done-btn ${j.done?'is-done':''}" onclick="event.stopPropagation();toggleDone('${j.id}')">${j.done?'✓ Done':'○ Done'}</button>
         </div>
       </div>
+    </td>`};
+  }
+
+  // Render project group header row
+  function renderProjectHeader(projName, projJobs){
+    const totalVal=projJobs.reduce((s,j)=>s+(Number(j.val)||0),0);
+    const minStart=projJobs.map(j=>j.start).filter(Boolean).sort()[0]||'';
+    const maxFinish=projJobs.map(j=>j.finish).filter(Boolean).sort().pop()||'';
+    const pid='proj-'+projName.replace(/[^a-z0-9]/gi,'_');
+    let row=`<tr class="tr-proj-header" data-proj="${pid}">`;
+    row+=`<td class="td-sticky" onclick="toggleProject('${pid}')" style="cursor:pointer;background:rgba(163,230,53,.08);border-left:3px solid var(--c-lime);padding-left:6px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <span id="${pid}-icon" style="color:var(--c-lime);font-size:11px;transition:transform .2s">▼</span>
+        <div>
+          <div style="font-size:11px;font-weight:700;color:var(--c-lime)">◆ ${projName}</div>
+          <div style="font-size:10px;color:var(--c-muted)">${projJobs.length} job${projJobs.length!==1?'s':''} · $${Math.round(totalVal).toLocaleString('en-NZ')} total</div>
+          ${minStart?`<div style="font-size:9px;color:var(--c-muted);margin-top:1px">${minStart} → ${maxFinish||'?'}</div>`:''}
+        </div>
+      </div>
     </td>`;
+    // For each day, show a merged bar if any job in this project is active
     for(const d of days){
-      let cls='td-date';
-      // Dim days that spill into next month
-      const cellMonth = new Date(d+'T00:00:00').getMonth();
-      if(cellMonth !== S.month) cls+=' td-next-month';
-      const jobOn=jobActiveOnDay(j,d);
-      const isHolDay=isHol(d);
-      const isSatDay=isSat(d);
-      const isSunDay=isSun(d);
-      if(isHolDay&&!jobOn)cls+=' td-hol';
-      else if(isHolDay&&jobOn)cls+=' td-hol-worked';
-      else if(isSatDay)cls+=' td-sat';
-      else if(isSunDay)cls+=' td-sun';
-      if(jobOn&&!j.done)cls+=' has-job-'+_jcol;
-      const dayNames=jobOn&&!j.done?getStaffForDay(j,d).split(',').map(s=>s.trim()).filter(s=>s):[];
-      const isOverride=j.dayOverrides&&j.dayOverrides[d]!==undefined&&j.dayOverrides[d]!=='__OFF__';
-      let cellContent='';
-      if(isHolDay&&!jobOn){
-        cellContent='<span class="hol-label">HOL</span>';
-      } else if(isHolDay&&jobOn){
-        cellContent='<span class="hol-worked-label">HOL✓</span>'+dayNames.map(n=>'<span class="name-chip name-chip-'+_jcol+' override">'+n+'</span>').join('');
-      } else if(dayNames.length){
-        cellContent=dayNames.map(n=>'<span class="name-chip name-chip-'+_jcol+(isOverride?' override':'')+'">'+n+'</span>').join('');
-      } else if(isSatDay&&!j.workSat&&!(j.dayOverrides&&j.dayOverrides[d])){
-        cellContent='<span class="sat-off-label">—</span>';
-      }
-      const inRange=j.start&&j.finish&&toD(d)>=toD(j.start)&&toD(d)<=toD(j.finish);
-      const clickable=!j.done&&inRange;
-      // Subtle "+" hint on empty clickable weekday cells so users know they can click
-      if(clickable&&!cellContent&&!isSatDay&&!isSunDay&&!isHolDay){
-        cellContent='<span class="day-add-hint">+</span>';
-      }
-      if(clickable)cls+=' clickable-day';
-      if(clickable){
-        body+='<td class="'+cls+'" onclick="openDayModal(\'' +j.id+ '\',\'' +d+ '\')" style="cursor:pointer">'+cellContent+'</td>';
-      } else {
-        body+='<td class="'+cls+'">'+cellContent+'</td>';
-      }
+      const anyActive=projJobs.some(j=>jobActiveOnDay(j,d));
+      const allDone=projJobs.every(j=>j.done);
+      const dt=new Date(d+'T00:00:00');
+      const isNextMonth=dt.getMonth()!==S.month;
+      let cls='td-date'+(isNextMonth?' td-next-month':'');
+      if(isHol(d))cls+=' td-hol';
+      else if(isSat(d))cls+=' td-sat';
+      else if(isSun(d))cls+=' td-sun';
+      row+=`<td class="${cls}" style="${anyActive&&!allDone?'background:rgba(163,230,53,.12);border-bottom:2px solid var(--c-lime);':''}">${anyActive&&!allDone?'<span style="font-size:9px;color:var(--c-lime);font-weight:700">●</span>':''}</td>`;
     }
+    row+='</tr>';
+    return row;
+  }
+
+  // Render standalone jobs first
+  for(const j of _standaloneJobs){
+    const {jcol, td}=renderJobRow(j, false);
+    body+=`<tr data-id="${j.id}" data-jcol="${jcol}">`;
+    body+=td;
+    body+=renderJobDayCells(j, days, jcol);
     body+='</tr>';
   }
 
-  if(!sorted.length){
+  // Render project groups
+  for(const [projName, projJobs] of Object.entries(_projectGroups)){
+    body += renderProjectHeader(projName, projJobs);
+    const pid='proj-'+projName.replace(/[^a-z0-9]/gi,'_');
+    for(const j of projJobs){
+      const {jcol, td}=renderJobRow(j, true);
+      body+=`<tr class="tr-proj-child" data-proj-child="${pid}" data-id="${j.id}" data-jcol="${jcol}">`;
+      body+=td;
+      body+=renderJobDayCells(j, days, jcol);
+      body+='</tr>';
+    }
+  }
+
+  // Done jobs toggle + rows
+  if(_doneJobs.length){
+    body+=`<tr id="done-toggle-row"><td class="td-sticky" colspan="999" onclick="toggleDoneJobs()" style="cursor:pointer;padding:6px 12px;background:rgba(255,255,255,.03);color:var(--c-muted);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;border-top:1px solid var(--c-border)">
+      <span id="done-toggle-icon">▶</span>&nbsp; ${_doneJobs.length} completed job${_doneJobs.length!==1?'s':''} — click to show</td></tr>`;
+    for(const j of _doneJobs){
+      const {jcol, td}=renderJobRow(j, false);
+      body+='<tr class="row-done tr-done-job" data-id="'+j.id+'" style="display:none">';
+      body+=td;
+      body+=renderJobDayCells(j, days, '');
+      body+='</tr>';
+    }
+  }
+
+  if(!_activeJobs.length && !_doneJobs.length){
     body+=`<tr><td colspan="${days.length+1}" style="text-align:center;padding:40px;color:var(--c-muted);font-size:12px">No jobs in ${br} — click <strong style="color:var(--c-lime)">＋ New Job</strong> to start</td></tr>`;
   }
 
   document.getElementById('cal-body').innerHTML=body;
   updateSidebar();
+}
+
+// Shared function: render per-day cells for any job row
+function renderJobDayCells(j, days, _jcol){
+  let cells='';
+  for(const d of days){
+    let cls='td-date';
+    const cellMonth=new Date(d+'T00:00:00').getMonth();
+    const _calMonth=S.month;
+    if(new Date(d+'T00:00:00').getMonth()!==_calMonth) cls+=' td-next-month';
+    const jobOn=jobActiveOnDay(j,d);
+    const isHolDay=isHol(d);
+    const isSatDay=isSat(d);
+    const isSunDay=isSun(d);
+    if(isHolDay&&!jobOn)cls+=' td-hol';
+    else if(isHolDay&&jobOn)cls+=' td-hol-worked';
+    else if(isSatDay)cls+=' td-sat';
+    else if(isSunDay)cls+=' td-sun';
+    if(jobOn&&!j.done)cls+=' has-job-'+_jcol;
+    const dayNames=jobOn&&!j.done?getStaffForDay(j,d).split(',').map(s=>s.trim()).filter(s=>s):[];
+    const isOverride=j.dayOverrides&&j.dayOverrides[d]!==undefined&&j.dayOverrides[d]!=='__OFF__';
+    let cellContent='';
+    if(isHolDay&&!jobOn){
+      cellContent='<span class="hol-label">HOL</span>';
+    } else if(isHolDay&&jobOn){
+      cellContent='<span class="hol-worked-label">HOL✓</span>'+dayNames.map(n=>'<span class="name-chip name-chip-'+_jcol+' override">'+n+'</span>').join('');
+    } else if(dayNames.length){
+      cellContent=dayNames.map(n=>'<span class="name-chip name-chip-'+_jcol+(isOverride?' override':'')+'">'+n+'</span>').join('');
+    } else if(isSatDay&&!j.workSat&&!(j.dayOverrides&&j.dayOverrides[d])){
+      cellContent='<span class="sat-off-label">—</span>';
+    }
+    const inRange=j.start&&j.finish&&toD(d)>=toD(j.start)&&toD(d)<=toD(j.finish);
+    const clickable=!j.done&&inRange;
+    if(clickable&&!cellContent&&!isSatDay&&!isSunDay&&!isHolDay){
+      cellContent='<span class="day-add-hint">+</span>';
+    }
+    if(clickable)cls+=' clickable-day';
+    if(clickable){
+      cells+='<td class="'+cls+'" onclick="openDayModal(\'' +j.id+ '\',\'' +d+ '\')" style="cursor:pointer">'+cellContent+'</td>';
+    } else {
+      cells+='<td class="'+cls+'">'+cellContent+'</td>';
+    }
+  }
+  return cells;
+}
+
+// Toggle project group expand/collapse
+function toggleProject(pid){
+  const rows=document.querySelectorAll('[data-proj-child="'+pid+'"]');
+  const icon=document.getElementById(pid+'-icon');
+  const isOpen=icon&&icon.textContent==='▼';
+  rows.forEach(r=>r.style.display=isOpen?'none':'');
+  if(icon) icon.textContent=isOpen?'▶':'▼';
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1388,6 +1562,10 @@ function renderOpt(){
       else if(lp<pmin/100){status='UNDER ▼';scls='pill-under';nUn++;lcls='lp-under'}
       else{status='ON TARGET ✓';scls='pill-on';nOn++;lcls='lp-on'}
       if(!j.done){tV+=v;tW+=w;tS+=sched;tI+=ideal}
+      const chk=j.checklist||{};
+      const chkDone=['quote','folder','arcp','notified','waste','siteapp','clearance'].filter(k=>chk[k]).length;
+      const chkTotal=7;
+      const chkCls=chkDone===chkTotal?'chk-all':chkDone===0?'chk-none':'chk-part';
       rows+=`<tr class="${j.done?'opt-done':''}" onclick="editJob('${j.id}')">
         <td>${j.jobno||'—'}</td>
         <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${j.site||'—'}</td>
@@ -1400,6 +1578,7 @@ function renderOpt(){
         <td class="r ${lcls}">${fmtPct(lp)}</td>
         <td><span class="pill ${scls}">${status}</span></td>
         <td>${j.jclass||'—'}</td>
+        <td title="${['quote','folder','arcp','notified','waste','siteapp','clearance'].map((k,i)=>(chk[k]?'✓ ':'✗ ')+['Q#','Folder','ARCP','Notif','Waste','SAP','Clear'][i]).join('  ')}"><span class="${chkCls}">${chkDone}/${chkTotal}</span></td>
       </tr>`;
     }
     const totLp=tS&&tV?tS*rate/tV:null;
@@ -1411,7 +1590,7 @@ function renderOpt(){
       <td class="r">${fmtN(tS,0)}</td>
       <td class="r">${fmtN(tI,0)}</td>
       <td class="r">${fmtPct(totLp)}</td>
-      <td colspan="2" style="color:var(--c-muted)">✓${nOn} ▲${nOv} ▼${nUn} —${nNo}</td>
+      <td colspan="3" style="color:var(--c-muted)">✓${nOn} ▲${nOv} ▼${nUn} —${nNo}</td>
     </tr>`;
     tables+=`<div class="opt-section">
       <div class="opt-sect-head">
@@ -1424,7 +1603,7 @@ function renderOpt(){
           <th class="r">Value</th><th class="r">WFM Hrs</th>
           <th class="r">Staff</th><th class="r">Days</th>
           <th class="r">Sched Hrs</th><th class="r">Ideal Hrs</th>
-          <th class="r">Labour %</th><th>Status</th><th>Class</th>
+          <th class="r">Labour %</th><th>Status</th><th>Class</th><th title="Checklist progress">✓</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -1491,6 +1670,10 @@ function openForm(br){
   document.getElementById('modal-title').textContent='New Job';
   document.getElementById('f-id').value='';
   ['f-jobno','f-site','f-client','f-val','f-wfm','f-staff','f-dur','f-start','f-finish','f-res','f-project'].forEach(id=>document.getElementById(id).value='');
+  ['chk_quote','chk_folder','chk_arcp','chk_notified','chk_waste','chk_siteapp','chk_clearance'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
+  // Reset schedule pattern to full days
+  const spFull=document.getElementById('sp-full');if(spFull)spFull.checked=true;
+  const crr=document.getElementById('sched-custom-row');if(crr)crr.style.display='none';
   document.getElementById('f-class').value='A';
   document.getElementById('f-branch').value=br||S.branch;
   document.getElementById('del-btn').style.display='none';
@@ -1516,12 +1699,37 @@ function editJob(id){
   document.getElementById('f-finish').value=j.finish||'';
   document.getElementById('f-res').value=j.resource||'';
   document.getElementById('f-project').value=j.project||'';
+  // Load schedule pattern
+  const sp = j.schedPattern || {type:'full'};
+  ['sp-full','sp-alt','sp-custom'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.checked = (el.value===sp.type);
+  });
+  const cr=document.getElementById('sched-custom-row');
+  if(cr) cr.style.display = sp.type==='custom'?'flex':'none';
+  if(sp.type==='custom'){
+    const onEl=document.getElementById('sp-on'); if(onEl) onEl.value=sp.on||1;
+    const offEl=document.getElementById('sp-off'); if(offEl) offEl.value=sp.off||1;
+  }
+  // Load checklist state
+  ['quote','folder','arcp','notified','waste','siteapp','clearance'].forEach(k=>{
+    const el=document.getElementById('chk_'+k);
+    if(el) el.checked=!!(j.checklist&&j.checklist[k]);
+  });
   document.getElementById('del-btn').style.display='inline-flex';
   updateSuggestions();
   document.getElementById('overlay').classList.add('open');
 }
 
 function closeForm(){document.getElementById('overlay').classList.remove('open')}
+
+// Toggle custom schedule row visibility
+document.addEventListener('change', function(e){
+  if(e.target.name==='sched-pattern'){
+    const cr = document.getElementById('sched-custom-row');
+    if(cr) cr.style.display = e.target.value==='custom' ? 'flex' : 'none';
+  }
+});
 
 function saveJob(){
   const id=document.getElementById('f-id').value;
@@ -1540,6 +1748,21 @@ function saveJob(){
     finish:document.getElementById('f-finish').value,
     resource:document.getElementById('f-res').value.trim(),
     project:document.getElementById('f-project').value.trim(),
+    schedPattern:(()=>{
+      const v=document.querySelector('input[name="sched-pattern"]:checked');
+      const val=v?v.value:'full';
+      if(val==='custom') return {type:'custom',on:parseInt(document.getElementById('sp-on').value)||1,off:parseInt(document.getElementById('sp-off').value)||1};
+      return {type:val};
+    })(),
+    checklist:{
+      quote:document.getElementById('chk_quote').checked,
+      folder:document.getElementById('chk_folder').checked,
+      arcp:document.getElementById('chk_arcp').checked,
+      notified:document.getElementById('chk_notified').checked,
+      waste:document.getElementById('chk_waste').checked,
+      siteapp:document.getElementById('chk_siteapp').checked,
+      clearance:document.getElementById('chk_clearance').checked,
+    },
     workSat:S.workSat,workSun:S.workSun,
     done:id?(S.jobs.find(j=>j.id===id)||{}).done:false,
     ts:new Date().toISOString(),
@@ -1606,6 +1829,7 @@ function selectProject(name){
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function setBranch(br){
   S.branch=br;
+  save(); // persist branch immediately so refresh doesn't reset it
   ['Auckland','Wellington','Christchurch'].forEach(b=>{
     document.getElementById('snav-'+b).classList.toggle('active',b===br);
   });
@@ -1736,6 +1960,7 @@ async function doSync(silent=false){
         const serverIds = new Set(data.jobs.map(j=>j.id));
         S.jobs.filter(j=>j.id&&!serverIds.has(j.id)&&!j._del).forEach(j=>merged.push(j));
         S.jobs = merged;
+        applyClientMap(); // restore client field lost in GAS round-trip
         // Merge staff from server — union of all branches across all devices
         if(data.staff){
           ['Auckland','Wellington','Christchurch'].forEach(function(br){
@@ -1857,6 +2082,11 @@ document.addEventListener('keydown',e=>{
 // ── APP INIT (called after PIN auth) ─────────────────────────────
 function appInit() {
   load();
+  // Restore branch nav highlight after load (branch now persisted)
+  ['Auckland','Wellington','Christchurch'].forEach(b=>{
+    const el=document.getElementById('snav-'+b);
+    if(el) el.classList.toggle('active',b===S.branch);
+  });
   // Always start on today's date — call after load() to ensure localStorage can't override it
   const _boot=new Date(); S.year=_boot.getFullYear(); S.month=_boot.getMonth();
   goToday();
