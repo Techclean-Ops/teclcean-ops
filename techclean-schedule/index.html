@@ -1186,7 +1186,7 @@ let S = {
   jobs: [],
   staff: JSON.parse(JSON.stringify(PRELOAD_STAFF)),
   cfg: {rate:50,pmin:30,pmax:35,hpd:8},
-  gsUrl: 'https://script.google.com/macros/s/AKfycbyZDkUr71_xx6KZjTnVy0XQOYjLoVvv_rEK1WezLyQs1i1eO4ycBVNuj-zkzjplaVtyEA/exec',
+  gsUrl: 'https://script.google.com/macros/s/AKfycbzohjpVowKufjHj30VTtJMXRCc-lDrXBTM4ou4NKSTaKz6TBYDfxURU0FK0C4Cu-qkz3g/exec',
   branch: 'Auckland',
   year: new Date().getFullYear(),
   month: new Date().getMonth(),
@@ -2138,7 +2138,8 @@ function handleSync(data) {
   log.appendRow([new Date(), 'Sync', (data.jobs||[]).length + ' jobs', data.ts]);
   
   // Return all current jobs so app stays in sync with sheet data
-  return json({ok: true, jobs: data.jobs, synced: new Date().toISOString()});
+  // Read ALL jobs back from ALL branch sheets so every device gets the full picture
+  return handleGetJobs();
 }
 
 function doGet(e) { return doPost(e); }
