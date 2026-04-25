@@ -2072,14 +2072,32 @@ async function doSync(silent=false){
           // Normalise dates from server
           sj.start = normDate(sj.start);
           sj.finish = normDate(sj.finish);
-          return Object.assign({}, local, sj,
-            // Preserve local-only fields that GAS doesn't store
-            {dayOverrides: sj.dayOverrides&&Object.keys(sj.dayOverrides).length ? sj.dayOverrides : (local.dayOverrides||{}),
-             project: sj.project||local.project||'',
-             client: sj.client||local.client||'',
-             schedPattern: sj.schedPattern&&sj.schedPattern.type ? sj.schedPattern : (local.schedPattern||{type:'full'}),
-             checklist: sj.checklist&&Object.keys(sj.checklist).length ? sj.checklist : (local.checklist||{})}
-          );
+          // Server is source of truth for ALL fields
+          // Local only fills gaps where server has no data
+          return {
+            id:          sj.id||local.id,
+            jobno:       sj.jobno||local.jobno||'',
+            jclass:      sj.jclass||local.jclass||'',
+            site:        sj.site||local.site||'',
+            client:      sj.client||local.client||'',
+            val:         sj.val!=null ? sj.val : (local.val||0),
+            wfm:         sj.wfm!=null ? sj.wfm : (local.wfm||0),
+            staff:       sj.staff!=null ? sj.staff : (local.staff||0),
+            dur:         sj.dur!=null ? sj.dur : (local.dur||0),
+            start:       sj.start||local.start||'',
+            finish:      sj.finish||local.finish||'',
+            resource:    sj.resource!=null ? sj.resource : (local.resource||''),
+            workSat:     sj.workSat!=null ? sj.workSat : (local.workSat||false),
+            workSun:     sj.workSun!=null ? sj.workSun : (local.workSun||false),
+            done:        sj.done!=null ? sj.done : (local.done||false),
+            branch:      sj.branch||local.branch||'',
+            project:     sj.project||local.project||'',
+            ts:          sj.ts||local.ts||'',
+            // These come from server if GAS v4 is deployed, fallback to local
+            dayOverrides: sj.dayOverrides&&Object.keys(sj.dayOverrides).length ? sj.dayOverrides : (local.dayOverrides||{}),
+            schedPattern: sj.schedPattern&&sj.schedPattern.type ? sj.schedPattern : (local.schedPattern||{type:'full'}),
+            checklist:    sj.checklist&&Object.keys(sj.checklist).length ? sj.checklist : (local.checklist||{}),
+          };
         });
         // Also keep any local jobs not yet on server (just added, not synced yet)
         const serverIds = new Set(data.jobs.map(j=>j.id));
