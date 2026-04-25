@@ -1366,7 +1366,12 @@ function renderCal(){
   body+='</tr>';
 
   // job rows — group by project, then active before done
-  const _allSorted=[...bJobs].sort((a,b)=>(a.start||'').localeCompare(b.start||''));
+  const _allSorted=[...bJobs].sort((a,b)=>{
+    // Sort by job number (J01XXXX sequential), fallback to start date
+    const an=a.jobno||'',bn=b.jobno||'';
+    if(an&&bn) return an.localeCompare(bn,undefined,{numeric:true});
+    return (a.start||'').localeCompare(b.start||'');
+  });
   const _activeJobs=_allSorted.filter(j=>!j.done);
   const _doneJobs=_allSorted.filter(j=>j.done);
 
