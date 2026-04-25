@@ -1385,21 +1385,22 @@ function renderCal(){
   }
 
   let _jobColorIdx=0;
-  let _doneToggleAdded=false;
 
   // Helper to render the sticky <td> for a job row
   function renderJobRow(j, isGrouped){
     const _jcol = j.done ? '' : (_jobColorIdx%2===0?'a':'b');
     if(!j.done) _jobColorIdx++;
     const sp=j.schedPattern;
-    const spLabel=sp&&sp.type==='alt'?`<span style="font-size:9px;color:var(--c-orange);margin-left:4px">⚡alt ${sp.hpd||'?'}h</span>`:
-                  sp&&sp.type==='split'&&sp.ranges&&sp.ranges.length?`<span style="font-size:9px;color:var(--c-orange);margin-left:4px">⚡${sp.ranges.length} range${sp.ranges.length!==1?'s':''}</span>`:'';
+    const spLabel=sp&&sp.type==='alt'?`<span style="font-size:9px;color:#FCD34D;margin-left:4px">⚡alt ${sp.hpd||'?'}h</span>`:
+                  sp&&sp.type==='split'&&sp.ranges&&sp.ranges.length?`<span style="font-size:9px;color:#FCD34D;margin-left:4px">⚡${sp.ranges.length} range${sp.ranges.length!==1?'s':''}</span>`:'';
+    // Brighter colours for better readability
+    const borderCol = _jcol==='a'?'rgba(147,197,253,.7)':_jcol==='b'?'rgba(253,186,116,.7)':'transparent';
     return {jcol:_jcol, td:`<td class="td-sticky">
-      <div class="job-cell" onclick="editJob('${j.id}')" style="cursor:pointer;border-left:3px solid ${_jcol==='a'?'rgba(59,130,246,.5)':_jcol==='b'?'rgba(249,115,22,.5)':'transparent'};padding-left:${isGrouped?'14px':'6px'}">
-        <div class="jc-no">${j.jobno||'—'}${spLabel}</div>
-        ${j.client?`<div style="font-size:10px;color:var(--c-text-dim);max-width:140px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-weight:500">${j.client}</div>`:''}
-        <div class="jc-site">${j.site||'No site'}</div>
-        ${j.val?`<div style="font-size:10px;color:var(--c-lime);font-weight:600;letter-spacing:.01em">$${Math.round(j.val).toLocaleString('en-NZ')}</div>`:''}
+      <div class="job-cell" onclick="editJob('${j.id}')" style="cursor:pointer;border-left:3px solid ${borderCol};padding-left:${isGrouped?'14px':'6px'}">
+        <div class="jc-no" style="color:#FFFFFF;font-weight:600">${j.jobno||'—'}${spLabel}</div>
+        ${j.client?`<div style="font-size:10px;color:#D1D5DB;max-width:140px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-weight:500">${j.client}</div>`:''}
+        <div class="jc-site" style="color:#9CA3AF">${j.site||'No site'}</div>
+        ${j.val?`<div style="font-size:10px;color:#BEF264;font-weight:600;letter-spacing:.01em">$${Math.round(j.val).toLocaleString('en-NZ')}</div>`:''}
         <div class="jc-actions">
           <button class="done-btn ${j.done?'is-done':''}" onclick="event.stopPropagation();toggleDone('${j.id}')">${j.done?'✓ Done':'○ Done'}</button>
         </div>
@@ -1414,17 +1415,16 @@ function renderCal(){
     const maxFinish=projJobs.map(j=>j.finish).filter(Boolean).sort().pop()||'';
     const pid='proj-'+projName.replace(/[^a-z0-9]/gi,'_');
     let row=`<tr class="tr-proj-header" data-proj="${pid}">`;
-    row+=`<td class="td-sticky" onclick="toggleProject('${pid}')" style="cursor:pointer;background:rgba(163,230,53,.08);border-left:3px solid var(--c-lime);padding-left:6px">
+    row+=`<td class="td-sticky" onclick="toggleProject('${pid}')" style="cursor:pointer;background:rgba(163,230,53,.10);border-left:3px solid var(--c-lime);padding-left:6px">
       <div style="display:flex;align-items:center;gap:6px">
-        <span id="${pid}-icon" style="color:var(--c-lime);font-size:11px;transition:transform .2s">▼</span>
+        <span id="${pid}-icon" style="color:#BEF264;font-size:11px">▼</span>
         <div>
-          <div style="font-size:11px;font-weight:700;color:var(--c-lime)">◆ ${projName}</div>
-          <div style="font-size:10px;color:var(--c-muted)">${projJobs.length} job${projJobs.length!==1?'s':''} · $${Math.round(totalVal).toLocaleString('en-NZ')} total</div>
-          ${minStart?`<div style="font-size:9px;color:var(--c-muted);margin-top:1px">${minStart} → ${maxFinish||'?'}</div>`:''}
+          <div style="font-size:11px;font-weight:700;color:#BEF264">◆ ${projName}</div>
+          <div style="font-size:10px;color:#9CA3AF">${projJobs.length} job${projJobs.length!==1?'s':''} · $${Math.round(totalVal).toLocaleString('en-NZ')} total</div>
+          ${minStart?`<div style="font-size:9px;color:#6B7280;margin-top:1px">${minStart} → ${maxFinish||'?'}</div>`:''}
         </div>
       </div>
     </td>`;
-    // For each day, show a merged bar if any job in this project is active
     for(const d of days){
       const anyActive=projJobs.some(j=>jobActiveOnDay(j,d));
       const allDone=projJobs.every(j=>j.done);
@@ -1434,32 +1434,39 @@ function renderCal(){
       if(isHol(d))cls+=' td-hol';
       else if(isSat(d))cls+=' td-sat';
       else if(isSun(d))cls+=' td-sun';
-      row+=`<td class="${cls}" style="${anyActive&&!allDone?'background:rgba(163,230,53,.12);border-bottom:2px solid var(--c-lime);':''}">${anyActive&&!allDone?'<span style="font-size:9px;color:var(--c-lime);font-weight:700">●</span>':''}</td>`;
+      row+=`<td class="${cls}" style="${anyActive&&!allDone?'background:rgba(163,230,53,.15);border-bottom:2px solid #BEF264;':''}">${anyActive&&!allDone?'<span style="font-size:9px;color:#BEF264;font-weight:700">●</span>':''}</td>`;
     }
     row+='</tr>';
     return row;
   }
 
-  // Render standalone jobs first
-  for(const j of _standaloneJobs){
-    const {jcol, td}=renderJobRow(j, false);
-    body+=`<tr data-id="${j.id}" data-jcol="${jcol}">`;
-    body+=td;
-    body+=renderJobDayCells(j, days, jcol);
-    body+='</tr>';
-  }
-
-  // Render project groups
-  for(const [projName, projJobs] of Object.entries(_projectGroups)){
-    body += renderProjectHeader(projName, projJobs);
-    const pid='proj-'+projName.replace(/[^a-z0-9]/gi,'_');
-    for(const j of projJobs){
-      const {jcol, td}=renderJobRow(j, true);
-      body+=`<tr class="tr-proj-child" data-proj-child="${pid}" data-id="${j.id}" data-jcol="${jcol}">`;
+  // Build ordered render list — interleave standalone and project groups in job number order
+  // Project group appears at the position of its first (lowest) job number
+  const _rendered = new Set(); // track which projects have had their header rendered
+  for(const j of _activeJobs){
+    const p = j.project ? j.project.trim() : '';
+    if(p && !_rendered.has(p)){
+      // First time we hit this project — render the group header + all its jobs
+      _rendered.add(p);
+      const projJobs = _projectGroups[p];
+      body += renderProjectHeader(p, projJobs);
+      const pid = 'proj-'+p.replace(/[^a-z0-9]/gi,'_');
+      for(const pj of projJobs){
+        const {jcol, td}=renderJobRow(pj, true);
+        body+=`<tr class="tr-proj-child" data-proj-child="${pid}" data-id="${pj.id}" data-jcol="${jcol}">`;
+        body+=td;
+        body+=renderJobDayCells(pj, days, jcol);
+        body+='</tr>';
+      }
+    } else if(!p){
+      // Standalone job — render in place
+      const {jcol, td}=renderJobRow(j, false);
+      body+=`<tr data-id="${j.id}" data-jcol="${jcol}">`;
       body+=td;
       body+=renderJobDayCells(j, days, jcol);
       body+='</tr>';
     }
+    // If p is set but already rendered — skip (already done above)
   }
 
   // Done jobs toggle + rows
@@ -2042,11 +2049,11 @@ async function doSync(silent=false){
           sj.finish = normDate(sj.finish);
           return Object.assign({}, local, sj,
             // Preserve local-only fields that GAS doesn't store
-            {dayOverrides: local.dayOverrides||{},
+            {dayOverrides: sj.dayOverrides&&Object.keys(sj.dayOverrides).length ? sj.dayOverrides : (local.dayOverrides||{}),
              project: sj.project||local.project||'',
              client: sj.client||local.client||'',
-             schedPattern: local.schedPattern||sj.schedPattern||{type:'full'},
-             checklist: local.checklist||sj.checklist||{}}
+             schedPattern: sj.schedPattern&&sj.schedPattern.type ? sj.schedPattern : (local.schedPattern||{type:'full'}),
+             checklist: sj.checklist&&Object.keys(sj.checklist).length ? sj.checklist : (local.checklist||{})}
           );
         });
         // Also keep any local jobs not yet on server (just added, not synced yet)
@@ -2079,76 +2086,197 @@ async function doSync(silent=false){
 function autoSync(){if(window.location.protocol!=='file:') setTimeout(()=>doSync(true),500)}
 
 function copyScript(){
-  const s=`// ═══════════════════════════════════════════════════════
-// AsbestosOps — Google Apps Script Backend
-// Deploy: Extensions > Apps Script > New script
-// Paste this, save, then: Deploy > New Deployment > Web App
-// Execute as: Me | Access: Anyone with Google Account
-// Copy the Web App URL into the app's Setup tab
-// ═══════════════════════════════════════════════════════
-
-const SHEET_ID = 'PASTE_YOUR_GOOGLE_SHEET_ID_HERE';
-// Find Sheet ID in the URL: docs.google.com/spreadsheets/d/[THIS_PART]/edit
+    const s=`const SHEET_ID = '1UOabcy7JwNISvqWqFVVWWfEVHfUOogYqVMRZa8ngBIc';
 
 function doPost(e) {
   try {
     const data = JSON.parse(e.postData.contents);
     if (data.action === 'sync') return handleSync(data);
     throw new Error('Unknown action');
-  } catch(err) {
-    return json({ok:false, error:err.message});
+  } catch(err) { return json({ok:false, error:err.message}); }
+}
+
+function doGet(e) {
+  if (e.parameter.action === 'getJobs') return handleGetJobs();
+  return json({ok:false, error:'Unknown action'});
+}
+
+function fmtDate(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, Session.getScriptTimeZone(), 'yyyy-MM-dd');
   }
+  const s = String(val).trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s);
+  if (!isNaN(d)) return Utilities.formatDate(d, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  return '';
 }
 
 function handleSync(data) {
   const ss = SpreadsheetApp.openById(SHEET_ID);
-  
-  // Write jobs per branch
+  const headers = [
+    'ID','Job No','Class','Site','Value','WFM Hrs','Staff','Duration',
+    'Start','Finish','Resources','Work Sat','Work Sun','Done','Deleted',
+    'Project','Client','Checklist','SchedPattern','DayOverrides','Timestamp'
+  ];
+  const incomingJobs = data.jobs || [];
+
   for (const branch of ['Auckland','Wellington','Christchurch']) {
     let sheet = ss.getSheetByName(branch);
     if (!sheet) sheet = ss.insertSheet(branch);
-    sheet.clearContents();
-    
-    const headers = ['ID','Job No','Class','Site','Value','WFM Hrs','Staff',
-                     'Duration','Start','Finish','Resources','Work Sat',
-                     'Work Sun','Done','Timestamp'];
-    sheet.getRange(1,1,1,headers.length).setValues([headers])
-         .setFontWeight('bold').setBackground('#1A3C5E').setFontColor('#FFFFFF');
-    
-    const rows = (data.jobs||[])
-      .filter(j => j.branch === branch)
-      .map(j => [j.id, j.jobno, j.jclass, j.site, j.val||0, j.wfm||0,
-                 j.staff||0, j.dur||0, j.start||'', j.finish||'',
-                 j.resource||'', j.workSat?'Y':'', j.workSun?'Y':'',
-                 j.done?'Y':'', j.ts||'']);
-    
-    if (rows.length) {
-      sheet.getRange(2,1,rows.length,headers.length).setValues(rows);
-      // Alternating row colours
-      rows.forEach((_, i) => {
-        if (i % 2 === 0)
-          sheet.getRange(i+2, 1, 1, headers.length).setBackground('#F8F9FA');
-      });
+
+    // Read existing rows keyed by ID
+    const existing = {};
+    const sheetData = sheet.getDataRange().getValues();
+    for (let i = 1; i < sheetData.length; i++) {
+      const row = sheetData[i];
+      const id = String(row[0]||'').trim();
+      if (id) existing[id] = row;
     }
+
+    // Merge incoming jobs for this branch
+    const incoming = incomingJobs.filter(j => j.branch === branch);
+    for (const j of incoming) {
+      const id = String(j.id||j.jobno||'').trim();
+      if (!id) continue;
+      existing[id] = [
+        id,
+        j.jobno||'',
+        j.jclass||'',
+        j.site||'',
+        j.val||0,
+        j.wfm||0,
+        j.staff||0,
+        j.dur||0,
+        j.start||'',
+        j.finish||'',
+        j.resource||'',
+        j.workSat?'Y':'',
+        j.workSun?'Y':'',
+        j.done?'Y':'',
+        j._del?'Y':'',                              // deletion flag
+        j.project||'',                              // project grouping
+        j.client||'',                               // client name
+        JSON.stringify(j.checklist||{}),            // checklist state
+        JSON.stringify(j.schedPattern||{type:'full'}), // schedule pattern
+        JSON.stringify(j.dayOverrides||{}),         // per-day overrides
+        j.ts||new Date().toISOString()
+      ];
+    }
+
+    // Write back — exclude deleted jobs from sheet display but keep them briefly
+    // Actually filter out deleted so they don't come back on other devices
+    const rows = Object.values(existing).filter(r => r[14] !== 'Y'); // col 14 = Deleted
+
+    sheet.clearContents();
+    sheet.getRange(1,1,1,headers.length).setValues([headers])
+         .setFontWeight('bold').setBackground('#2B2D2F').setFontColor('#A8C800');
+    if (rows.length > 0) sheet.getRange(2,1,rows.length,headers.length).setValues(rows);
   }
-  
-  // Write to Log sheet
+
+  // Sync staff
+  if (data.staff) {
+    let staffSheet = ss.getSheetByName('Staff');
+    if (!staffSheet) staffSheet = ss.insertSheet('Staff');
+    const existingStaff = {Auckland:[], Wellington:[], Christchurch:[]};
+    const staffData = staffSheet.getDataRange().getValues();
+    for (let i = 1; i < staffData.length; i++) {
+      const br = staffData[i][0];
+      const name = staffData[i][1];
+      if (br && name && existingStaff[br]) {
+        if (!existingStaff[br].includes(name)) existingStaff[br].push(name);
+      }
+    }
+    for (const br of ['Auckland','Wellington','Christchurch']) {
+      const incoming = data.staff[br] || [];
+      existingStaff[br] = [...new Set([...existingStaff[br], ...incoming])].sort();
+    }
+    staffSheet.clearContents();
+    staffSheet.getRange(1,1,1,2).setValues([['Branch','Name']])
+              .setFontWeight('bold').setBackground('#2B2D2F').setFontColor('#A8C800');
+    const staffRows = [];
+    for (const br of ['Auckland','Wellington','Christchurch']) {
+      existingStaff[br].forEach(name => staffRows.push([br, name]));
+    }
+    if (staffRows.length > 0) staffSheet.getRange(2,1,staffRows.length,2).setValues(staffRows);
+  }
+
+  // Log
   let log = ss.getSheetByName('Log');
   if (!log) log = ss.insertSheet('Log');
-  log.appendRow([new Date(), 'Sync', (data.jobs||[]).length + ' jobs', data.ts]);
-  
-  // Return all current jobs so app stays in sync with sheet data
-  // Read ALL jobs back from ALL branch sheets so every device gets the full picture
+  log.appendRow([new Date(), 'Sync', incomingJobs.length+' jobs', data.ts||'']);
+
   return handleGetJobs();
 }
 
-function doGet(e) { return doPost(e); }
+function handleGetJobs() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const allJobs = [];
+
+  for (const branch of ['Auckland','Wellington','Christchurch']) {
+    const sheet = ss.getSheetByName(branch);
+    if (!sheet) continue;
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      if (!row[1]) continue; // skip empty rows
+
+      // Parse JSON fields safely
+      let checklist = {};
+      let schedPattern = {type:'full'};
+      let dayOverrides = {};
+      try { checklist = JSON.parse(row[17]||'{}'); } catch(e) {}
+      try { schedPattern = JSON.parse(row[18]||'{"type":"full"}'); } catch(e) {}
+      try { dayOverrides = JSON.parse(row[19]||'{}'); } catch(e) {}
+
+      allJobs.push({
+        id:          String(row[0]||row[1]),
+        jobno:       String(row[1]||''),
+        jclass:      String(row[2]||''),
+        site:        String(row[3]||''),
+        val:         Number(row[4])||0,
+        wfm:         Number(row[5])||0,
+        staff:       Number(row[6])||0,
+        dur:         Number(row[7])||0,
+        start:       fmtDate(row[8]),
+        finish:      fmtDate(row[9]),
+        resource:    String(row[10]||''),
+        workSat:     row[11]==='Y',
+        workSun:     row[12]==='Y',
+        done:        row[13]==='Y',
+        // row[14] = Deleted — excluded from results (filtered out above)
+        project:     String(row[15]||''),
+        client:      String(row[16]||''),
+        checklist:   checklist,
+        schedPattern: schedPattern,
+        dayOverrides: dayOverrides,
+        branch:      branch,
+        ts:          String(row[20]||'')
+      });
+    }
+  }
+
+  // Staff
+  const staff = {Auckland:[], Wellington:[], Christchurch:[]};
+  const staffSheet = ss.getSheetByName('Staff');
+  if (staffSheet) {
+    const staffData = staffSheet.getDataRange().getValues();
+    for (let i = 1; i < staffData.length; i++) {
+      const br = staffData[i][0];
+      const name = String(staffData[i][1]||'').trim();
+      if (br && name && staff[br]) staff[br].push(name);
+    }
+  }
+
+  return json({ok:true, jobs:allJobs, staff:staff, count:allJobs.length});
+}
 
 function json(obj) {
-  return ContentService
-    .createTextOutput(JSON.stringify(obj))
+  return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
-}`;
+}
+`;
   navigator.clipboard.writeText(s).then(()=>toast('Apps Script copied to clipboard ✓'));
 }
 
