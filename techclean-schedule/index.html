@@ -1363,7 +1363,7 @@ document.addEventListener('keydown', e => {
 const PRELOAD_JOBS = [];
 const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
-const APP_VERSION = 'v49-202607142300';
+const APP_VERSION = 'v49-202607142400';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 
 const BLANK_BRANCH_MAP = () => ({ Auckland: {}, Wellington: {}, Christchurch: {} });
@@ -2385,7 +2385,7 @@ async function doSync(silent=false){
   document.getElementById('sync-pill').textContent='SYNCING…';
   try{
     const _payload={action:'sync',jobs:S.jobs.filter(j=>!j._del),leave:S.leave||{},training:S.training||{},ts:new Date().toISOString()};
-    if(_staffDirty) _payload.staff=S.staff;   // push the roster ONLY when the user added/removed someone — idle syncs must not overwrite it
+    if(_staffDirty){ _payload.staff=S.staff; _payload.staffEdit=true; }   // roster is sent AND flagged as a real edit ONLY on add/remove; backend ignores staff on every other sync
     const body=JSON.stringify(_payload);
     const res=await fetch(S.gsUrl,{method:'POST',body});
     const data=await res.json();
