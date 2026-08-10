@@ -705,6 +705,14 @@ body.tv-mode #tv-bar { display:flex }
           <div class="gs-status off" id="gs-status">⬤ Not connected — data stored locally in browser</div>
         </div>
       </div>
+
+      <div class="setup-card">
+        <h3>Force Overwrite (Admin)</h3>
+        <div style="display:flex;flex-direction:column;gap:10px;max-width:440px">
+          <p style="font-size:11px;color:var(--c-muted);line-height:1.6">Makes <strong>this device</strong> the master copy: pushes its current schedule and staff list up to the Sheet (overwriting the roster there), then clears this device's cache and reloads fresh from the Sheet. Use it from a device you know is correct whenever data looks out of sync.</p>
+          <button class="btn btn-primary" style="background:#b03636;border-color:#b03636;color:#fff" onclick="adminForceOverwrite()">⚡ Force Overwrite &amp; Refresh</button>
+        </div>
+      </div>
       
       <div class="setup-card">
         <h3>Access PIN</h3>
@@ -1355,7 +1363,7 @@ document.addEventListener('keydown', e => {
 const PRELOAD_JOBS = [];
 const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
-const APP_VERSION = 'v49-202607142200';
+const APP_VERSION = 'v49-202607142300';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 
 const BLANK_BRANCH_MAP = () => ({ Auckland: {}, Wellington: {}, Christchurch: {} });
@@ -2776,6 +2784,21 @@ document.addEventListener('keydown',e=>{
 // Force a fresh reload past all caches (manual "update now" button)
 function forceUpdate(){
   if(!confirm('Reload and pull the latest version from the server?')) return;
+  const base = window.location.href.split('?')[0];
+  window.location.replace(base + '?nocache=' + Date.now());
+}
+// ADMIN: make THIS device the master — push its data over the Sheet, then clear cache and reload fresh
+async function adminForceOverwrite(){
+  if(!confirm('FORCE OVERWRITE\n\nThis pushes THIS device\'s schedule and staff list up to the Sheet as the master copy (overwriting the roster there), then clears this device\'s cache and reloads.\n\nOnly use it from a device you know is correct. Continue?')) return;
+  try{
+    _staffDirty = true;               // force the roster to be pushed as authoritative
+    if(typeof toast==='function') toast('Overwriting the Sheet from this device…');
+    if(S.gsUrl) await doSync(false);  // push (server replaces staff) + pull
+  }catch(e){ /* proceed to refresh regardless */ }
+  try{
+    localStorage.removeItem('aops_v1');    // cached jobs/staff/state — rebuilt from the Sheet on reload
+    localStorage.removeItem('aops_view');  // last-viewed month
+  }catch(e){}
   const base = window.location.href.split('?')[0];
   window.location.replace(base + '?nocache=' + Date.now());
 }
