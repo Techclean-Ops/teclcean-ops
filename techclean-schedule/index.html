@@ -1355,7 +1355,8 @@ document.addEventListener('keydown', e => {
 const PRELOAD_JOBS = [];
 const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
-const APP_VERSION = 'v49-202607142100';
+const APP_VERSION = 'v49-202607142200';
+let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 
 const BLANK_BRANCH_MAP = () => ({ Auckland: {}, Wellington: {}, Christchurch: {} });
 
@@ -2324,12 +2325,12 @@ function goToday(){const n=new Date();S.year=n.getFullYear();S.month=n.getMonth(
 function addStaff(br){
   const el=document.getElementById('add-'+br);
   const n=el.value.trim();if(!n)return;
-  if(!S.staff[br].includes(n)){S.staff[br].push(n);S.staff[br].sort();save();if(S.gsUrl)autoSync();renderSetup();updateSidebar();toast(`${n} added`)}
+  if(!S.staff[br].includes(n)){S.staff[br].push(n);S.staff[br].sort();_staffDirty=true;save();if(S.gsUrl)autoSync();renderSetup();updateSidebar();toast(`${n} added`)}
   el.value='';
 }
 function rmStaff(br,i){
   if(!confirm(`Remove ${S.staff[br][i]} from ${br}?`))return;
-  S.staff[br].splice(i,1);save();if(S.gsUrl)autoSync();renderSetup();updateSidebar();toast('Removed');
+  S.staff[br].splice(i,1);_staffDirty=true;save();if(S.gsUrl)autoSync();renderSetup();updateSidebar();toast('Removed');
 }
 
 function saveSettings(){
@@ -2375,10 +2376,13 @@ async function doSync(silent=false){
   if(!S.gsUrl){if(!silent)toast('No Sheets URL — go to Setup','err');return}
   document.getElementById('sync-pill').textContent='SYNCING…';
   try{
-    const body=JSON.stringify({action:'sync',jobs:S.jobs.filter(j=>!j._del),staff:S.staff,leave:S.leave||{},training:S.training||{},ts:new Date().toISOString()});
+    const _payload={action:'sync',jobs:S.jobs.filter(j=>!j._del),leave:S.leave||{},training:S.training||{},ts:new Date().toISOString()};
+    if(_staffDirty) _payload.staff=S.staff;   // push the roster ONLY when the user added/removed someone — idle syncs must not overwrite it
+    const body=JSON.stringify(_payload);
     const res=await fetch(S.gsUrl,{method:'POST',body});
     const data=await res.json();
     if(data.ok){
+      if(_payload.staff) _staffDirty=false;   // roster change acknowledged by server
       document.getElementById('sync-pill').textContent='LIVE';
       document.getElementById('sync-pill').className='pill live';
       document.getElementById('gs-status').textContent='⬤ Connected — last sync '+new Date().toLocaleTimeString('en-NZ');
