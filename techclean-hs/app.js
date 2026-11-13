@@ -47,6 +47,27 @@
   function hhmm() { var d = new Date(); return pad(d.getHours()) + pad(d.getMinutes()); }
   function longDate() { return new Date().toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'short' }); }
   function uid() { return Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase(); }
+  /* ---------- certificates: expired = warning; expired fit test = stop work ---------- */
+  function certList(p) {
+    var cs = (p && p.certs) || {};
+    return CERT_TYPES.filter(function (t) { return cs[t.id]; }).map(function (t) {
+      var days = Math.floor((new Date(cs[t.id] + 'T23:59') - new Date()) / 864e5);
+      return { id: t.id, name: t.name, date: cs[t.id], days: days, expired: days < 0, soon: days >= 0 && days <= CERT_WARN_DAYS, stopWork: !!t.stopWork };
+    });
+  }
+  function certWarnings(p) { return certList(p).filter(function (c) { return c.expired; }); }
+  function certDate(d) { return new Date(d + 'T12:00').toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' }); }
+  function fitTestFor(p, mask) {
+    var cs = certList(p), half = cs.filter(function (c) { return c.id === 'ffhalf'; })[0], full = cs.filter(function (c) { return c.id === 'fffull'; })[0];
+    if (mask === 'half') return { ok: !!half && !half.expired, cert: half, label: 'half face' };
+    if (mask === 'full') return { ok: !!full && !full.expired, cert: full, label: 'full face' };
+    var any = [half, full].filter(function (c) { return c && !c.expired; })[0];   // powered respirator: needs a current fit test for the mask in use
+    return { ok: !!any, cert: any || full || half, label: 'face' };
+  }
+  function warnChip(pid) {
+    var w = certWarnings(person(pid)).filter(function (c) { return !c.stopWork; });
+    return w.length ? '<span class="chip new" style="margin-left:6px">⚠ ' + esc(w.map(function (c) { return c.name; }).join(', ')) + ' expired</span>' : '';
+  }
   function worker() { return S.actAs ? person(S.actAs) : S.me; }
   function person(id) { for (var i = 0; i < S.people.length; i++) if (S.people[i].id === id) return S.people[i]; return null; }
   function first(n) { return String(n || '').split(' ')[0]; }
@@ -628,6 +649,7 @@
         : s === 'brief' ? chip('new', 'Pre-start briefing first')
         : s === 'notfit' ? chip('todo', 'Not fit — no entry') : s === 'away' ? chip('lock', 'Not on site today') : s === 'blocked' ? chip('lock', 'Fit check first') : s === 'skip' ? chip('lock', 'Not signed in') : chip('new', step.key === 'IN' ? 'Tap to sign in' : step.key === 'OUT' ? 'Tap to sign out' : 'To do');
       h += '<div class="crew' + (s === 'done' ? ' signed' : '') + '" style="flex-wrap:wrap"><button style="flex:1;border:0;background:none;text-align:left;padding:0" data-p="' + pid + '" data-s="' + s + '"' + (s === 'todo' || s === 'brief' ? '' : ' disabled') + '><span class="nm">' + esc(p.name) + '</span></button>' + chipH +
+        (step.key === 'FFW' || step.key === 'IN' ? '<div style="width:100%">' + warnChip(pid) + '</div>' : '') +
         (canAbsent && (s === 'todo' || s === 'away') ? '<button class="link" style="width:100%;text-align:left;padding:6px 0 0" data-ab="' + pid + '">' + (away ? 'Back on site today' : 'Not on site today') + '</button>' : '') + '</div>';
     });
     var todo = S.job.crewIds.filter(function (pid) { return ab.indexOf(pid) < 0 && personState(step, pid) === 'todo'; });
@@ -795,6 +817,11 @@
         a.v = b.getAttribute('data-v'); F.a[q.id] = a; saveDraft(F);
         $$('[data-v]').forEach(function (x) { x.classList.toggle('on', x === b); });
         if (isStop(q, a.v)) { return renderStop(F, q); }
+        if (F.code === 'FFW' && q.id === 'rpe') {
+          var ft = fitTestFor(worker(), a.v);
+          F.a.fittest = { v: ft.ok ? 'yes' : 'no', note: ft.cert ? 'Face fit test (' + ft.label + ') ' + (ft.cert.expired ? 'expired ' : 'current to ') + certDate(ft.cert.date) : 'No ' + ft.label + ' fit test on record' };
+          if (!ft.ok) return renderStop(F, { id: 'fittest', stopMsg: (ft.cert ? 'Your ' + ft.label + ' fit test expired on ' + certDate(ft.cert.date) + '.' : 'There\u2019s no ' + ft.label + ' fit test on record.') + ' No entry — stop work until you\u2019re fit tested.' });
+        }
         var bad = isBad(q, a.v); var bb = $('#badbox'); if (bb) bb.classList.toggle('hidden', !bad);
         check();
         if (!bad) setTimeout(advance, 220);
@@ -869,6 +896,9 @@
   async function finishFfw(F, result, stopQ) {
     var W = worker();
     var rf = rowsFrom(F);
+    if (F.a.fittest) rf.rows.splice(Math.min(3, rf.rows.length), 0, { section: FORMS.FFW.title, label: 'Face fit test current for the mask in use', value: F.a.fittest.v === 'yes' ? 'Yes' : 'NO — stop work', flag: F.a.fittest.v === 'yes' ? 'good' : 'bad', note: F.a.fittest.note });
+    var ww = certWarnings(worker()).filter(function (c) { return !c.stopWork; });
+    if (ww.length) rf.rows.push({ section: 'Certificate warnings', label: ww.map(function (c) { return c.name + ' expired ' + certDate(c.date); }).join('; '), value: 'Warning', flag: 'bad' });
     var rec = { form: 'FFW', formTitle: 'Fit for work — ' + W.name, formRef: FORMS.FFW.ref, jobNo: S.job.jobNo, personId: W.id,
       data: { result: result, answers: F.a, stoppedAt: stopQ ? stopQ.id : null },
       details: jobDetails([['Worker', W.name], ['Result', result === 'pass' ? 'PASS — fit for work' : 'NOT FIT — cannot sign on']]),
@@ -1214,6 +1244,11 @@
     });
     h += '</div><button class="btn sec" id="reg" style="margin-top:12px;font-size:18px;min-height:54px;padding:12px">Full sign-in register today</button></div>';
     var docs = jobDocs();
+    h += '<div class="card"><div class="lbl" style="margin-top:0">Crew tickets and certificates</div><div class="list">' + S.job.crewIds.map(function (pid) {
+      var p = person(pid), cl = certList(p), bad = cl.filter(function (c) { return c.expired; }), soon = cl.filter(function (c) { return c.soon; });
+      return '<button class="it" style="width:100%;border:0;background:none;text-align:left" data-cert="' + pid + '"><span><b>' + esc(p.name) + '</b><br><span class="small">' + cl.length + ' on record</span></span>' +
+        (bad.some(function (c) { return c.stopWork; }) ? chip('todo', 'Fit test expired') : bad.length ? chip('new', bad.length + ' expired') : soon.length ? chip('new', soon.length + ' due soon') : chip('done', 'All current')) + '</button>';
+    }).join('') + '</div></div>';
     h += '<div class="card"><div class="lbl" style="margin-top:0">Job documents</div><div class="list">';
     if (!docs.length) h += '<div class="small">No documents uploaded yet.' + (canUpload() ? ' Add the ARCP and the asbestos survey so they’re here on site with no signal.' : '') + '</div>';
     docs.forEach(function (d) {
@@ -1244,12 +1279,25 @@
     $('#reg').onclick = function () { history.pushState({ v: 1 }, ''); renderRegister(); };
     $$('[data-doc]').forEach(function (b) { b.onclick = function () { openDoc(recById(b.getAttribute('data-doc'))); }; });
     var ip = $('#invpdf'); if (ip) ip.onclick = invPdf;
+    $$('[data-cert]').forEach(function (b) { b.onclick = function () { history.pushState({ v: 1 }, ''); renderCerts(b.getAttribute('data-cert')); }; });
     var ad = $('#adddoc'); if (ad) ad.onclick = function () { history.pushState({ v: 1 }, ''); renderAddDoc(); };
     $$('[data-f]').forEach(function (b) { b.onclick = function () { history.pushState({ v: 1 }, ''); renderFormList(PARTD[+b.getAttribute('data-f')]); }; });
     $$('[data-out]').forEach(function (b) { b.onclick = function () { signOutVisitor(b.getAttribute('data-out')).then(renderSiteFile); }; });
     S.onBack = null;
   }
 
+  function renderCerts(pid) {
+    var p = person(pid), cl = certList(p);
+    S.onBack = function () { history.pushState({ v: 1 }, ''); renderSiteFile(); };
+    var h = top(p.name, 'Tickets and certificates', true) + '<div class="body"><div class="card list">';
+    if (!cl.length) h += '<div class="small">No certificates on record.</div>';
+    cl.forEach(function (c) {
+      h += '<div class="it"><span><b>' + esc(c.name) + '</b><br><span class="small">' + (c.expired ? 'Expired ' : 'Expires ') + certDate(c.date) + '</span></span>' +
+        (c.expired ? chip('todo', c.stopWork ? 'Expired — stop work' : 'Expired') : c.soon ? chip('new', c.days + ' days left') : chip('done', 'Current')) + '</div>';
+    });
+    h += '</div><p class="small">From the Training & Medical Register. Copies of each certificate will open here once the back end is connected.</p></div>';
+    app.innerHTML = h; bindBack(); renderBanner();
+  }
   function regRows(list) {
     return list.map(function (r) {
       return { section: 'Site sign in / out register — ' + niceDate(r.date), label: regName(r) + (r.version > 1 ? ' (v' + r.version + ')' : ''),

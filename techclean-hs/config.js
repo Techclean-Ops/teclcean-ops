@@ -81,13 +81,27 @@ var INVENTORY = {
   ]
 };
 
+/* Certificates. stopWork: an expired one stops the person working (fit tests). Everything else just warns.
+   Real certificates come from the Training & Medical Register via the back end — never stored in this public code. */
+var CERT_TYPES = [
+  { id: 'ffhalf', name: 'Face fit test — half', stopWork: true }, { id: 'fffull', name: 'Face fit test — full', stopWork: true },
+  { id: 'medical', name: 'Asbestos medical' }, { id: 'sitesafe', name: 'Site Safe' }, { id: 'firstaid', name: 'First aid' },
+  { id: 'wahb', name: 'Working at heights — basic' }, { id: 'waha', name: 'Working at heights — advanced' }, { id: 'confined', name: 'Confined space' },
+  { id: 'mewp', name: 'MEWP' }, { id: 'permit', name: 'Permit receiver' }, { id: 'licence', name: 'Driver licence' }
+];
+var CERT_WARN_DAYS = 60;
+
 /* Demo data — replaced by today's jobs and crew from the schedule (read-only) once API_URL is set. */
 var DEMO = {
   people: [
-    { id: 'P01', name: 'Jack Reid', role: 'supervisor', branch: 'Auckland' },
-    { id: 'P02', name: 'Ivan Popov', role: 'crew', branch: 'Auckland' },
-    { id: 'P03', name: 'Mere Tane', role: 'crew', branch: 'Auckland' },
-    { id: 'P04', name: 'Sione Fifita', role: 'crew', branch: 'Auckland' }
+    { id: 'P01', name: 'Jack Reid', role: 'supervisor', branch: 'Auckland',
+      certs: { ffhalf: '2027-06-05', fffull: '2027-06-05', medical: '2027-07-16', sitesafe: '2028-02-28', firstaid: '2028-02-05', wahb: '2028-01-10' } },
+    { id: 'P02', name: 'Ivan Popov', role: 'crew', branch: 'Auckland',
+      certs: { ffhalf: '2027-05-26', fffull: '2027-05-26', medical: '2028-12-15', sitesafe: '2028-09-23', firstaid: '2025-05-02' } },
+    { id: 'P03', name: 'Mere Tane', role: 'crew', branch: 'Auckland',
+      certs: { ffhalf: '2026-12-01', fffull: '2026-12-01', medical: '2027-11-14', sitesafe: '2028-08-21', firstaid: '2027-09-01' } },
+    { id: 'P04', name: 'Sione Fifita', role: 'crew', branch: 'Auckland',
+      certs: { ffhalf: '2027-03-03', fffull: '2024-09-24', medical: '2027-04-04', sitesafe: '2025-02-16' } }
   ],
   jobs: [
     { jobNo: 'J0104551', folderNo: '3365', street: '132 Canal Road', suburb: 'Avondale', cls: 'B', status: 'open',
