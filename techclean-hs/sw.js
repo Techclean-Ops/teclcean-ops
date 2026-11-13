@@ -1,5 +1,5 @@
 /* TechClean H&S — offline cache + background send (Android). Bump VERSION on every release. */
-var VERSION = 'tc-hs-v17';
+var VERSION = 'tc-hs-v18';
 var FILES = ['./', 'index.html', 'app.js', 'forms.js', 'config.js', 'pdf.js', 'jspdf.umd.min.js',
   'logo-white.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'manifest.webmanifest'];
 
