@@ -1420,17 +1420,17 @@
     var back = dir === 'back';
     function row(kind, it) {
       var k = kind + ':' + it.id, s = sum[kind + ':' + it.name], q = Q[k] || 0;
-      return '<div class="it" style="padding:10px 0"><span style="flex:1"><b>' + esc(it.name) + '</b><br><span class="small">per ' + esc(it.unit) +
+      return '<div class="it" style="padding:10px 0"><span style="flex:1;min-width:0;overflow-wrap:anywhere"><b>' + esc(it.name) + '</b><br><span class="small">per ' + esc(it.unit) +
         (back && s ? ' · out ' + s.out + (s.back ? ', back ' + s.back : '') : '') + (!back && s && s.out ? ' · already out ' + s.out : '') + '</span></span>' +
-        '<span style="display:flex;align-items:center;gap:6px"><button type="button" class="chip lock" style="border:0;width:48px;height:48px;font-size:26px" data-m="' + k + '">−</button>' +
+        '<span style="display:flex;align-items:center;gap:4px;flex:none"><button type="button" class="chip lock" style="border:0;width:46px;height:46px;font-size:26px;padding:0" data-m="' + k + '">−</button>' +
         '<b id="q-' + k.replace(':', '_') + '" style="min-width:34px;text-align:center;font-size:22px">' + q + '</b>' +
-        '<button type="button" class="chip done" style="border:0;width:48px;height:48px;font-size:26px" data-p="' + k + '">＋</button></span></div>';
+        '<button type="button" class="chip done" style="border:0;width:46px;height:46px;font-size:26px;padding:0" data-p="' + k + '">＋</button></span></div>';
     }
     var h = top(back ? 'Inventory back to the yard' : 'Inventory out to site', jobSub(), true) + '<div class="body">' +
       '<p class="help">' + (back ? 'Count what’s coming back — unused consumables and every piece of equipment. Anything not back shows as used or still on site.' : 'Count everything going to site.') + '</p>' +
       '<div class="lbl">Consumables</div><div class="card list" style="padding:4px 14px">' + INVENTORY.consumables.map(function (it) { return row('c', it); }).join('') + '</div>' +
       '<div class="lbl">Equipment</div><div class="card list" style="padding:4px 14px">' + INVENTORY.equipment.map(function (it) { return row('e', it); }).join('') + '</div>' +
-      '<div class="lbl">Other items</div><div id="others"></div><div style="display:flex;gap:8px"><input type="text" id="oname" placeholder="Item"><input type="text" id="oqty" inputmode="numeric" placeholder="Qty" style="width:90px"><button class="btn sec" id="oadd" type="button" style="width:auto;padding:0 16px;min-height:auto">Add</button></div>' +
+      '<div class="lbl">Other items</div><div id="others"></div><div style="display:flex;gap:8px"><input type="text" id="oname" placeholder="Item" style="flex:1;min-width:0;width:auto"><input type="text" id="oqty" inputmode="numeric" placeholder="Qty" style="width:90px"><button class="btn sec" id="oadd" type="button" style="width:auto;padding:0 16px;min-height:auto">Add</button></div>' +
       '<div class="lbl">Photo of the load (optional)</div>' + photoBox('ph') +
       '</div><div class="foot"><button class="btn" id="go" disabled>Save inventory</button></div>';
     app.innerHTML = h; bindBack(); renderBanner();
