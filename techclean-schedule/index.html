@@ -1112,8 +1112,8 @@ body.tv #version-tag{display:none}
     </div>
 
     <div class="sb-section">
-      <div class="sb-item" id="snav-mgmt" onclick="showPanel('mgmt')" title="Management overview (admin)">
-        <span class="sb-icon">📈</span><span class="sb-txt">Management 🔒</span>
+      <div class="sb-item" id="snav-mgmt" onclick="showPanel('mgmt')" title="Senior management overview (admin)">
+        <span class="sb-icon">📈</span><span class="sb-txt">Senior Mgmt 🔒</span>
       </div>
       <div class="sb-item" id="snav-opt" onclick="showPanel('opt')" title="Staff Optimisation (admin)">
         <span class="sb-icon">📊</span><span class="sb-txt">Optimisation 🔒</span>
@@ -1130,7 +1130,7 @@ body.tv #version-tag{display:none}
       <div class="tab" data-tab="board" onclick="showPanel('board')">Board</div>
       <div class="tab" data-tab="res" onclick="showPanel('res')">Resources</div>
       <div class="tab active" data-tab="cal" onclick="showPanel('cal')">Gantt</div>
-      <div class="tab" data-tab="mgmt" onclick="showPanel('mgmt')">Management 🔒</div>
+      <div class="tab" data-tab="mgmt" onclick="showPanel('mgmt')">Senior Management 🔒</div>
       <div class="tab" data-tab="opt" onclick="showPanel('opt')">Staff Optimisation 🔒</div>
       <div class="tab" data-tab="setup" onclick="showPanel('setup')">⚙ Setup 🔒</div>
     </div>
@@ -2035,7 +2035,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v54-202611132000';
+const APP_VERSION = 'v54-202611131730';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 
 const BLANK_BRANCH_MAP = () => ({ Auckland: {}, Wellington: {}, Christchurch: {} });
@@ -2717,7 +2717,7 @@ function renderMgmt(){
   const clashes=brs.reduce((a,b)=>a+findClashes(today,dsOf(addD(now,30)),b).filter(c=>c.status==='open'||c.status==='over').length,0);
   const holdN=open.filter(isHold).length;
   const tile=(l,v,sub,cls)=>`<div class="mg-tile ${cls||''}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${sub||''}</div></div>`;
-  let h=`<div class="mg-head"><h2>Management overview</h2><span class="mg-sub">${br==='All'?'All branches':br} · ${_fmtD(today)}</span>
+  let h=`<div class="mg-head"><h2>Senior Management overview</h2><span class="mg-sub">${br==='All'?'All branches':br} · ${_fmtD(today)}</span>
     <div class="tr-seg" style="margin-left:auto">${['All'].concat(MG_BR).map(b=>`<button class="${b===br?'on':''}" onclick="mgSet('br','${b}')">${b==='All'?'All':BR_CODE[b]}</button>`).join('')}</div></div>`;
   h+=`<div class="mg-tiles">
     ${tile('Open pipeline',_fmtK(pipeTot),`${open.length} jobs${undated.length?` · ${undated.length} undated (${_fmtK(undated.reduce((a,j)=>a+(Number(j.val)||0),0))})`:''}${holdN?` · ${holdN} on hold`:''}`)}
@@ -5274,7 +5274,7 @@ function openAdminPin(targetPanel){
   const sub=document.getElementById('admin-pin-sub');
   if(sub) sub.textContent = _pendingAdminPanel==='opt'
     ? 'Enter the admin PIN to access Staff Optimisation'
-    : _pendingAdminPanel==='mgmt' ? 'Enter the admin PIN to access the Management overview'
+    : _pendingAdminPanel==='mgmt' ? 'Enter the admin PIN to access the Senior Management overview'
     : 'Enter the admin PIN to access Setup';
   document.querySelectorAll('#admin-overlay .pin-key').forEach(k=>k.disabled=false);
   document.getElementById('admin-overlay').classList.add('open');
