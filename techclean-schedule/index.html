@@ -691,8 +691,8 @@ body.tv #hovercard{display:none}
 .rm-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
 .rm-short{margin-left:auto;font-size:9px;background:#E040FB;color:#fff;border-radius:6px;padding:0 5px}
 .rm-btns{display:flex;gap:6px;margin-top:4px}
-#rs-menu .rm-btns button{display:inline-block;width:auto;font-size:10px;padding:3px 9px;border:1px solid #3A3D40;border-radius:12px;color:#C9CBCE}
-#rs-menu .rm-btns button:hover{border-color:var(--c-lime);color:var(--c-lime);background:transparent}
+#rs-menu .rm-btns button,.rs-side .rm-btns button{background:transparent;cursor:pointer;font-family:inherit;display:inline-block;width:auto;font-size:10px;padding:3px 9px;border:1px solid #3A3D40;border-radius:12px;color:#C9CBCE}
+#rs-menu .rm-btns button:hover,.rs-side .rm-btns button:hover{border-color:var(--c-lime);color:var(--c-lime);background:transparent}
 #rs-menu button{display:block;width:100%;text-align:left;background:transparent;border:none;color:#E8E8E8;font-family:var(--font-head);font-size:12px;padding:7px 8px;border-radius:6px;cursor:pointer}
 #rs-menu button:hover{background:#2F3134}
 .rs-cell{cursor:pointer}.rs-cell:hover{background:rgba(255,255,255,.03)}
@@ -961,6 +961,13 @@ body.tv #version-tag{display:none}
 .tr-tbl thead th{color:var(--c-muted);font-weight:600;border-top:none}
 .tr-tbl .fut{opacity:.55}
 .tr-wrap{overflow-x:auto}
+.rs-ts{font-style:normal;font-size:10px;margin-right:3px;opacity:.85}
+.rs-ts.diff{color:#B45309;font-weight:700}
+.bd-alert{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 18px 0;padding:8px 12px;border-radius:8px;background:rgba(224,64,251,.10);border:1px solid rgba(224,64,251,.45);font-size:12px;color:#F3D2FA}
+.bd-alert b{color:#fff}
+.bd-al-job{background:rgba(255,255,255,.07);border-radius:5px;padding:2px 8px;cursor:pointer;color:#fff}
+.bd-al-job small{color:#E9A8F7;margin-left:3px}
+.bd-alert .bd-pill{margin-left:auto}
 </style>
 </head>
 <body>
@@ -1153,6 +1160,7 @@ body.tv #version-tag{display:none}
         <div class="bd-clock" id="bd-clock"></div>
         <button class="bd-pill bd-hide-tv bd-hide-m" id="bd-tv" onclick="toggleTV()" title="Full-screen wall display (Esc to exit)">📺 TV</button>
       </div>
+      <div id="bd-alert"></div>
       <div class="bd-stats" id="bd-stats"></div>
       <div class="bd-legend" id="bd-legend" style="padding:6px 18px 0"></div>
       <div class="bd-scroll" id="bd-scroll"></div>
@@ -1209,6 +1217,12 @@ body.tv #version-tag{display:none}
         <div id="wfm-setup-status" style="font-size:12px;margin-bottom:8px"></div>
         <p style="font-size:11px;color:var(--c-muted);line-height:1.7">Jobs set to <b>Scheduled</b> or <b>In Progress</b> in WorkflowMax are added here automatically every 10 minutes (branch and class from the WorkflowMax custom fields), marked <span class="wfm-b new">📥 needs crew</span>. Invoiced / closed jobs are marked <b>$ Invoiced</b>. Read-only — nothing is written back to WorkflowMax.<br>
         Set-up (once): add the <b>wfm</b> script file (<code>techclean_wfm_v2.gs</code>) to the Apps Script project → put the Client ID / Secret in Script Properties → redeploy → open the web app URL with <code>?action=wfmAuth</code> → approve → run <code>wfmInstallTrigger</code>.</p>
+      </div>
+
+      <div class="setup-card">
+        <h3>WorkflowMax staff names</h3>
+        <p style="font-size:11px;color:var(--c-muted);line-height:1.6;margin-bottom:10px">Past days where nobody was allocated are filled in from WorkflowMax timesheets (tagged ⏱ in Resources). Timesheet names are matched to the roster automatically (e.g. Christopher Ngata → Chris Ngata); match any that aren't here.</p>
+        <div id="wfm-names"></div>
       </div>
 
       <div class="setup-card">
@@ -1989,7 +2003,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v52-202611131800';
+const APP_VERSION = 'v53-202611131900';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 
 const BLANK_BRANCH_MAP = () => ({ Auckland: {}, Wellington: {}, Christchurch: {} });
@@ -2042,6 +2056,7 @@ function load(){
     S.training=BLANK_BRANCH_MAP();
   }
   try{ S.wfmMonthly=JSON.parse(localStorage.getItem('aops_wfm_monthly')||'null'); }catch(e){ S.wfmMonthly=null; }
+  try{ S.wfmUnmatched=JSON.parse(localStorage.getItem('aops_wfm_unmatched')||'[]'); }catch(e){ S.wfmUnmatched=[]; }
   applyClientMap();   // restore client field that GAS doesn't store
   applyProjectMap();  // restore intentionally-cleared project values
 }
@@ -2532,6 +2547,79 @@ function toggleProject(pid){
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // STAFF OPT
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// ── WorkflowMax timesheets → crew (filled by the wfm script on past days with no crew named)
+function tsFillOf(j,d){ const f=j.checklist&&j.checklist.tsFill; return f&&f[d]||null; }
+function tsDiffOf(j,d){ const f=j.checklist&&j.checklist.tsDiff; return f&&f[d]||null; }
+function tsTag(j,d){
+  if(tsFillOf(j,d)) return '<em class="rs-ts" title="Filled in from WorkflowMax timesheets — no crew was allocated in the schedule">⏱</em>';
+  if(tsDiffOf(j,d)) return '<em class="rs-ts diff" title="Timesheets show: '+_esc(tsDiffOf(j,d).join(', '))+'">⏱≠</em>';
+  return '';
+}
+function tsUse(jobId,d){
+  const j=S.jobs.find(x=>x.id===jobId); if(!j) return; const ck=_chk(j), ts=tsDiffOf(j,d); if(!ts) return;
+  if(!j.dayOverrides) j.dayOverrides={};
+  j.dayOverrides[d]=ts.join(', '); delete ck.tsDiff[d]; j.ts=new Date().toISOString();
+  save(); if(S.gsUrl) autoSync(); renderAll(); toast('Crew set from timesheets ✓');
+}
+function tsKeep(jobId,d){
+  const j=S.jobs.find(x=>x.id===jobId); if(!j) return; const ck=_chk(j);
+  if(ck.tsDiff) delete ck.tsDiff[d]; ck.tsOk=ck.tsOk||{}; ck.tsOk[d]=1; j.ts=new Date().toISOString();
+  save(); if(S.gsUrl) autoSync(); renderAll(); toast('Kept the schedule crew');
+}
+function tsSideCard(br){
+  const fills=[], diffs=[];
+  S.jobs.filter(j=>j.branch===br&&!j._del).forEach(j=>{ const ck=j.checklist||{};
+    Object.keys(ck.tsFill||{}).forEach(d=>fills.push({j,d})); Object.keys(ck.tsDiff||{}).forEach(d=>diffs.push({j,d,ts:ck.tsDiff[d]})); });
+  if(!fills.length&&!diffs.length) return '';
+  const byJob={}; fills.forEach(({j,d})=>{ (byJob[j.id]=byJob[j.id]||{j,days:[]}).days.push(d); });
+  let h=`<div class="rs-card"><h4>From timesheets <span>${fills.length} day${fills.length!==1?'s':''} filled · ${diffs.length} to check</span></h4>`;
+  h+=`<div style="font-size:10.5px;color:#8E9093;margin:-2px 0 6px">Past days with no crew allocated — filled from WorkflowMax timesheets (⏱).</div>`;
+  diffs.sort((a,b)=>b.d.localeCompare(a.d)).slice(0,8).forEach(({j,d,ts})=>{
+    h+=`<div class="rs-item" style="cursor:default"><span class="sw" style="background:#F59E0B"></span><div class="tx"><b>${_esc((j.site||j.jobno||'').split(',')[0])} · ${_fmtD(d)}</b><small>Schedule: ${_esc(getStaffForDay(j,d)||'—')}<br>Timesheets: ${_esc(ts.join(', '))}</small>
+      <div class="rm-btns" style="margin-top:4px"><button onclick="tsUse('${j.id}','${d}')">Use timesheets</button><button onclick="tsKeep('${j.id}','${d}')">Keep schedule</button></div></div></div>`; });
+  Object.values(byJob).sort((a,b)=>b.days.length-a.days.length).slice(0,8).forEach(({j,days})=>{
+    const mgr=(j.checklist&&j.checklist.manager)||'';
+    h+=`<div class="rs-item" onclick="editJob('${j.id}')"><span class="sw" style="background:#8AB4F8"></span><div class="tx"><b>⏱ ${_esc((j.site||j.jobno||'').split(',')[0])}</b><small>${days.length} day${days.length!==1?'s':''} not allocated${mgr?' · '+_esc(mgr):''}</small></div></div>`; });
+  return h+`</div>`;
+}
+// Setup → WorkflowMax staff names (timesheet names that don't match the roster)
+function staffMapList(){ const v=S.training&&S.training.Auckland&&S.training.Auckland.__staffmap; return Array.isArray(v)?v:[]; }
+function renderStaffMap(){
+  const el=document.getElementById('wfm-names'); if(!el) return;
+  const map=staffMapList(), mapped=new Set(map.map(m=>_nm(m.wfm)));
+  const un=(S.wfmUnmatched||[]).filter(u=>!mapped.has(_nm(u.name)));
+  const all=[]; ['Auckland','Wellington','Christchurch'].forEach(b=>(S.staff[b]||[]).forEach(n=>all.push([n,b])));
+  const opts=`<option value="">— pick schedule name —</option>`+['Auckland','Wellington','Christchurch'].map(b=>`<optgroup label="${b}">`+(S.staff[b]||[]).map(n=>`<option>${_esc(n)}</option>`).join('')+'</optgroup>').join('');
+  let h='';
+  if(!un.length&&!map.length) h+=`<div style="font-size:11px;color:var(--c-muted)">Nothing to match yet. Once WorkflowMax is connected, any timesheet name that isn't on the roster shows here.</div>`;
+  if(un.length) h+=`<div style="font-size:11px;color:#F59E0B;margin-bottom:6px">${un.length} WorkflowMax name${un.length!==1?'s':''} not matched — their timesheets aren't filled in until you match them:</div>`;
+  un.forEach((u,i)=>{ h+=`<div class="lv-row"><label style="min-width:170px">${_esc(u.name)}<small style="display:block;color:var(--c-muted)">${_esc(u.job)} · ${_esc(u.date)}</small></label><select id="wn-${i}">${opts}</select><button class="btn btn-primary btn-sm" onclick="staffMapAdd(${JSON.stringify(u.name).replace(/"/g,'&quot;')},document.getElementById('wn-${i}').value)">Match</button></div>`; });
+  if(map.length) h+=`<div style="font-size:11px;color:var(--c-muted);margin:10px 0 4px">Matched</div>`+map.map((m,i)=>`<div class="staff-item"><span>${_esc(m.wfm)} → <b>${_esc(m.name)}</b></span><button onclick="staffMapRemove(${i})">✕</button></div>`).join('');
+  el.innerHTML=h;
+}
+function staffMapAdd(wfm,name){
+  if(!name){ toast('Pick the schedule name first','err'); return; }
+  if(!S.training.Auckland) S.training.Auckland={};
+  const list=staffMapList().filter(m=>_nm(m.wfm)!==_nm(wfm)); list.push({wfm,name});
+  S.training.Auckland.__staffmap=list; save(); if(S.gsUrl) autoSync(); renderStaffMap(); toast(`${wfm} → ${name} ✓`);
+}
+function staffMapRemove(i){ const list=staffMapList().slice(); list.splice(i,1); S.training.Auckland.__staffmap=list; save(); if(S.gsUrl) autoSync(); renderStaffMap(); }
+// Board banner: jobs in the next 5 working days with days that have no crew / short crew
+function noCrewSoon(br){
+  const days=[]; let c=new Date(); c.setHours(12,0,0,0);
+  while(days.length<5){ const w=c.getDay(); if(w&&w<6) days.push(dsOf(c)); c=addD(c,1); }
+  return S.jobs.filter(j=>j.branch===br&&!j._del&&!j.done&&!isHold(j)).map(j=>{
+    const dd=days.filter(d=>jobActiveOnDay(j,d)&&crewShort(j,d)); return dd.length?{j,d:dd[0],none:dd.some(d=>crewOnDay(j,d)===0),n:dd.length}:null;
+  }).filter(Boolean).sort((a,b)=>a.d.localeCompare(b.d));
+}
+function renderNoCrewBanner(){
+  const el=document.getElementById('bd-alert'); if(!el) return;
+  if(document.body.classList.contains('tv')){ el.innerHTML=''; return; }
+  const L=noCrewSoon(S.branch);
+  if(!L.length){ el.innerHTML=''; return; }
+  el.innerHTML=`<div class="bd-alert"><b>⚠ ${L.length} job${L.length!==1?'s':''} in the next 5 working days need${L.length===1?'s':''} crew</b> ${L.slice(0,4).map(x=>`<span class="bd-al-job" onclick="editJob('${x.j.id}')">${_esc((x.j.site||x.j.jobno||'').split(',')[0])} <small>${x.none?'no crew':'short'} · ${_fmtD(x.d)}</small></span>`).join('')}${L.length>4?`<span style="color:#A8AAAD">+${L.length-4} more</span>`:''}<button class="bd-pill" onclick="showPanel('res')">Allocate in Resources →</button></div>`;
+}
+
 // ── Year trend (Staff Optimisation): value of work and crew utilisation for each month
 let OPT_TR={y:new Date().getFullYear(), br:'All'};
 const _trCache={};
@@ -2723,6 +2811,7 @@ function renderOpt(){
 // SETUP
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function renderSetup(){
+  try{ renderStaffMap(); }catch(e){ console.error(e); }
   const {rate,pmin,pmax,hpd}=S.cfg;
   document.getElementById('set-rate').value=rate;
   document.getElementById('set-pmin').value=pmin;
@@ -3308,6 +3397,7 @@ async function doSync(silent=false){
             }
           });
         }
+        if(Array.isArray(data.wfmUnmatched)){ S.wfmUnmatched=data.wfmUnmatched; try{ localStorage.setItem('aops_wfm_unmatched',JSON.stringify(data.wfmUnmatched)); }catch(e){} }
         // WorkflowMax monthly actuals (invoiced / timesheet hours) — read-only, server copy wins
         if(data.wfmMonthly && typeof data.wfmMonthly==='object'){
           S.wfmMonthly=data.wfmMonthly; try{ localStorage.setItem('aops_wfm_monthly',JSON.stringify(data.wfmMonthly)); }catch(e){}
@@ -3608,7 +3698,14 @@ function handleGetJobs() {
     wfmMonthly.updated = String(wmSheet.getRange(2, wmCols >= 8 ? 8 : 7).getValue() || '');
   }
 
-  return json({ok:true, jobs:allJobs, staff:staff, leave:leave, training:training, wfmMonthly:wfmMonthly, count:allJobs.length});
+  // WorkflowMax timesheet names that didn't match anyone on the roster (Setup → WorkflowMax staff names)
+  const wfmUnmatched = [];
+  const unSheet = ss.getSheetByName('WFM_Unmatched');
+  if (unSheet && unSheet.getLastRow() > 1) unSheet.getRange(2, 1, unSheet.getLastRow() - 1, 3).getValues().forEach(function(r) {
+    if (r[0]) wfmUnmatched.push({name: String(r[0]), job: String(r[1] || ''), date: r[2] instanceof Date ? Utilities.formatDate(r[2], 'Pacific/Auckland', 'yyyy-MM-dd') : String(r[2] || '')});
+  });
+
+  return json({ok:true, jobs:allJobs, staff:staff, leave:leave, training:training, wfmMonthly:wfmMonthly, wfmUnmatched:wfmUnmatched, count:allJobs.length});
 }
 
 function json(obj) {
@@ -3616,6 +3713,70 @@ function json(obj) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Daily "no crew" email — jobs starting in the next working days with nobody named.
+// Setup (once): Project Settings → Script Properties → ALERT_EMAILS = a@x.co.nz, b@x.co.nz
+//               (optional per branch: ALERT_EMAILS_AUCKLAND / _WELLINGTON / _CHRISTCHURCH)
+//               then run installNoCrewAlert once and approve the email permission.
+// ─────────────────────────────────────────────────────────────────────────────
+const ALERT_DAYS = 5;   // working days ahead to check
+function installNoCrewAlert() {
+  ScriptApp.getProjectTriggers().filter(function(t){ return t.getHandlerFunction() === 'noCrewAlert'; }).forEach(function(t){ ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('noCrewAlert').timeBased().everyDays(1).atHour(6).inTimezone('Pacific/Auckland').create();
+}
+function noCrewAlert() { return noCrewRun_(false); }
+function noCrewTest() { const r = noCrewRun_(true); Logger.log(JSON.stringify(r, null, 2)); return r; }
+
+function noCrewRun_(dryRun) {
+  const tz = 'Pacific/Auckland', now = new Date();
+  const dow = Number(Utilities.formatDate(now, tz, 'u'));   // 1 = Mon … 7 = Sun
+  if (!dryRun && dow > 5) return {skipped: 'weekend'};
+  const props = PropertiesService.getScriptProperties();
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  // next ALERT_DAYS working days (Mon–Fri) from today
+  const days = []; let c = new Date(now.getTime());
+  while (days.length < ALERT_DAYS) { const u = Number(Utilities.formatDate(c, tz, 'u')); if (u <= 5) days.push(Utilities.formatDate(c, tz, 'yyyy-MM-dd')); c = new Date(c.getTime() + 86400000); }
+  const fmt = function(v){ return v instanceof Date ? Utilities.formatDate(v, tz, 'yyyy-MM-dd') : String(v || '').slice(0, 10); };
+  const result = {};
+  ['Auckland', 'Wellington', 'Christchurch'].forEach(function(br) {
+    const sh = ss.getSheetByName(br); if (!sh) return;
+    const list = [];
+    sh.getDataRange().getValues().slice(1).forEach(function(r) {
+      if (!r[0] || r[13] === 'Y' || r[14] === 'Y') return;            // done / deleted
+      let ck = {}, ov = {}; try { ck = JSON.parse(r[17] || '{}'); } catch (e) {} try { ov = JSON.parse(r[19] || '{}'); } catch (e) {}
+      if (ck.closeout === 'hold' || ck.closeout === 'finished' || ck.closeout === 'invoiced') return;
+      const st = fmt(r[8]), fi = fmt(r[9]) || st; if (!st) return;
+      const need = Number(r[6]) || 0;
+      const whole = String(r[10] || '').split(',').map(function(x){ return x.trim(); }).filter(String);
+      const empty = days.filter(function(d) {
+        if (d < st || d > fi) return false;
+        const o = ov[d]; if (o === '__OFF__') return false;
+        const crew = (o != null && String(o).trim() !== '') ? String(o).split(',').filter(function(x){ return x.trim(); }) : whole;
+        return crew.length === 0 || (need && crew.length < need);
+      });
+      if (empty.length) list.push({job: String(r[1] || ''), site: String(r[3] || ''), first: empty[0], days: empty.length,
+        none: empty.some(function(d){ const o = ov[d]; const crew = (o != null && String(o).trim() !== '') ? String(o).split(',').filter(function(x){ return x.trim(); }) : whole; return !crew.length; })});
+    });
+    if (list.length) result[br] = list.sort(function(a, b){ return a.first.localeCompare(b.first); });
+  });
+  if (dryRun || !Object.keys(result).length) return result;
+  const nice = function(d){ return Utilities.formatDate(new Date(d + 'T12:00:00'), tz, 'EEE d MMM'); };
+  const block = function(br){ return '<h3 style="font-family:Arial;color:#E8192C;margin:18px 0 6px">' + br + '</h3><table style="font-family:Arial;font-size:13px;border-collapse:collapse">' +
+    result[br].map(function(x){ return '<tr><td style="padding:3px 12px 3px 0"><b>' + x.site + '</b> ' + x.job + '</td><td style="padding:3px 12px 3px 0">' + (x.none ? '<span style="color:#C000C0">no crew</span>' : 'short of crew') + '</td><td>from ' + nice(x.first) + ' · ' + x.days + ' day' + (x.days !== 1 ? 's' : '') + '</td></tr>'; }).join('') + '</table>'; };
+  const send = function(to, brs) {
+    if (!to || !brs.length) return;
+    const n = brs.reduce(function(a, b){ return a + result[b].length; }, 0);
+    MailApp.sendEmail({to: to, subject: 'Schedule: ' + n + ' job' + (n !== 1 ? 's' : '') + ' need crew in the next ' + ALERT_DAYS + ' working days',
+      htmlBody: '<p style="font-family:Arial">These jobs have days with no crew (or fewer than needed) named in the Operations Schedule. Please allocate crew in Resources.</p>' + brs.map(block).join('') +
+        '<p style="font-family:Arial;font-size:12px;color:#777;margin-top:18px">Sent daily at 6am on weekdays by the TechClean Operations Schedule.</p>'});
+  };
+  const all = Object.keys(result);
+  send(props.getProperty('ALERT_EMAILS'), all);
+  all.forEach(function(br){ send(props.getProperty('ALERT_EMAILS_' + br.toUpperCase()), [br]); });
+  return result;
+}
 `;
   navigator.clipboard.writeText(s).then(()=>toast('Apps Script copied to clipboard ✓'));
 }
@@ -3726,6 +3887,7 @@ function renderBoardStats(start,end){
 }
 
 function renderBoard(){
+  try{ renderNoCrewBanner(); }catch(e){ console.error(e); }
   const br=S.branch, today=dsOf(new Date()), tv=document.body.classList.contains('tv');
   const start=boardStartDate(), weeks=tv?Math.max(BOARD.weeks,4):BOARD.weeks;
   const nCols=[5,6,7].includes(+BOARD.days)?+BOARD.days:7;
@@ -3962,7 +4124,7 @@ function renderRes(){
         const click=jc?`dupOpenPerson('${d}','${k.replace(/'/g,"\\'")}')`:`editJob('${j.id}')`;
         const tip=(j.jobno?j.jobno+' — ':'')+(j.site||'')+(hrs!=null?` · ${hrs}h`:'')+(st==='open'?' · DOUBLE-BOOKED — click to split hours or flag':st==='flag'?' · Schedule error: '+jc.note:'');
         const other=j.branch!==br;
-        c+=`<span class="rs-chip ${cls}" style="background:${col.bg};color:${col.fg}" data-jid="${j.id}" data-day="${d}" onclick="rsChipClick(event,'${j.id}','${d}','${k.replace(/'/g,"\\'")}')" ondblclick="rsChipDbl(event,'${j.id}')" title="Click: change / move · Double-click: open job">${other?`<em class="rs-br" style="background:${BRANCH_COLORS[j.branch]};color:#111">${BR_CODE[j.branch]||j.branch}</em>`:''}${hrs!=null?`<em class="rs-h">${hrs}h</em>`:''}${st==='flag'?'⚑ ':''}${_esc(j.site||j.jobno||'Job')}</span>`;
+        c+=`<span class="rs-chip ${cls}" style="background:${col.bg};color:${col.fg}" data-jid="${j.id}" data-day="${d}" onclick="rsChipClick(event,'${j.id}','${d}','${k.replace(/'/g,"\\'")}')" ondblclick="rsChipDbl(event,'${j.id}')" title="Click: change / move · Double-click: open job">${other?`<em class="rs-br" style="background:${BRANCH_COLORS[j.branch]};color:#111">${BR_CODE[j.branch]||j.branch}</em>`:''}${hrs!=null?`<em class="rs-h">${hrs}h</em>`:''}${st==='flag'?'⚑ ':''}${tsTag(j,d)}${_esc(j.site||j.jobno||'Job')}</span>`;
       });
       if(js.length) worked++;
       if(!c){
@@ -4001,7 +4163,7 @@ function renderRes(){
   if(!wf.length) wfH+=`<div class="rs-ok">✓ Nothing new from WorkflowMax.</div>`;
   wf.slice(0,15).forEach(j=>{ const f=wfmFlag(j), w=wfmOf(j); wfH+=`<div class="rs-item" onclick="editJob('${j.id}')"><span class="sw" style="background:${f==='new'?'#3B82F6':'#F59E0B'}"></span><div class="tx"><b>${_esc(j.site||j.jobno)}</b><small>${_esc(j.jobno||'')} · ${j.start?_fmtD(j.start)+' → '+_fmtD(j.finish):'no dates'}${f==='dates'?' · was '+_esc(w.oldStart||'?'):''}</small></div><span class="gap" style="color:${f==='new'?'#8AB4F8':'#FCD34D'}">${f==='new'?'needs crew':'dates moved'}</span></div>`; });
   wfH+=`</div>`;
-  side=side.replace('<div class="rs-side">','<div class="rs-side">'+wfH);
+  side=side.replace('<div class="rs-side">','<div class="rs-side">'+wfH+tsSideCard(br));
   const _mine=c=>c.jobs.some(j=>j.branch===br)||homeBranch(c.name)===br;   // this branch's jobs or this branch's people
   const opn=_rcl.filter(c=>_mine(c)&&(c.status==='open'||c.status==='over')), flg=_rcl.filter(c=>_mine(c)&&c.status==='flag'), spl=_rcl.filter(c=>_mine(c)&&c.status==='split');
   side+=`</div><div class="rs-card"><h4>Double-bookings <span>${opn.length} open · ${flg.length} flagged · ${spl.length} split</span></h4>`;
