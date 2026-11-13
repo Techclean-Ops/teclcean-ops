@@ -544,9 +544,14 @@ body.tv-mode #tv-bar { display:flex }
 .bd-dnum.today .n{background:#8AB4F8;color:#0F1A2B}
 .bd-dnum.other .n{color:#6A6D71}
 .bd-dnum .hn{font-size:9px;font-weight:500;color:#FCA5A5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bd-job{z-index:2;height:24px;margin:2px 3px;border-radius:6px;display:flex;align-items:center;gap:6px;padding:0 8px;font-family:var(--font-head);font-size:13px;font-weight:600;cursor:pointer;overflow:hidden;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.35);transition:filter .12s,transform .12s;min-width:0}
+.bd-job{z-index:2;height:40px;margin:2px 3px;border-radius:8px;display:flex;align-items:center;gap:8px;padding:0 10px;font-family:var(--font-head);font-size:14px;font-weight:700;border:1px solid rgba(0,0,0,.25);cursor:pointer;overflow:hidden;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.35);transition:filter .12s,transform .12s;min-width:0}
 .bd-job:hover{filter:brightness(1.12);transform:translateY(-1px)}
-.bd-job .t{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.bd-job .bd-txt{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;line-height:1.15}
+.bd-job .t{overflow:hidden;text-overflow:ellipsis;min-width:0;letter-spacing:-.01em}
+.bd-job .s2{font-family:var(--font-mono);font-size:10.5px;font-weight:500;opacity:.85;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.bd-job .s2 b{font-weight:700}
+.bd-job .crew{font-size:11px!important;padding:2px 7px!important}
+.bd-arr{opacity:.7;font-size:16px;flex-shrink:0}
 .bd-job .no{font-family:var(--font-mono);font-size:9px;opacity:.7;flex-shrink:0}
 .bd-job .crew{margin-left:auto;flex-shrink:0;font-family:var(--font-mono);font-size:10px;font-weight:600;padding:1px 6px;border-radius:9px;background:rgba(0,0,0,.22)}
 .bd-job.cont-l{border-top-left-radius:0;border-bottom-left-radius:0;margin-left:0}
@@ -807,7 +812,8 @@ body.tv #topbar,body.tv #sidebar,body.tv #tabs{display:none!important}
 body.tv #panel-board .bd-bar{padding:16px 24px}
 body.tv .bd-title{font-size:30px}
 body.tv .bd-range{font-size:26px}
-body.tv .bd-job{height:30px;font-size:16px}
+body.tv .bd-job{height:48px;font-size:18px}
+body.tv .bd-job .s2{font-size:13px}
 body.tv .bd-job .crew{font-size:12px}
 body.tv .bd-dnum{font-size:16px}
 body.tv .bd-dnum .n{width:32px;height:32px}
@@ -1887,7 +1893,7 @@ document.addEventListener('keydown', e => {
 const PRELOAD_JOBS = [];
 const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
-const APP_VERSION = 'v50-202611132000';
+const APP_VERSION = 'v50-202611132145';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 
 const BLANK_BRANCH_MAP = () => ({ Auckland: {}, Wellington: {}, Christchurch: {} });
@@ -2992,7 +2998,10 @@ async function doSync(silent=false){
   if(!S.gsUrl){if(!silent)toast('No Sheets URL — go to Setup','err');return}
   document.getElementById('sync-pill').textContent='SYNCING…';
   try{
-    const _payload={action:'sync',jobs:S.jobs.filter(j=>!j._del),leave:S.leave||{},training:S.training||{},ts:new Date().toISOString()};
+    const _syncStart=new Date().toISOString();
+    // Deleted jobs ARE sent (flagged _del) so the Sheet removes them — previously they were held back,
+    // so a delete only hid the job on this device and it came back everywhere else.
+    const _payload={action:'sync',jobs:S.jobs,leave:S.leave||{},training:S.training||{},ts:_syncStart};
     if(_staffDirty){ _payload.staff=S.staff; _payload.staffEdit=true; }   // roster is sent AND flagged as a real edit ONLY on add/remove; backend ignores staff on every other sync
     const body=JSON.stringify(_payload);
     const res=await fetch(S.gsUrl,{method:'POST',body});
@@ -3058,13 +3067,22 @@ async function doSync(silent=false){
             checklist:    sj.checklist&&Object.keys(sj.checklist).length ? sj.checklist : (local.checklist||{}),
           };
         });
-        // Also keep any local jobs not yet on server (just added, not synced yet)
+        // Keep local jobs the server doesn't have yet (added since the last good sync).
+        // A job that was already on this device at the last good sync but is now missing from the
+        // server was deleted on another device — drop it instead of pushing it back.
         const serverIds = new Set(data.jobs.map(j=>j.id));
-        S.jobs.filter(j=>j.id&&!serverIds.has(j.id)&&!j._del).forEach(j=>merged.push(j));
+        const _lastOk = localStorage.getItem('aops_lastsync') || '';
+        S.jobs.filter(j=>j.id&&!serverIds.has(j.id)&&!j._del).forEach(j=>{
+          const t = j.ts ? new Date(j.ts) : null;
+          const deletedElsewhere = !!_lastOk && (!t || isNaN(t) || t < new Date(_lastOk));
+          if(!deletedElsewhere) merged.push(j);
+        });
         // Preserve local deletions — if deleted locally, mark as deleted in merged
         const localDeleted = new Set(S.jobs.filter(j=>j._del).map(j=>j.id));
         merged.forEach(j=>{ if(localDeleted.has(j.id)) j._del=true; });
         S.jobs = merged;
+        try{ localStorage.setItem('aops_lastsync', _syncStart); }catch(e){}
+        migrateInvoicedBeforeNov2026();
         applyClientMap();   // restore client field lost in GAS round-trip
         applyProjectMap();  // restore intentionally-cleared project values
         // Staff: server is source of truth — REPLACE the roster per branch so
@@ -3205,7 +3223,10 @@ function handleSync(data) {
 
     // Write back — exclude deleted jobs from sheet display but keep them briefly
     // Actually filter out deleted so they don't come back on other devices
-    const rows = Object.values(existing).filter(r => r[14] !== 'Y'); // col 14 = Deleted
+    // Deleted jobs are kept as tombstones (Deleted = Y) for 60 days so a device holding an
+    // older copy can't push them back; handleGetJobs never returns them.
+    const _cut = Date.now() - 60*86400000;
+    const rows = Object.values(existing).filter(r => r[14] !== 'Y' || new Date(String(r[20]||0)).getTime() > _cut); // col 14 = Deleted, col 20 = ts
 
     sheet.clearContents();
     sheet.getRange(1,1,1,headers.length).setValues([headers])
@@ -3297,6 +3318,7 @@ function handleGetJobs() {
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
       if (!row[1]) continue; // skip empty rows
+      if (row[14] === 'Y') continue; // deleted (tombstone) — never sent to devices
 
       // Parse JSON fields safely
       let checklist = {};
@@ -3511,7 +3533,7 @@ function renderBoard(){
 
   const cols = 'repeat(5,minmax(0,1fr))'+(nCols>5?` repeat(${nCols-5},minmax(0,.62fr))`:'');
   if(isMobile()){ renderBoardAgenda(start,nCols,weeks); return; }
-  const laneH = tv ? 34 : 28;
+  const laneH = tv ? 52 : 44;
   let html=`<div class="bd-dow" style="--bd-cols:${cols}">`+
     ['MON','TUE','WED','THU','FRI','SAT','SUN'].slice(0,nCols).map(d=>`<div>${d}</div>`).join('')+`</div>`;
 
@@ -3597,8 +3619,14 @@ function renderBoard(){
       const need=Number(j.staff)||0;
       const crewTxt = need ? `${sg.crew}/${need}` : `${sg.crew}`;
       const tip=`${j.jobno?j.jobno+' — ':''}${j.site||''}${j.client?' · '+j.client:''}\n${j.start} → ${j.finish}\nCrew: ${sg.crew}${need?' of '+need+' needed':''}${j.resource?'\n'+j.resource:''}${j.project?'\nProject: '+j.project:''}`;
+      const d0=dates.slice(sg.s,sg.e+1).find(x=>jobActiveOnDay(j,x));
+      const nm=d0?getStaffForDay(j,d0).split(',').map(x=>x.trim()).filter(Boolean):[];
+      const nmTxt=nm.length?nm.map(x=>{const p=x.split(' ');return p[0]+(p[1]?' '+p[1][0]:'');}).join(', '):'No crew named';
+      const co=closeoutOf(j);
       html+=`<div class="bd-job ${sg.cl?'cont-l':''} ${sg.cr?'cont-r':''} ${sg.short?'short':''} ${sg.short&&sg.crew===0?'nocrew':''} ${j.done?'done':''}" style="grid-column:${sg.s+1}/${sg.e+2};grid-row:${sg.lane+2};background:${c.bg};color:${c.fg}" data-jid="${j.id}" onclick="event.stopPropagation();editJob('${j.id}')">
-        ${sg.cl?'<span style="opacity:.7">‹</span>':''}${j.jobno&&!tv?`<span class="no">${_esc(j.jobno)}</span>`:''}<span class="t">${label}</span>${wfmBadge(j)}${hasClash?'<span class="bd-warn" title="Someone on this job is double-booked">⚠</span>':''}${closeoutOf(j)==='invoiced'?'<span class="bd-co">$ INV</span>':closeoutOf(j)==='finished'?'<span class="bd-co">✓ FIN</span>':''}<span class="crew">👷 ${crewTxt}</span>${sg.cr?'<span style="opacity:.7">›</span>':''}
+        ${sg.cl?'<span class="bd-arr">‹</span>':''}
+        <div class="bd-txt"><div class="t">${label}</div><div class="s2">${j.jobno?`<b>${_esc(j.jobno)}</b> · `:''}${_esc(nmTxt)}</div></div>
+        ${wfmBadge(j)}${hasClash?'<span class="bd-warn" title="Someone on this job is double-booked">⚠</span>':''}${co==='invoiced'?'<span class="bd-co">$ INV</span>':co==='finished'?'<span class="bd-co">✓ FIN</span>':''}<span class="crew">👷 ${crewTxt}</span>${sg.cr?'<span class="bd-arr">›</span>':''}
       </div>`;
     }
     html+=`</div>`;
@@ -4208,6 +4236,23 @@ function wfmBadge(j, big){
 }
 function wfmLastSync(){ let t=''; S.jobs.forEach(j=>{ const w=wfmOf(j); if(w&&w.syncedAt&&w.syncedAt>t) t=w.syncedAt; }); return t; }
 
+// One-off (13 Nov 2026): close-out starts from November — every job that finished before
+// 1 Nov 2026 and isn't already closed is treated as invoiced. Runs once per device; safe to repeat.
+function migrateInvoicedBeforeNov2026(){
+  try{ if(localStorage.getItem('aops_mig_inv_202611')) return; }catch(e){}
+  let n=0; const now=new Date().toISOString();
+  S.jobs.forEach(j=>{
+    if(j._del||!j.finish||j.finish>='2026-11-01') return;
+    if(closeoutOf(j)==='invoiced') return;
+    if(!j.checklist) j.checklist={};
+    j.checklist.closeout='invoiced';
+    j.checklist.closedAt=j.checklist.closedAt||(j.finish+'T12:00:00');   // crew history kept up to the finish date
+    j.done=true; j.ts=now; n++;
+  });
+  if(S.jobs.length){ try{ localStorage.setItem('aops_mig_inv_202611','1'); }catch(e){} }   // only once there's data to check
+  if(n){ save(); console.log('[migration] '+n+' pre-November jobs marked invoiced'); setTimeout(()=>toast(n+' job'+(n!==1?'s':'')+' that finished before November marked as invoiced'),1500); }
+}
+
 function toggleSidebar(force){
   if(isMobile()){ document.body.classList.toggle('sb-open'); return; }   // phone: slide-out drawer
   const on = typeof force==='boolean' ? force : !document.body.classList.contains('sb-collapsed');
@@ -4277,6 +4322,7 @@ function appInit() {
   const _bootNow = new Date();
   S.year  = _savedView.year  || _bootNow.getFullYear();
   S.month = (_savedView.month != null) ? _savedView.month : _bootNow.getMonth();
+  migrateInvoicedBeforeNov2026();
   renderCal();
   showPanel(localStorage.getItem('aops_panel')||'board');
   if(localStorage.getItem('aops_tv')==='1') toggleTV(true);
