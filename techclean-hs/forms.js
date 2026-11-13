@@ -8,6 +8,11 @@
      choice  Pick one big picture button.  opts: [[value, icon, label], ...]
      text    Speak or type.
 */
+/* Common site hazards for the pre-start (from the ARCP hazard register). Edit as needed. */
+var HAZARDS = [['fibres', '🫁', 'Asbestos fibres'], ['height', '🪜', 'Working at height'], ['elec', '⚡', 'Electrical'], ['heat', '🥵', 'Heat stress'],
+  ['manual', '🏋️', 'Manual handling'], ['slips', '🧯', 'Slips, trips, falls'], ['noise', '🔊', 'Noise'], ['space', '🚪', 'Restricted space'],
+  ['plant', '🚜', 'Plant and vehicles'], ['chem', '🧪', 'Chemicals (PVA, surfactant)'], ['public', '👪', 'Public / occupants'], ['weather', '🌧️', 'Weather']];
+
 var FORMS = {
 
   FFW: {
@@ -49,6 +54,21 @@ var FORMS = {
     questions: [
       { id: 'weather', q: 'Weather and conditions today?', type: 'choice', section: 'Conditions',
         opts: [['fine', '☀️', 'Fine'], ['wet', '🌧️', 'Wet'], ['wind', '💨', 'Windy'], ['hot', '🥵', 'Hot']] },
+      { id: 'tasks', q: 'Today’s work — who is doing what?', pdf: 'Work planned for today and who is doing what', type: 'text', section: 'Briefing — what the crew were told',
+        help: 'Say it out loud as you brief the crew — the mic types it.' },
+      { id: 'hazsel', q: 'Hazards discussed today', pdf: 'Hazards discussed today', type: 'multi', section: 'Briefing — what the crew were told',
+        help: 'Tap every hazard you talked through.', opts: HAZARDS },
+      { id: 'controls', q: 'Controls agreed for those hazards', pdf: 'Controls agreed', type: 'text', section: 'Briefing — what the crew were told' },
+      { id: 'topic', q: 'Toolbox topic today', pdf: 'Toolbox topic', type: 'field', section: 'Briefing — what the crew were told' },
+      { id: 'assembly', q: 'Emergency assembly point', pdf: 'Emergency assembly point', type: 'field', section: 'Emergency', help: 'Filled in from the last pre-start — check it.' },
+      { id: 'firstaid', q: 'First aider on site today', pdf: 'First aider on site today', type: 'crewpick', section: 'Emergency' },
+      { id: 'hospital', q: 'Nearest hospital / A&E', pdf: 'Nearest hospital / A&E', type: 'field', section: 'Emergency', help: 'Filled in from the last pre-start — check it.' },
+      { id: 'exit', q: 'Emergency exit from the enclosure shown?', pdf: 'Emergency exit route from the enclosure shown to the crew', type: 'yn', bad: ['no'], section: 'Emergency' },
+      { id: 'trades', q: 'Other trades, permits or exclusion zones today?', pdf: 'Other trades on site, permits or exclusion zones today', type: 'yn', noNA: true, bad: ['yes'],
+        badMsg: 'Note who and what — e.g. electrician in the plant room, hot work permit.', section: 'Site today' },
+      { id: 'stopwork', q: 'Stop-work authority reminded?', pdf: 'Crew reminded they can stop work if controls fail', type: 'yn', noNA: true, bad: ['no'], section: 'Site today' },
+      { id: 'understood', q: 'Everyone understood — no language help needed?', pdf: 'Everyone understood the briefing (language help given if needed)', type: 'yn', noNA: true, bad: ['no'],
+        badMsg: 'Note who needed help and how it was given.', section: 'Site today' },
       { id: 'plan', q: 'Today’s work and who does what covered?', type: 'yn', bad: ['no'], section: 'Covered at pre-start' },
       { id: 'swms', q: 'SWMS reviewed with everyone present?', type: 'yn', bad: ['no'], section: 'Covered at pre-start' },
       { id: 'encl', q: 'Enclosure and negative pressure checked, logged?', type: 'yn', bad: ['no'], section: 'Covered at pre-start' },
@@ -262,15 +282,8 @@ FORMS.D10 = {
 };
 
 FORMS.D11 = {
-  code: 'D11', ref: 'Form D11 — Inventory sign out sheet', title: 'Equipment out / back', short: 'Equipment', icon: '🧰', who: 'supervisor',
-  questions: [
-    { id: 'dir', q: 'Signing equipment out or back in?', type: 'choice', section: 'Inventory', opts: [['out', '📤', 'Out to site'], ['back', '📥', 'Back from site']] },
-    { id: 'item', q: 'Item description', pdf: 'Item description', type: 'field', section: 'Inventory' },
-    { id: 'qty', q: 'How many?', pdf: 'Qty', type: 'number', unit: '', section: 'Inventory' },
-    { id: 'cond', q: 'Condition on return?', pdf: 'Condition', type: 'choice', section: 'Inventory', showIf: function (a) { return a.dir && a.dir.v === 'back'; },
-      opts: [['good', '👍', 'Good'], ['service', '🔧', 'Needs service'], ['damaged', '💥', 'Damaged'], ['lost', '❓', 'Missing']], bad: ['service', 'damaged', 'lost'], photo: true },
-    { id: 'iphoto', q: 'Photo (optional)', type: 'photo', section: 'Inventory', optional: true }
-  ]
+  code: 'D11', ref: 'Form D11 — Inventory sign out sheet', title: 'Inventory — equipment and consumables', short: 'Inventory', icon: '🧰', who: 'supervisor', custom: true,
+  help: 'Count equipment and consumables out to site and back to the yard. Used = out − back.'
 };
 
 /* Supervisor's "Job forms" menu, in Part D order. D7 is Class A only. */
@@ -283,6 +296,7 @@ var JOB_FORMS = ['D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11'];
    preset: answers filled in for that step (e.g. which D6 stage).  Re-order or edit steps here. */
 var SEQUENCE = [
   { key: 'D2', group: 'start', form: 'D2', title: 'Job start checklist' },
+  { key: 'D11O', group: 'start', form: 'D11', preset: { dir: 'out' }, title: 'Inventory out — equipment and consumables' },
   { key: 'D4', group: 'start', form: 'D4', perPerson: true, title: 'Induct everyone on site' },
   { key: 'D3', group: 'start', form: 'D3', title: 'Site personnel register' },
   { key: 'D1', group: 'start', form: 'D1', perPerson: true, title: 'Everyone signs the ARCP / SWMS' },
@@ -296,6 +310,6 @@ var SEQUENCE = [
   { key: 'OUT', group: 'day', form: 'D13', perPerson: true, out: true, title: 'Sign everyone out' },
   { key: 'D8', group: 'week', form: 'D8', title: 'Weekly site inspection' },
   { key: 'D6C', group: 'finish', form: 'D6', preset: { stage: 'clear' }, title: 'Completion and clearance' },
-  { key: 'D11B', group: 'finish', form: 'D11', preset: { dir: 'back' }, title: 'Equipment back to the yard' }
+  { key: 'D11B', group: 'finish', form: 'D11', preset: { dir: 'back' }, title: 'Inventory back — equipment and unused consumables' }
 ];
 var GROUPS = { start: 'Start of job — once', day: 'Every day', week: 'Every week', finish: 'Close-out — when removal is finished' };

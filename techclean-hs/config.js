@@ -13,6 +13,42 @@ var CONFIG = {
   REMINDER_TIME: '07:00'
 };
 
+/* Inventory sign-out sheet (D11). From the ARCP: B-section equipment and consumables, PPE table, D2 checklist.
+   cost: price per unit in NZD (excl. GST). Leave null until the office adds it; costs then show per job.
+   Edit this list to match what's actually stocked. */
+var INVENTORY = {
+  consumables: [
+    { id: 'poly', name: 'Polythene 200 micron', unit: 'roll', cost: null },
+    { id: 'bags', name: 'Asbestos waste bags', unit: 'bag', cost: null },
+    { id: 'clothtape', name: 'Cloth tape', unit: 'roll', cost: null },
+    { id: 'barrier', name: 'Barrier tape', unit: 'roll', cost: null },
+    { id: 'signs', name: 'Asbestos warning signs', unit: 'each', cost: null },
+    { id: 'staples', name: 'Staples', unit: 'box', cost: null },
+    { id: 'wipes', name: 'Wet wipes', unit: 'pack', cost: null },
+    { id: 'pva', name: 'PVA', unit: 'litre', cost: null },
+    { id: 'surf', name: 'Surfactant', unit: 'litre', cost: null },
+    { id: 'encap', name: 'Encapsulant', unit: 'litre', cost: null },
+    { id: 'cover', name: 'Disposable coveralls Type 5/6', unit: 'each', cost: null },
+    { id: 'gloves', name: 'Nitrile gloves', unit: 'box', cost: null },
+    { id: 'p3', name: 'P3 filters (half / full face)', unit: 'pair', cost: null },
+    { id: 'paprf', name: 'PAPR filters', unit: 'each', cost: null },
+    { id: 'smoke', name: 'Smoke test cartridges', unit: 'each', cost: null }
+  ],
+  equipment: [
+    { id: 'npu', name: 'Negative pressure unit (NPU)', unit: 'unit' },
+    { id: 'vac', name: 'H-class vacuum', unit: 'unit' },
+    { id: 'dcu', name: 'Decontamination unit (DCU)', unit: 'unit' },
+    { id: 'mano', name: 'Manometer', unit: 'unit' },
+    { id: 'smokegen', name: 'Smoke generator', unit: 'unit' },
+    { id: 'sprayer', name: 'Airless sprayer', unit: 'unit' },
+    { id: 'inject', name: 'Injection wetting kit', unit: 'unit' },
+    { id: 'water', name: 'Water filtration system', unit: 'unit' },
+    { id: 'leads', name: 'Extension leads / RCD', unit: 'each' },
+    { id: 'papr', name: 'PAPR (powered respirator)', unit: 'unit' },
+    { id: 'ladder', name: 'Ladders / scaffold / podium', unit: 'each' }
+  ]
+};
+
 /* Demo data — replaced by today's jobs and crew from the schedule (read-only) once API_URL is set. */
 var DEMO = {
   people: [

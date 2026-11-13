@@ -471,6 +471,30 @@
   function stageRec(stage, onlyToday) { return (onlyToday ? todays('D6') : live('D6')).filter(function (r) { return ((r.data.answers || {}).stage || {}).v === stage; })[0]; }
   function ffwToday(pid) { return todays('FFW').filter(function (r) { return r.personId === pid; }).sort(function (x, y) { return y.createdAt - x.createdAt; })[0]; }
   function d13Today(pid) { return todays('D13').filter(function (r) { return r.personId === pid; })[0]; }
+  function briefed(pid) {
+    return todays('D5').some(function (r) { return (r.data.crew || []).some(function (c) { return c.id === pid && c.sig; }); }) ||
+      todays('D5L').some(function (r) { return r.personId === pid; });
+  }
+  function renderLateBrief(step, pid) {
+    var p = person(pid), d5 = todays('D5').sort(function (x, y) { return y.createdAt - x.createdAt; })[0];
+    S.onBack = function () { renderPersonStep(step); };
+    app.innerHTML = top('Late arrival — ' + p.name, 'Pre-start briefing · ' + jobSub(), true) + '<div class="body"><p class="help">' + esc(first(p.name)) +
+      ' missed the pre-start. Go through it with them before they sign in.</p>' + briefSummary(d5.data.answers) +
+      '<div class="card"><p style="margin:0"><b>I have been briefed on today\u2019s pre-start. I understand the work, the hazards and controls above, the SWMS and the emergency plan.</b></p></div>' +
+      '<div class="lbl">' + esc(p.name) + ' signs</div>' + sigBox() + '</div><div class="foot"><button class="btn" id="go" disabled>Signed — sign them in</button></div>';
+    bindBack(); renderBanner();
+    var go = $('#go'), sig = bindSig($('.sigwrap'), function () { go.disabled = sig.isEmpty(); });
+    go.onclick = async function () {
+      go.disabled = true;
+      var rec = { form: 'D5L', formTitle: 'Late arrival pre-start briefing — ' + p.name, formRef: FORMS.D5.ref + ' (late arrival)', jobNo: S.job.jobNo, personId: pid,
+        data: { d5: d5.id }, details: jobDetails([['Worker', p.name], ['Briefed by', S.me.name], ['Pre-start held at', hm(d5.createdAt)]]),
+        rows: [{ section: 'Briefing given', label: 'Today\u2019s pre-start summary gone through with the worker', value: 'Yes', flag: 'good' }],
+        sigs: [{ name: p.name, label: 'Worker — briefed late', time: Date.now(), img: sig.data() }, { name: S.me.name, label: 'Briefed by', time: Date.now() }] };
+      rec.fileName = fileName({ date: today() }, 'Late pre-start briefing', p.name); rec.folder = folderFor(S.job);
+      await saveRecord(rec); await saveD13(pid, false);
+      toast(first(p.name) + ' briefed and signed in ' + hm(Date.now())); history.replaceState({ v: 1 }, ''); renderPersonStep(step);
+    };
+  }
   function seqSteps() { return SEQUENCE.filter(function (s) { return !(s.classA && S.job.cls.indexOf('A') < 0); }); }
 
   /* Who a per-person step still needs, and whether a step is done */
@@ -479,7 +503,7 @@
     if (step.key === 'D4') return live('D4').some(function (r) { return ((r.data.answers || {}).who || {}).v === pid; }) ? 'done' : 'todo';
     if (step.key === 'D1') return live('D1').some(function (r) { return r.personId === pid && r.data.rev === arcpRev(); }) ? 'done' : 'todo';
     if (step.key === 'FFW') return f ? (f.data.result === 'pass' ? 'done' : 'notfit') : 'todo';
-    if (step.key === 'IN') return f && f.data.result !== 'pass' ? 'notfit' : d && d.data.in ? 'done' : !f ? 'blocked' : 'todo';
+    if (step.key === 'IN') return f && f.data.result !== 'pass' ? 'notfit' : d && d.data.in ? 'done' : !f ? 'blocked' : (todays('D5').length && !briefed(pid)) ? 'brief' : 'todo';
     if (step.key === 'OUT') return !(d && d.data.in) ? 'skip' : d.data.out ? 'done' : 'todo';
     return 'todo';
   }
@@ -487,7 +511,7 @@
     var at = null, rec;
     if (step.perPerson) {
       var ppl = present(), n = 0, of = 0;
-      ppl.forEach(function (pid) { var s = personState(step, pid); if (s === 'skip' || (s === 'notfit' && step.key !== 'FFW')) return; of++; if (s === 'done' || s === 'notfit') n++; });
+      ppl.forEach(function (pid) { var s = personState(step, pid); if (s === 'skip' || s === 'blocked' && step.key === 'IN' && false || (s === 'notfit' && step.key !== 'FFW')) return; of++; if (s === 'done' || s === 'notfit') n++; });
       return { done: of > 0 ? n === of : step.key === 'OUT', n: n, of: of };
     }
     if (step.key === 'D2') rec = live('D2')[0];
@@ -499,7 +523,8 @@
     else if (step.key === 'D5') rec = todays('D5')[0];
     else if (step.key === 'D9') rec = todays('D9')[0];
     else if (step.key === 'D8') { rec = live('D8').filter(function (r) { return (Date.now() - r.createdAt) < 7 * 864e5; })[0]; }
-    else if (step.key === 'D11B') rec = live('D11').filter(function (r) { return ((r.data.answers || {}).dir || {}).v === 'back'; })[0];
+    else if (step.key === 'D11B') rec = live('D11').filter(function (r) { return r.data.dir === 'back'; })[0];
+    else if (step.key === 'D11O') rec = live('D11').filter(function (r) { return r.data.dir === 'out'; })[0];
     return { done: !!rec, at: rec ? rec.createdAt : null, rec: rec };
   }
   /* Which steps are open: start + day steps strictly in order; weekly and close-out once the start of job is done */
@@ -545,7 +570,7 @@
     h += '<div class="lbl">Any time</div>' +
       tile('d12', '⚠️', 'p', 'Report incident / hazard', '') +
       '<div class="pics" style="margin-top:0">' +
-      [['D10', '🚛', 'Waste load'], ['D11', '🧰', 'Equipment out / back'], ['D4', '🎓', 'Induct someone new'], ['visitor', '🪪', 'Visitor sign in'], ['file', '📁', 'Site file']]
+      [['D10', '🚛', 'Waste load'], ['D11', '🧰', 'Inventory out / back'], ['D4', '🎓', 'Induct someone new'], ['visitor', '🪪', 'Visitor sign in'], ['file', '📁', 'Site file']]
         .map(function (b) { return '<button data-any="' + b[0] + '"><span>' + b[1] + '</span>' + b[2] + '</button>'; }).join('') + '</div>';
     h += footLinks() + '</div>';
     app.innerHTML = h; renderBanner(); bindFootLinks();
@@ -561,6 +586,7 @@
       var k = b.getAttribute('data-any');
       if (k === 'file') { enter(); renderSiteFile(); }
       else if (k === 'visitor') { enter(); renderVisitor(); }
+      else if (k === 'D11') { enter(); renderInventory(null); }
       else { enter(); startFlow(k); }
     }; });
   }
@@ -580,6 +606,7 @@
     S.seq = step.key; S.seqStep = step; S.actAs = null;
     enter(function () { renderSupToday(); });
     if (step.perPerson) return renderPersonStep(step);
+    if (step.form === 'D11') return renderInventory(step.preset.dir);
     startFlow(step.form, step.preset);
   }
   function seqReturn(msg) {
@@ -598,8 +625,9 @@
     S.job.crewIds.forEach(function (pid) {
       var p = person(pid), away = ab.indexOf(pid) >= 0, s = away ? 'away' : personState(step, pid), chipH;
       chipH = s === 'done' ? chip('done', step.key === 'IN' ? 'In ' + hm(d13Today(pid).data.in) : step.key === 'OUT' ? 'Out ' + hm(d13Today(pid).data.out) : 'Done ✓')
+        : s === 'brief' ? chip('new', 'Pre-start briefing first')
         : s === 'notfit' ? chip('todo', 'Not fit — no entry') : s === 'away' ? chip('lock', 'Not on site today') : s === 'blocked' ? chip('lock', 'Fit check first') : s === 'skip' ? chip('lock', 'Not signed in') : chip('new', step.key === 'IN' ? 'Tap to sign in' : step.key === 'OUT' ? 'Tap to sign out' : 'To do');
-      h += '<div class="crew' + (s === 'done' ? ' signed' : '') + '" style="flex-wrap:wrap"><button style="flex:1;border:0;background:none;text-align:left;padding:0" data-p="' + pid + '"' + (s === 'todo' ? '' : ' disabled') + '><span class="nm">' + esc(p.name) + '</span></button>' + chipH +
+      h += '<div class="crew' + (s === 'done' ? ' signed' : '') + '" style="flex-wrap:wrap"><button style="flex:1;border:0;background:none;text-align:left;padding:0" data-p="' + pid + '" data-s="' + s + '"' + (s === 'todo' || s === 'brief' ? '' : ' disabled') + '><span class="nm">' + esc(p.name) + '</span></button>' + chipH +
         (canAbsent && (s === 'todo' || s === 'away') ? '<button class="link" style="width:100%;text-align:left;padding:6px 0 0" data-ab="' + pid + '">' + (away ? 'Back on site today' : 'Not on site today') + '</button>' : '') + '</div>';
     });
     var todo = S.job.crewIds.filter(function (pid) { return ab.indexOf(pid) < 0 && personState(step, pid) === 'todo'; });
@@ -611,6 +639,7 @@
     var all = $('#all'); if (all) all.onclick = async function () { all.disabled = true; for (var i = 0; i < todo.length; i++) await saveD13(todo[i], step.key === 'OUT'); toast(step.key === 'IN' ? 'All signed in' : 'All signed out'); renderPersonStep(step); };
     $$('[data-p]').forEach(function (b) { b.onclick = async function () {
       var pid = b.getAttribute('data-p');
+      if (b.getAttribute('data-s') === 'brief') { history.pushState({ v: 1 }, ''); return renderLateBrief(step, pid); }
       if (step.key === 'IN' || step.key === 'OUT') { b.disabled = true; await saveD13(pid, step.key === 'OUT'); toast(person(pid).name + (step.key === 'IN' ? ' signed in ' : ' signed out ') + hm(Date.now())); return renderPersonStep(step); }
       S.actAs = pid; history.pushState({ v: 1 }, '');
       if (step.key === 'FFW') startFlow('FFW');
@@ -667,6 +696,10 @@
       F = { code: code, i: 0, a: JSON.parse(JSON.stringify(od.answers || {})), crew: crew, amend: true };
     }
     F.def = f;
+    if (code === 'D5' && !saved && !S.amend) {
+      var lastD5 = live('D5').sort(function (x, y) { return y.createdAt - x.createdAt; })[0];
+      if (lastD5) ['assembly', 'hospital', 'firstaid'].forEach(function (k) { var v = (lastD5.data.answers || {})[k]; if (v && v.v) F.a[k] = { v: v.v }; });
+    }
     if (preset && !S.amend) {
       F.preset = preset; for (var k in preset) F.a[k] = { v: preset[k] };
       var ql = qList(f, F.a); F.i = 0; while (F.i < ql.length && preset[ql[F.i].id] !== undefined) F.i++;
@@ -711,6 +744,9 @@
       if (q.bad) h += '<div id="badbox" class="' + (a.v && isBad(q, a.v) ? '' : 'hidden') + '"><div class="warn">' + (q.photo ? 'Take a photo and add a note.' : 'Add a note or photo.') + '</div><div class="lbl">Note</div>' + voiceBox('note', 'Tap the mic to speak, or type…', a.note) + '<div class="lbl">Photo</div>' + photoBox('ph') + '</div>';
     } else if (q.type === 'text') {
       h += voiceBox('txt', 'Tap the mic to speak, or type…', a.v);
+    } else if (q.type === 'multi') {
+      var sel = Array.isArray(a.v) ? a.v : [];
+      h += '<div class="pics">' + q.opts.map(function (o) { return '<button data-mv="' + o[0] + '" class="' + (sel.indexOf(o[0]) >= 0 ? 'on' : '') + '"><span>' + o[1] + '</span>' + esc(o[2]) + '</button>'; }).join('') + '</div>';
     } else if (q.type === 'field') {
       h += '<input type="text" id="fld" value="' + esc(a.v || '') + '" autocomplete="off">';
     } else if (q.type === 'number') {
@@ -745,6 +781,7 @@
     function check() {
       var ok = (a.v !== undefined && a.v !== null && String(a.v).trim() !== '') || q.optional;
       if (q.type === 'number' && a.v && isNaN(+a.v)) ok = false;
+      if (q.type === 'multi') ok = Array.isArray(a.v) && a.v.length > 0;
       if (q.type === 'photo') ok = !!q.optional || (a.photos || []).length > 0;
       if (q.type === 'sign') ok = !!a.sig;
       if (q.type === 'selfie') ok = !!(a.photos && a.photos[0]);
@@ -765,6 +802,10 @@
     });
     var note = $('#note'); if (note) note.oninput = function () { a.note = note.value; F.a[q.id] = a; saveDraft(F); check(); };
     var txt = $('#txt'); if (txt) txt.oninput = function () { a.v = txt.value; F.a[q.id] = a; saveDraft(F); check(); };
+    $$('[data-mv]').forEach(function (b) { b.onclick = function () {
+      var v = b.getAttribute('data-mv'), sel = Array.isArray(a.v) ? a.v.slice() : [], i = sel.indexOf(v);
+      if (i >= 0) sel.splice(i, 1); else sel.push(v); a.v = sel; F.a[q.id] = a; saveDraft(F);
+      b.classList.toggle('on', i < 0); check(); }; });
     var fld = $('#fld'); if (fld) fld.oninput = function () { a.v = fld.value; F.a[q.id] = a; saveDraft(F); check(); };
     var num = $('#num'); if (num) num.oninput = function () { a.v = num.value.replace(',', '.'); F.a[q.id] = a; saveDraft(F); var bb = $('#badbox'); if (bb) bb.classList.toggle('hidden', !(a.v !== '' && isBad(q, a.v))); check(); };
     var tm = $('#tm'); if (tm) tm.oninput = tm.onchange = function () { a.v = tm.value; F.a[q.id] = a; saveDraft(F); check(); };
@@ -813,6 +854,7 @@
       else if (q.type === 'time') { val = a.v ? hm(new Date('2000-01-01T' + a.v)) : '—'; flag = ''; }
       else if (q.type === 'number') { val = (a.v || '—') + (q.unit ? ' ' + q.unit : ''); flag = isBad(q, a.v) ? 'bad' : ''; }
       else if (q.type === 'date') { val = a.v ? new Date(a.v + 'T12:00').toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'; flag = isBad(q, a.v) ? 'bad' : 'good'; }
+      else if (q.type === 'multi') { val = (a.v || []).map(function (v) { var o = q.opts.filter(function (x) { return x[0] === v; })[0]; return o ? o[2] : v; }).join('; ') || '—'; flag = ''; }
       else if (q.type === 'crewpick') { val = a.v === 'other' ? 'Someone else (below)' : (person(a.v) || {}).name; flag = ''; }
       else { val = answerLabel(q, a.v); flag = isBad(q, a.v) ? 'bad' : a.v === 'na' ? '' : (q.type === 'choice' && !q.bad) ? '' : 'good'; }
       rows.push({ section: q.section || F.def.title, label: label, value: val, flag: flag, note: a.note || '' });
@@ -899,7 +941,7 @@
     });
     h += '</div>';
     app.innerHTML = h; bindBack(); renderBanner();
-    $$('[data-c]').forEach(function (b) { b.onclick = function () { history.pushState({ v: 1 }, ''); startFlow(b.getAttribute('data-c')); }; });
+    $$('[data-c]').forEach(function (b) { b.onclick = function () { history.pushState({ v: 1 }, ''); var c = b.getAttribute('data-c'); if (c === 'D11') renderInventory(null); else startFlow(c); }; });
   }
 
   /* ---------- D13 sign on / off ---------- */
@@ -991,10 +1033,23 @@
     $$('[data-p]').forEach(function (b) { b.onclick = function () { history.pushState({ v: 1 }, ''); renderOneSign(F, b.getAttribute('data-p')); }; });
     done.onclick = function () { done.disabled = true; finishD5(F); };
   }
+  function briefSummary(ans) {
+    var A = ans || {}, v = function (k) { return (A[k] || {}).v; };
+    var hz = (v('hazsel') || []).map(function (x) { var o = HAZARDS.filter(function (h) { return h[0] === x; })[0]; return o ? o[2] : x; }).join(', ');
+    var fa = person(v('firstaid'));
+    return '<div class="card" style="font-size:16px"><div class="lbl" style="margin-top:0">Today’s pre-start</div>' +
+      '<p style="margin:4px 0"><b>Work:</b> ' + esc(v('tasks') || '—') + '</p>' +
+      '<p style="margin:4px 0"><b>Hazards:</b> ' + esc(hz || '—') + '</p>' +
+      '<p style="margin:4px 0"><b>Controls:</b> ' + esc(v('controls') || '—') + '</p>' +
+      '<p style="margin:4px 0"><b>Toolbox topic:</b> ' + esc(v('topic') || '—') + '</p>' +
+      '<p style="margin:4px 0"><b>Emergency:</b> assembly at ' + esc(v('assembly') || '—') + ' · first aider ' + esc(fa ? fa.name : '—') + ' · hospital ' + esc(v('hospital') || '—') + '</p>' +
+      ((A.trades || {}).note ? '<p style="margin:4px 0"><b>Other trades / permits:</b> ' + esc(A.trades.note) + '</p>' : '') +
+      '<p style="margin:4px 0"><b>You can stop work</b> if you think a control has failed.</p></div>';
+  }
   function renderOneSign(F, pid) {
     var p = person(pid);
     S.onBack = function () { history.pushState({ v: 1 }, ''); renderCrewSign(F); };
-    app.innerHTML = top(p.name, 'Pre-start ' + longDate(), true) + '<div class="body"><div class="card"><p style="margin:0">I attended today’s pre-start, I understand the work, hazards and SWMS, and my mask check is done.</p></div>' +
+    app.innerHTML = top(p.name, 'Pre-start ' + longDate(), true) + '<div class="body">' + briefSummary(F.a) + '<div class="card"><p style="margin:0"><b>I was at today\u2019s pre-start. I understand the work, the hazards and controls above, the SWMS and the emergency plan, and my mask check is done.</b></p></div>' +
       '<div class="lbl">Signature</div>' + sigBox() + '</div><div class="foot"><button class="btn" id="go" disabled>Sign</button><button class="btn sec" id="abs">Not here today</button></div>';
     bindBack();
     var go = $('#go'), sig = bindSig($('.sigwrap'), function () { go.disabled = sig.isEmpty(); });
@@ -1167,6 +1222,15 @@
         '<button class="chip wait" style="border:0;padding:10px 14px" data-doc="' + d.id + '">Open</button></div>';
     });
     h += '</div>' + (canUpload() ? '<button class="btn sec" id="adddoc" style="margin-top:12px;font-size:18px;min-height:54px;padding:12px">＋ Add document</button>' : '') + '</div>';
+    var inv = invSummary().filter(function (x) { return x.kind === 'c' && x.out; });
+    if (inv.length) {
+      var tot = 0, unp = 0;
+      h += '<div class="card"><div class="lbl" style="margin-top:0">Consumables on this job</div><div class="list">' + inv.map(function (x) {
+        if (x.cost != null) tot += x.used * x.cost; else if (x.used) unp++;
+        return '<div class="it"><span>' + esc(x.name) + '</span><b>' + x.used + ' used <span class="small">(' + x.out + ' out, ' + x.back + ' back)</span></b></div>';
+      }).join('') + '</div><div class="small" style="margin-top:6px">Cost of priced items: <b>' + money(tot) + '</b>' + (unp ? ' · ' + unp + ' item(s) not priced yet' : '') + '</div>' +
+        '<button class="btn sec" id="invpdf" style="margin-top:10px;font-size:18px;min-height:54px;padding:12px">Inventory and cost summary PDF</button></div>';
+    }
     h += '<div class="card"><div class="lbl" style="margin-top:0">Forms — ARCP Part D</div><div class="list">';
     PARTD.forEach(function (d, i) {
       var n = d[2] ? jobRecs(d[2]).filter(function (r) { return !r.supersededBy; }).length : null;
@@ -1179,6 +1243,7 @@
     app.innerHTML = h; bindBack(); renderBanner();
     $('#reg').onclick = function () { history.pushState({ v: 1 }, ''); renderRegister(); };
     $$('[data-doc]').forEach(function (b) { b.onclick = function () { openDoc(recById(b.getAttribute('data-doc'))); }; });
+    var ip = $('#invpdf'); if (ip) ip.onclick = invPdf;
     var ad = $('#adddoc'); if (ad) ad.onclick = function () { history.pushState({ v: 1 }, ''); renderAddDoc(); };
     $$('[data-f]').forEach(function (b) { b.onclick = function () { history.pushState({ v: 1 }, ''); renderFormList(PARTD[+b.getAttribute('data-f')]); }; });
     $$('[data-out]').forEach(function (b) { b.onclick = function () { signOutVisitor(b.getAttribute('data-out')).then(renderSiteFile); }; });
@@ -1275,7 +1340,8 @@
       var note = $('#wn').value.trim();
       S.amend = { old: r, reason: why + (note ? ': ' + note : '') };
       history.replaceState({ v: 1 }, '');
-      if (r.form === 'FFW' || (FORMS[r.form] && FORMS[r.form].questions)) startFlow(r.form);
+      if (r.form === 'D11') renderInventory(r.data.dir, r);
+      else if (r.form === 'FFW' || (FORMS[r.form] && FORMS[r.form].questions)) startFlow(r.form);
       else if (r.form === 'D12') renderReport();
       else if (r.form === 'D1') renderD1();
       else renderTimeEdit(r);
@@ -1323,6 +1389,101 @@
     r.updatedAt = Date.now(); r.status = 'saved';
     try { r.pdf = (await PDF.build(r)).output('datauristring'); } catch (e) {}
     await DB.put(r); await refreshRecs(); sendOutbox();
+  }
+
+  /* ---------- D11 inventory sign-out sheet: equipment and consumables, out to site and back ---------- */
+  function money(n) { return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  function invSummary() {
+    var t = {};
+    live('D11').forEach(function (r) {
+      (r.data.items || []).forEach(function (it) {
+        var k = it.kind + ':' + (it.id || it.name);
+        if (!t[k]) t[k] = { name: it.name, unit: it.unit, kind: it.kind, cost: it.cost, out: 0, back: 0 };
+        t[k][r.data.dir === 'back' ? 'back' : 'out'] += +it.qty || 0;
+      });
+    });
+    return Object.keys(t).map(function (k) { var x = t[k]; x.used = Math.max(0, x.out - x.back); return x; });
+  }
+  function renderInventory(dir, old) {
+    if (!dir) {
+      S.onBack = null;
+      app.innerHTML = top('Inventory', jobSub(), true) + '<div class="body"><div class="q">Out to site, or back to the yard?</div><div class="pics">' +
+        '<button data-d="out"><span>📤</span>Out to site</button><button data-d="back"><span>📥</span>Back to the yard</button></div>' +
+        '<p class="small">Count consumables and equipment as they go out and come back. What’s used on the job is worked out for you.</p></div>';
+      bindBack(); renderBanner();
+      $$('[data-d]').forEach(function (b) { b.onclick = function () { history.pushState({ v: 1 }, ''); renderInventory(b.getAttribute('data-d')); }; });
+      return;
+    }
+    var Q = {}, other = [], photos = [], sum = {};
+    invSummary().forEach(function (x) { sum[x.kind + ':' + x.name] = x; });
+    if (old) { (old.data.items || []).forEach(function (it) { if (it.id) Q[it.kind + ':' + it.id] = +it.qty; else other.push({ name: it.name, qty: +it.qty, unit: it.unit || 'each' }); }); photos = (old.photos || []).slice(); }
+    var back = dir === 'back';
+    function row(kind, it) {
+      var k = kind + ':' + it.id, s = sum[kind + ':' + it.name], q = Q[k] || 0;
+      return '<div class="it" style="padding:10px 0"><span style="flex:1"><b>' + esc(it.name) + '</b><br><span class="small">per ' + esc(it.unit) +
+        (back && s ? ' · out ' + s.out + (s.back ? ', back ' + s.back : '') : '') + (!back && s && s.out ? ' · already out ' + s.out : '') + '</span></span>' +
+        '<span style="display:flex;align-items:center;gap:6px"><button type="button" class="chip lock" style="border:0;width:48px;height:48px;font-size:26px" data-m="' + k + '">−</button>' +
+        '<b id="q-' + k.replace(':', '_') + '" style="min-width:34px;text-align:center;font-size:22px">' + q + '</b>' +
+        '<button type="button" class="chip done" style="border:0;width:48px;height:48px;font-size:26px" data-p="' + k + '">＋</button></span></div>';
+    }
+    var h = top(back ? 'Inventory back to the yard' : 'Inventory out to site', jobSub(), true) + '<div class="body">' +
+      '<p class="help">' + (back ? 'Count what’s coming back — unused consumables and every piece of equipment. Anything not back shows as used or still on site.' : 'Count everything going to site.') + '</p>' +
+      '<div class="lbl">Consumables</div><div class="card list" style="padding:4px 14px">' + INVENTORY.consumables.map(function (it) { return row('c', it); }).join('') + '</div>' +
+      '<div class="lbl">Equipment</div><div class="card list" style="padding:4px 14px">' + INVENTORY.equipment.map(function (it) { return row('e', it); }).join('') + '</div>' +
+      '<div class="lbl">Other items</div><div id="others"></div><div style="display:flex;gap:8px"><input type="text" id="oname" placeholder="Item"><input type="text" id="oqty" inputmode="numeric" placeholder="Qty" style="width:90px"><button class="btn sec" id="oadd" type="button" style="width:auto;padding:0 16px;min-height:auto">Add</button></div>' +
+      '<div class="lbl">Photo of the load (optional)</div>' + photoBox('ph') +
+      '</div><div class="foot"><button class="btn" id="go" disabled>Save inventory</button></div>';
+    app.innerHTML = h; bindBack(); renderBanner();
+    if (S.seq) S.onBack = function () { seqReturn(); };
+    var go = $('#go');
+    function total() { var n = 0; for (var k in Q) n += Q[k]; other.forEach(function (o) { n += o.qty; }); return n; }
+    function check() { go.disabled = total() === 0; go.textContent = total() ? 'Save inventory (' + total() + ' items)' : 'Save inventory'; }
+    function drawOthers() {
+      $('#others').innerHTML = other.map(function (o, i) { return '<div class="it card" style="margin-bottom:8px;padding:10px 14px"><b>' + esc(o.name) + '</b><span>' + o.qty + ' <button type="button" class="link" data-ro="' + i + '">remove</button></span></div>'; }).join('');
+      $$('[data-ro]').forEach(function (b) { b.onclick = function () { other.splice(+b.getAttribute('data-ro'), 1); drawOthers(); check(); }; });
+    }
+    function step(k, d) { Q[k] = Math.max(0, (Q[k] || 0) + d); $('#q-' + k.replace(':', '_')).textContent = Q[k]; check(); }
+    $$('[data-p]').forEach(function (b) { b.onclick = function () { step(b.getAttribute('data-p'), 1); }; });
+    $$('[data-m]').forEach(function (b) { b.onclick = function () { step(b.getAttribute('data-m'), -1); }; });
+    $('#oadd').onclick = function () { var n = $('#oname').value.trim(), q = parseInt($('#oqty').value, 10) || 1; if (!n) return; other.push({ name: n, qty: q, unit: 'each' }); $('#oname').value = ''; $('#oqty').value = ''; drawOthers(); check(); };
+    bindPhotos($('#ph'), photos, function () {});
+    drawOthers(); check();
+    go.onclick = async function () {
+      go.disabled = true;
+      var items = [], rows = [], cost = 0, costed = false;
+      [['c', INVENTORY.consumables, 'Consumables'], ['e', INVENTORY.equipment, 'Equipment']].forEach(function (g) {
+        g[1].forEach(function (it) {
+          var q = Q[g[0] + ':' + it.id] || 0; if (!q) return;
+          items.push({ kind: g[0], id: it.id, name: it.name, unit: it.unit, qty: q, cost: it.cost == null ? null : it.cost });
+          var line = q + ' ' + it.unit + (q > 1 && it.unit !== 'each' ? 's' : '');
+          if (g[0] === 'c' && it.cost != null) { line += '  ·  ' + money(q * it.cost); cost += q * it.cost; costed = true; }
+          rows.push({ section: g[2] + (back ? ' — back to the yard' : ' — out to site'), label: it.name, value: line, flag: '' });
+        });
+      });
+      other.forEach(function (o) { items.push({ kind: 'o', name: o.name, unit: o.unit, qty: o.qty, cost: null }); rows.push({ section: 'Other items', label: o.name, value: String(o.qty), flag: '' }); });
+      if (costed) rows.push({ section: 'Consumables cost (priced items)', label: back ? 'Value returned to the yard' : 'Value sent to site', value: money(cost), flag: '' });
+      var rec = { form: 'D11', formTitle: 'Inventory sign out sheet — ' + (back ? 'back to the yard' : 'out to site'), formRef: FORMS.D11.ref, jobNo: S.job.jobNo, personId: S.me.id,
+        data: { dir: dir, items: items }, details: jobDetails([['Direction', back ? 'Back to the yard' : 'Out to site'], ['Signed by', S.me.name]]),
+        rows: rows, photos: photos, sigs: [{ name: S.me.name, label: back ? 'Received back' : 'Signed out', time: Date.now() }] };
+      rec.fileName = fileName({ date: today() }, 'Inventory ' + (back ? 'back' : 'out') + ' ' + hhmm(), S.me.name); rec.folder = folderFor(S.job);
+      await saveRecord(rec);
+      history.replaceState({ v: 1 }, '');
+      if (S.seq) return seqReturn('Inventory saved');
+      toast('Inventory saved'); renderToday();
+    };
+  }
+  function invPdf() {
+    var rows = [], total = 0, priced = 0, unpriced = 0;
+    invSummary().forEach(function (x) {
+      var used = x.kind === 'e' ? (x.out - x.back > 0 ? (x.out - x.back) + ' not back' : 'All back') : x.used + ' used';
+      var line = 'Out ' + x.out + ' · Back ' + x.back + ' · ' + used;
+      if (x.kind === 'c') { if (x.cost != null) { line += ' · ' + money(x.used * x.cost); total += x.used * x.cost; priced++; } else if (x.used) unpriced++; }
+      rows.push({ section: x.kind === 'c' ? 'Consumables' : x.kind === 'e' ? 'Equipment' : 'Other items', label: x.name + ' (' + x.unit + ')', value: line, flag: x.kind === 'e' && x.out > x.back ? 'bad' : '' });
+    });
+    rows.push({ section: 'Cost of consumables used', label: 'Total (priced items, excl. GST)', value: money(total), flag: '' });
+    if (unpriced) rows.push({ section: 'Cost of consumables used', label: unpriced + ' item(s) used have no price yet — add prices in the inventory list', value: '', flag: 'bad' });
+    openPdf({ id: 'INV-' + S.job.jobNo, formTitle: 'Job inventory and consumables used', formRef: FORMS.D11.ref, arcpRev: arcpRev(), createdAt: Date.now(), gps: null,
+      details: jobDetails([['Printed by', S.me ? S.me.name : '']]), rows: rows, sigs: [], fileName: today() + ' Inventory and consumables summary.pdf' });
   }
 
   /* ---------- upload a document (ARCP, survey report, WSN, clearance certificate …) ---------- */
@@ -1385,9 +1546,10 @@
   /* Blank form PDF for the paper backup */
   function blankPdf(code) {
     var f = FORMS[code === 'FFW' ? 'FFW' : code], rows = [];
-    if (f.questions) qList(f, {}, true).forEach(function (q) { if (q.type === 'sign' || q.type === 'photo') return; rows.push({ section: q.section || f.title, label: q.pdf || q.q, value: (q.type === 'text' || q.type === 'field' || q.type === 'date' || q.type === 'time' || q.type === 'crewpick') ? '' : q.type === 'number' ? '______ ' + (q.unit || '') : q.type === 'ok' ? 'OK / Fault / N/A' : q.type === 'choice' ? q.opts.map(function (o) { return o[2]; }).join(' / ') : q.noNA ? 'Yes / No' : 'Yes / No / N/A', flag: '' }); });
+    if (f.questions) qList(f, {}, true).forEach(function (q) { if (q.type === 'sign' || q.type === 'photo') return; rows.push({ section: q.section || f.title, label: q.pdf || q.q, value: q.type === 'multi' ? q.opts.map(function (o) { return '☐ ' + o[2]; }).join('   ') : (q.type === 'text' || q.type === 'field' || q.type === 'date' || q.type === 'time' || q.type === 'crewpick') ? '' : q.type === 'number' ? '______ ' + (q.unit || '') : q.type === 'ok' ? 'OK / Fault / N/A' : q.type === 'choice' ? q.opts.map(function (o) { return o[2]; }).join(' / ') : q.noNA ? 'Yes / No' : 'Yes / No / N/A', flag: '' }); });
     if (code === 'D12') rows = [{ section: 'Event', label: 'Type: ' + f.types.map(function (t) { return t[1]; }).join(' / '), value: '', flag: '' },
       { section: 'Event', label: 'Anyone hurt?', value: 'Yes / No', flag: '' }, { section: 'What happened', label: ' \n \n ', value: '', flag: '' }, { section: 'Immediate action taken', label: ' \n \n ', value: '', flag: '' }];
+    if (code === 'D11') INVENTORY.consumables.concat(INVENTORY.equipment).forEach(function (it) { rows.push({ section: 'Item (unit) · out · back', label: it.name + ' (' + it.unit + ')', value: 'Out ____  Back ____', flag: '' }); });
     if (code === 'D13' || code === 'D14') for (var i = 0; i < 12; i++) rows.push({ section: 'Name · company · time in · time out · signature', label: ' ', value: '', flag: '' });
     var sigs = code === 'D1' ? [1, 2, 3, 4, 5, 6].map(function () { return { name: 'Name:', label: 'Signature / date / rev', text: ' ' }; }) : [{ name: 'Name:', label: 'Signature', text: ' ' }];
     openPdf({ id: 'BLANK-' + code, formTitle: (f.title || code) + ' — blank', formRef: (f.ref || code), arcpRev: arcpRev(), createdAt: Date.now(), gps: null,
