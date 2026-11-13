@@ -427,6 +427,9 @@ var AUDIT = {
     ] }
   ]
 };
+/* Corrective actions: raised from site audits (section 14) or on site (CAR), followed up and closed out with evidence (CAF), then verified by a manager. */
+FORMS.CAR = { code: 'CAR', ref: 'Corrective action raised', title: 'Corrective action', short: 'Action', icon: '🛠️', custom: true };
+FORMS.CAF = { code: 'CAF', ref: 'Corrective action follow-up and close-out (TC-QA-AUD-001 section 14)', title: 'Corrective action follow-up', short: 'Follow-up', icon: '✅', custom: true };
 FORMS.AUD = { code: 'AUD', ref: 'TC-QA-AUD-001 Rev 1.5 — Asbestos site audit, Class A / B', title: 'Site audit', short: 'Audit', icon: '🔎', who: 'manager', custom: true };
 
 var JOB_FORMS = ['D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11'];

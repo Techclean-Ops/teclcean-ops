@@ -489,6 +489,7 @@
     else if (what === 'file') { enter(); renderSiteFile(); }
     else if (what === 'forms') { enter(); renderJobForms(); }
     else if (what === 'aud') { enter(); renderAudit(); }
+    else if (what === 'acts') { enter(); S.actsFrom = null; renderActions(); }
   }
 
   /* ---------- management: PM / Branch Manager / HSC / GM Ops on the job QR code or link ---------- */
@@ -516,6 +517,8 @@
     else if (j.status === 'hold') h += '<div class="banner">On hold — start TBC.</div>';
     if (j.status !== 'closed') {
       h += tile('d13', on ? '🚪' : '✅', 'g', on ? 'Sign off site' : 'Sign on — site visit', on ? chip('done', 'On ' + hm(st.d13.data.in)) : st.d13 && st.d13.data.out ? chip('done', 'Off ' + hm(st.d13.data.out)) : chip('todo', 'To do'));
+      var ac = actCounts();
+      h += tile('acts', '🛠️', 'y', 'Corrective actions', ac.overdue ? chip('todo', ac.overdue + ' overdue') : ac.awaiting ? chip('wait', ac.awaiting + ' to check') : ac.open ? chip('new', ac.open + ' open') : chip('done', ac.total ? 'All closed' : 'None'));
       h += tile('aud', '🔎', 'r', 'Site audit', aud ? chip('done', 'Last ' + (aud.date === today() ? hm(aud.createdAt) : certDate(aud.date))) : chip('new', 'Start'));
     }
     h += tile('file', '📁', 'b', 'Site file', chip('wait', onSiteNow().length + ' on site'));
@@ -713,6 +716,184 @@
     return rec;
   }
 
+  /* ---------- Corrective actions: register, follow-up and close-out ---------- */
+  function allActions() {
+    var out = [];
+    jobRecs(['AUD']).filter(function (r) { return !r.supersededBy; }).forEach(function (r) {
+      (r.data.actions || []).forEach(function (x) {
+        out.push({ key: r.id + ':' + x.id, src: 'Site audit ' + niceDate(r.date) + ' — item ' + x.id, item: x.id, finding: x.note, action: x.action, who: x.who, sev: x.sev, due: x.due,
+          raisedBy: (person(r.personId) || {}).name || '', raisedAt: r.createdAt, photos: (r.photos || []).filter(function (p) { return (p.caption || '').indexOf('Item ' + x.id + ' ') === 0; }), recId: r.id });
+      });
+    });
+    jobRecs(['CAR']).filter(function (r) { return !r.supersededBy; }).forEach(function (r) {
+      var d = r.data;
+      out.push({ key: r.id, src: d.source + (d.ref ? ' — ' + d.ref : ''), item: '', finding: d.finding, action: d.action, who: d.who, sev: d.sev, due: d.due,
+        raisedBy: (person(r.personId) || {}).name || '', raisedAt: r.createdAt, photos: r.photos || [], recId: r.id });
+    });
+    out.forEach(function (a) { actState(a); });
+    var rank = { overdue: 0, open: 1, escalated: 1, progress: 2, awaiting: 3, closed: 4 };
+    return out.sort(function (x, y) { return (rank[x.state] - rank[y.state]) || ((x.due || '') > (y.due || '') ? 1 : -1); });
+  }
+  function actState(a) {
+    var fus = jobRecs(['CAF']).filter(function (r) { return r.data.key === a.key && !r.supersededBy; }).sort(function (x, y) { return x.createdAt - y.createdAt; });
+    var st = 'open', due = a.due;
+    fus.forEach(function (r) {
+      var d = r.data;
+      if (d.kind === 'verify') st = d.verify === 'accept' ? 'closed' : 'open';
+      else if (d.status === 'fixed') st = d.verified ? 'closed' : 'awaiting';
+      else if (d.status === 'progress') { st = 'progress'; if (d.newDue) due = d.newDue; }
+      else if (d.status === 'escalate') st = 'escalated';
+    });
+    if ((st === 'open' || st === 'progress' || st === 'escalated') && due && due < today()) st = 'overdue';
+    a.state = st; a.curDue = due; a.history = fus; return a;
+  }
+  function actCounts() {
+    var l = allActions(), c = { total: l.length, open: 0, overdue: 0, awaiting: 0, closed: 0 };
+    l.forEach(function (a) { if (a.state === 'closed') c.closed++; else if (a.state === 'awaiting') c.awaiting++; else { c.open++; if (a.state === 'overdue') c.overdue++; } });
+    return c;
+  }
+  var ACT_CHIP = { overdue: ['todo', 'Overdue'], open: ['new', 'Open'], escalated: ['todo', 'Escalated'], progress: ['wait', 'In progress'], awaiting: ['wait', 'Awaiting check'], closed: ['done', 'Closed'] };
+  function canAct() { return (isSup() || isMgr()) && S.job; }
+  function renderActions() {
+    var l = allActions(), c = actCounts();
+    S.onBack = S.actsFrom === 'file' ? function () { renderSiteFile(); } : null;
+    var h = top('Corrective actions', S.job.street + ' · ' + S.job.jobNo, true) + '<div class="body">' +
+      '<p class="help">' + c.open + ' open' + (c.overdue ? ' (' + c.overdue + ' overdue)' : '') + ' · ' + c.awaiting + ' awaiting a manager’s check · ' + c.closed + ' closed</p>';
+    if (!l.length) h += '<div class="card"><div class="small">No corrective actions on this job. They’re raised from site audits, or below.</div></div>';
+    l.forEach(function (a) {
+      var ch = ACT_CHIP[a.state];
+      h += '<button class="card" style="width:100%;text-align:left;border:0" data-ak="' + esc(a.key) + '"><div class="it" style="border:0;padding:0"><span class="small"><b>' + esc(a.sev || '') + '</b> · ' + esc(a.src) + '</span>' + chip(ch[0], ch[1]) + '</div>' +
+        '<div style="margin-top:6px;font-weight:700">' + esc(a.finding || '') + '</div><div class="small">' + esc(a.who || 'No one assigned') + ' · due ' + (a.curDue ? certDate(a.curDue) : '—') + '</div></button>';
+    });
+    h += '</div>' + (canAct() && S.job.status !== 'closed' ? '<div class="foot"><button class="btn sec" id="raise">＋ Raise an action</button></div>' : '');
+    app.innerHTML = h; bindBack(); renderBanner();
+    $$('[data-ak]').forEach(function (b) { b.onclick = function () { enter(); renderAction(b.getAttribute('data-ak')); }; });
+    var r = $('#raise'); if (r) r.onclick = function () { enter(function () { renderActions(); }); renderRaise(); };
+  }
+  function actByKey(k) { return allActions().filter(function (a) { return a.key === k; })[0]; }
+  function renderAction(k) {
+    var a = actByKey(k), ch = ACT_CHIP[a.state];
+    S.onBack = function () { renderActions(); };
+    var h = top('Corrective action', S.job.street + ' · ' + S.job.jobNo, true) + '<div class="body"><div class="card"><div class="it" style="border:0;padding:0"><span class="small"><b>' + esc(a.sev || '') + '</b> · ' + esc(a.src) + '</span>' + chip(ch[0], ch[1]) + '</div>' +
+      '<h2 style="margin:8px 0 4px">' + esc(a.finding || '') + '</h2>' + (a.action ? '<div><b>Action required:</b> ' + esc(a.action) + '</div>' : '') +
+      '<div class="small" style="margin-top:6px">Responsible: ' + esc(a.who || '—') + ' · due ' + (a.curDue ? certDate(a.curDue) : '—') + (a.curDue !== a.due && a.due ? ' (was ' + certDate(a.due) + ')' : '') + ' · raised by ' + esc(a.raisedBy) + '</div>' +
+      (a.sev === 'Critical' && a.state !== 'closed' ? '<div class="stop" style="margin-top:10px;padding:12px">Critical — work on this stays stopped until the fix is checked and closed by a manager.</div>' : '') +
+      (a.photos.length ? '<div class="thumbs" style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">' + a.photos.map(function (p) { return '<img src="' + p.img + '" style="width:31%;border-radius:10px">'; }).join('') + '</div>' : '') + '</div>';
+    h += '<div class="lbl">Follow-up history</div>';
+    if (!a.history.length) h += '<div class="card"><div class="small">Nothing recorded yet.</div></div>';
+    a.history.forEach(function (r) {
+      var d = r.data, who = (person(r.personId) || {}).name || '';
+      var what = d.kind === 'verify' ? (d.verify === 'accept' ? '✅ Checked and closed' : '↩️ Not accepted — reopened') : d.status === 'fixed' ? (d.verified ? '✅ Fixed — checked and closed' : '🛠️ Fixed — sent for a manager\u2019s check') : d.status === 'progress' ? '⏳ In progress' + (d.newDue ? ' — new due ' + certDate(d.newDue) : '') : '⚠️ Can’t fix on site — escalated';
+      h += '<button class="card" style="width:100%;text-align:left;border:0" data-rec="' + r.id + '"><div><b>' + what + '</b></div><div class="small">' + esc(who) + ' · ' + niceDate(r.date) + ' ' + hm(r.createdAt) + '</div>' + (d.note ? '<div>' + esc(d.note) + '</div>' : '') + '</button>';
+    });
+    var btns = '';
+    if (canAct() && a.state !== 'closed' && a.state !== 'awaiting') btns += '<button class="btn" id="fu">Record follow-up</button>';
+    if (isMgr() && a.state === 'awaiting') btns += '<button class="btn" id="vf">Check the fix</button>';
+    h += '</div>' + (btns ? '<div class="foot">' + btns + '</div>' : '');
+    app.innerHTML = h; bindBack(); renderBanner();
+    var back = function () { renderAction(k); };
+    $$('[data-rec]').forEach(function (b) { b.onclick = function () { openPdf(recById(b.getAttribute('data-rec'))); }; });
+    var fu = $('#fu'); if (fu) fu.onclick = function () { enter(back); renderFollowUp(a); };
+    var vf = $('#vf'); if (vf) vf.onclick = function () { enter(back); renderVerify(a); };
+  }
+  function actRows(a) {
+    return [{ section: 'Corrective action', label: 'Raised from', value: a.src, flag: '' }, { section: 'Corrective action', label: 'Non-conformance / finding', value: a.finding || '', flag: 'bad' },
+      { section: 'Corrective action', label: 'Action required', value: a.action || '—', flag: '' }, { section: 'Corrective action', label: 'Severity', value: a.sev || '', flag: a.sev === 'Critical' ? 'bad' : '' },
+      { section: 'Corrective action', label: 'Responsible', value: a.who || '—', flag: '' }, { section: 'Corrective action', label: 'Due', value: a.curDue || a.due || '—', flag: a.state === 'overdue' ? 'bad' : '' }];
+  }
+  function renderFollowUp(a) {
+    getGps();
+    var F = { status: null, photos: [] }, mgr = isMgr();
+    var h = top('Follow-up', (a.item ? 'Item ' + a.item + ' · ' : '') + S.job.jobNo, true) + '<div class="body"><div class="card"><div class="small">' + esc(a.sev || '') + ' · due ' + (a.curDue ? certDate(a.curDue) : '—') + '</div><b>' + esc(a.finding || '') + '</b>' + (a.action ? '<div class="small">Action: ' + esc(a.action) + '</div>' : '') + '</div>' +
+      '<div class="lbl">Where is it at?</div><div class="chips" id="st"><button data-s="fixed">✅ Fixed</button><button data-s="progress">⏳ In progress</button><button data-s="escalate">⚠️ Can’t fix on site</button></div>' +
+      '<div class="lbl">What was done (required)</div>' + voiceBox('note', 'Tap the mic to speak, or type…') +
+      '<div id="phw" class="hidden"><div class="lbl">Photo of the fix — required</div>' + photoBox('ph') + '</div>' +
+      '<div id="ndw" class="hidden"><div class="lbl">New due date</div><input type="date" id="nd" value="' + esc(a.curDue || '') + '" style="width:100%;font-size:18px;padding:12px;border:2px solid #ddd;border-radius:14px"></div>' +
+      (mgr ? '<div id="vw" class="hidden"><div class="chips" style="margin-top:12px"><button id="ver">I’ve checked it myself — close it</button></div></div>' : '') +
+      '<div class="lbl">Sign</div>' + sigBox() + '</div><div class="foot"><button class="btn" id="go" disabled>Save follow-up</button></div>';
+    app.innerHTML = h; bindBack(); renderBanner(); bindVoice();
+    var go = $('#go'), sig = bindSig($('.sigwrap'), chk);
+    function chk() { go.disabled = !(F.status && ($('#note').value || '').trim() && (F.status !== 'fixed' || F.photos.length) && !sig.isEmpty()); }
+    bindPhotos($('#ph'), F.photos, chk); $('#note').oninput = chk;
+    $$('[data-s]').forEach(function (b) { b.onclick = function () {
+      F.status = b.getAttribute('data-s'); $$('[data-s]').forEach(function (x) { x.classList.toggle('on', x === b); });
+      $('#phw').classList.toggle('hidden', F.status !== 'fixed'); $('#ndw').classList.toggle('hidden', F.status !== 'progress'); if ($('#vw')) $('#vw').classList.toggle('hidden', F.status !== 'fixed'); chk();
+    }; });
+    var ver = $('#ver'); if (ver) ver.onclick = function () { F.verified = !F.verified; ver.classList.toggle('on', F.verified); };
+    go.onclick = async function () {
+      go.disabled = true;
+      var lbl = F.status === 'fixed' ? (F.verified ? 'Fixed — checked and closed' : 'Fixed — awaiting a manager’s check') : F.status === 'progress' ? 'In progress' : 'Can’t fix on site — escalated';
+      var rows = actRows(a).concat([{ section: 'Follow-up', label: 'Status', value: lbl, flag: F.status === 'fixed' ? 'good' : F.status === 'escalate' ? 'bad' : '' },
+        { section: 'Follow-up', label: 'What was done', value: $('#note').value, flag: '' }]);
+      if (F.status === 'progress' && $('#nd').value) rows.push({ section: 'Follow-up', label: 'New due date', value: $('#nd').value, flag: '' });
+      if (F.verified) rows.push({ section: 'Close-out', label: 'Checked and closed by', value: S.me.name + ', ' + roleName(S.me) + (a.sev === 'Critical' ? ' — stop work can be lifted' : ''), flag: 'good' });
+      var rec = { form: 'CAF', formTitle: 'Corrective action follow-up — ' + (a.item ? 'item ' + a.item : (a.finding || '').slice(0, 40)), formRef: FORMS.CAF.ref, jobNo: S.job.jobNo, personId: S.me.id,
+        data: { key: a.key, kind: 'update', status: F.status, note: $('#note').value, newDue: F.status === 'progress' ? $('#nd').value : '', verified: !!F.verified },
+        details: jobDetails([['Recorded by', S.me.name + ', ' + roleName(S.me)]]), rows: rows, photos: F.photos.map(function (p) { return { img: p.img, caption: 'Fix — ' + (a.item ? 'item ' + a.item : '') }; }),
+        sigs: [{ name: S.me.name, label: roleName(S.me), time: Date.now(), img: sig.data() }], alert: F.status === 'escalate' };
+      rec.fileName = fileName({ date: today() }, 'Corrective action ' + (a.item || '') + ' ' + (F.verified ? 'closed' : F.status === 'fixed' ? 'fixed' : F.status), S.me.name).replace('  ', ' '); rec.folder = folderFor(S.job);
+      await saveRecord(rec); history.back(); toast(F.verified ? 'Closed' : F.status === 'fixed' ? 'Saved — a manager checks it next' : 'Follow-up saved');
+    };
+  }
+  function renderVerify(a) {
+    getGps();
+    var V = { v: null };
+    var last = a.history[a.history.length - 1], ph = (last && last.photos) || [];
+    var h = top('Check the fix', (a.item ? 'Item ' + a.item + ' · ' : '') + S.job.jobNo, true) + '<div class="body"><div class="card"><b>' + esc(a.finding || '') + '</b>' +
+      (last ? '<div class="small" style="margin-top:6px">Fixed by ' + esc((person(last.personId) || {}).name || '') + ' · ' + niceDate(last.date) + '</div><div>' + esc(last.data.note || '') + '</div>' : '') +
+      (ph.length ? '<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">' + ph.map(function (p) { return '<img src="' + p.img + '" style="width:48%;border-radius:10px">'; }).join('') + '</div>' : '') + '</div>' +
+      '<div class="lbl">Is it fixed properly?</div><div class="yn two"><button data-v="accept" class="good">Yes — close it</button><button data-v="reject" class="bad">No — reopen</button></div>' +
+      '<div class="lbl">Comment<span id="req"></span></div>' + voiceBox('note', 'Optional when closing') + '<div class="lbl">Sign</div>' + sigBox() +
+      '</div><div class="foot"><button class="btn" id="go" disabled>Save</button></div>';
+    app.innerHTML = h; bindBack(); renderBanner(); bindVoice();
+    var go = $('#go'), sig = bindSig($('.sigwrap'), chk);
+    function chk() { go.disabled = !(V.v && !sig.isEmpty() && (V.v === 'accept' || ($('#note').value || '').trim())); }
+    $('#note').oninput = chk;
+    $$('[data-v]').forEach(function (b) { b.onclick = function () { V.v = b.getAttribute('data-v'); $$('[data-v]').forEach(function (x) { x.classList.toggle('on', x === b); }); $('#req').textContent = V.v === 'reject' ? ' (required)' : ''; chk(); }; });
+    go.onclick = async function () {
+      go.disabled = true;
+      var rows = actRows(a).concat([{ section: 'Fix recorded', label: 'What was done', value: last ? last.data.note : '', flag: '' },
+        { section: 'Manager check', label: 'Result', value: V.v === 'accept' ? 'Accepted — closed' + (a.sev === 'Critical' ? ' — stop work can be lifted' : '') : 'Not accepted — reopened', flag: V.v === 'accept' ? 'good' : 'bad' }]);
+      if ($('#note').value) rows.push({ section: 'Manager check', label: 'Comment', value: $('#note').value, flag: '' });
+      var rec = { form: 'CAF', formTitle: 'Corrective action check — ' + (a.item ? 'item ' + a.item : (a.finding || '').slice(0, 40)), formRef: FORMS.CAF.ref, jobNo: S.job.jobNo, personId: S.me.id,
+        data: { key: a.key, kind: 'verify', verify: V.v, note: $('#note').value }, details: jobDetails([['Checked by', S.me.name + ', ' + roleName(S.me)]]), rows: rows, photos: ph,
+        sigs: [{ name: S.me.name, label: roleName(S.me) + ' — checked', time: Date.now(), img: sig.data() }], alert: V.v === 'reject' };
+      rec.fileName = fileName({ date: today() }, 'Corrective action ' + (a.item || '') + ' ' + (V.v === 'accept' ? 'closed' : 'reopened'), S.me.name).replace('  ', ' '); rec.folder = folderFor(S.job);
+      await saveRecord(rec); history.back(); toast(V.v === 'accept' ? 'Closed' : 'Reopened — ' + (a.who || 'responsible person') + ' to fix');
+    };
+  }
+  function renderRaise() {
+    getGps();
+    var R = { sev: 'Minor', src: null, photos: [] }, sup = person(S.job.supervisorId);
+    var h = top('Raise an action', S.job.street + ' · ' + S.job.jobNo, true) + '<div class="body">' +
+      '<div class="lbl">Where from?</div><div class="chips">' + ['Incident', 'Hazard', 'Site visit', 'Weekly inspection', 'Toolbox talk', 'Other'].map(function (t) { return '<button data-src="' + t + '">' + t + '</button>'; }).join('') + '</div>' +
+      '<div class="lbl">What’s wrong (required)</div>' + voiceBox('fd', 'What you found') +
+      '<div class="lbl">Photo — required</div>' + photoBox('ph') +
+      '<div class="lbl">Action required</div>' + voiceBox('ac', 'What has to be done') +
+      '<div class="lbl">Severity</div><div class="chips">' + ['Critical', 'Major', 'Minor'].map(function (t) { return '<button data-sv="' + t + '"' + (t === 'Minor' ? ' class="on"' : '') + '>' + t + '</button>'; }).join('') + '</div>' +
+      '<div class="lbl">Responsible</div><input type="text" id="who" value="' + esc(sup ? sup.name : '') + '">' +
+      '<div class="lbl">Due</div><input type="date" id="due" value="' + addDays(7) + '" style="width:100%;font-size:18px;padding:12px;border:2px solid #ddd;border-radius:14px">' +
+      '</div><div class="foot"><button class="btn" id="go" disabled>Raise action</button></div>';
+    app.innerHTML = h; bindBack(); renderBanner(); bindVoice();
+    var go = $('#go');
+    function chk() { go.disabled = !(R.src && ($('#fd').value || '').trim() && R.photos.length); }
+    bindPhotos($('#ph'), R.photos, chk); $('#fd').oninput = chk;
+    $$('[data-src]').forEach(function (b) { b.onclick = function () { R.src = b.getAttribute('data-src'); $$('[data-src]').forEach(function (x) { x.classList.toggle('on', x === b); }); chk(); }; });
+    $$('[data-sv]').forEach(function (b) { b.onclick = function () { R.sev = b.getAttribute('data-sv'); $$('[data-sv]').forEach(function (x) { x.classList.toggle('on', x === b); }); $('#due').value = addDays(SEV_DAYS[R.sev]); }; });
+    go.onclick = async function () {
+      go.disabled = true;
+      var d = { source: R.src, finding: $('#fd').value, action: $('#ac').value, sev: R.sev, who: $('#who').value, due: $('#due').value };
+      var rec = { form: 'CAR', formTitle: 'Corrective action raised — ' + d.finding.slice(0, 50), formRef: FORMS.CAR.ref, jobNo: S.job.jobNo, personId: S.me.id, data: d,
+        details: jobDetails([['Raised by', S.me.name + ', ' + roleName(S.me)]]),
+        rows: [{ section: 'Corrective action', label: 'Raised from', value: d.source, flag: '' }, { section: 'Corrective action', label: 'Finding', value: d.finding, flag: 'bad' },
+          { section: 'Corrective action', label: 'Action required', value: d.action || '—', flag: '' }, { section: 'Corrective action', label: 'Severity', value: d.sev, flag: d.sev === 'Critical' ? 'bad' : '' },
+          { section: 'Corrective action', label: 'Responsible', value: d.who || '—', flag: '' }, { section: 'Corrective action', label: 'Due', value: d.due || '—', flag: '' }],
+        photos: R.photos, sigs: [{ name: S.me.name, label: 'Raised by — ' + roleName(S.me), time: Date.now() }], alert: R.sev === 'Critical' };
+      rec.fileName = fileName({ date: today() }, 'Corrective action raised ' + hhmm(), S.me.name); rec.folder = folderFor(S.job);
+      await saveRecord(rec); history.back(); toast('Action raised');
+    };
+  }
+
   /* ---------- the supervisor's numbered job sequence ---------- */
   function absentKey() { return 'tc.absent.' + S.job.jobNo + '.' + today(); }
   function absentList() { try { return JSON.parse(localStorage.getItem(absentKey()) || '[]'); } catch (e) { return []; } }
@@ -819,7 +1000,9 @@
       items.forEach(function (x) { h += stepRow(x); });
       h += '</div>';
     });
+    var ac = actCounts();
     h += '<div class="lbl">Any time</div>' +
+      (ac.total ? tile('acts', '🛠️', 'y', 'Corrective actions', ac.overdue ? chip('todo', ac.overdue + ' overdue') : ac.open ? chip('new', ac.open + ' open') : ac.awaiting ? chip('wait', ac.awaiting + ' to check') : chip('done', 'All closed')) : '') +
       tile('d12', '⚠️', 'p', 'Report incident / hazard', '') +
       '<div class="pics" style="margin-top:0">' +
       [['D10', '🚛', 'Waste load'], ['D11', '🧰', 'Inventory out / back'], ['D4', '🎓', 'Induct someone new'], ['visitor', '🪪', 'Visitor sign in'], ['file', '📁', 'Site file']]
@@ -834,6 +1017,7 @@
       runStep(it.step);
     }; });
     $('[data-go=d12]').onclick = function () { enter(); renderReport(); };
+    var at = $('[data-go=acts]'); if (at) at.onclick = function () { enter(); S.actsFrom = null; renderActions(); };
     $$('[data-any]').forEach(function (b) { b.onclick = function () {
       var k = b.getAttribute('data-any');
       if (k === 'file') { enter(); renderSiteFile(); }
@@ -1452,7 +1636,8 @@
     ['D4', 'Site induction record', ['D4']], ['D5', 'Daily pre-start and toolbox record', ['D5', 'FFW']], ['D6', 'Asbestos removal quality control', ['D6']],
     ['D7', 'Enclosure smoke test (timed, with the assessor)', ['D7']], ['D8', 'Weekly site inspection', ['D8']], ['D9', 'End of shift decontamination and RPE check', ['D9']],
     ['D10', 'Waste movement and disposal record', ['D10']], ['D11', 'Inventory sign out sheet', ['D11']], ['D12', 'Incident, near miss and exposure report', ['D12']],
-    ['D13', 'Site sign in / out register', ['D13']], ['D14', 'Visitor entry record', ['D14']]];
+    ['D13', 'Site sign in / out register', ['D13']], ['D14', 'Visitor entry record', ['D14']],
+    ['AUD', 'Site audits (TC-QA-AUD-001)', ['AUD']], ['CA', 'Corrective actions and follow-ups', ['CAR', 'CAF']]];
   function jobRecs(codes) {
     return RECS.filter(function (r) { return S.job && r.jobNo === S.job.jobNo && (!codes || codes.indexOf(r.form) >= 0); })
       .sort(function (a, b) { return (b.date + b.createdAt) > (a.date + a.createdAt) ? 1 : -1; });
@@ -1486,6 +1671,9 @@
       return '<button class="it" style="width:100%;border:0;background:none;text-align:left" data-cert="' + pid + '"><span><b>' + esc(p.name) + '</b><br><span class="small">' + cl.length + ' on record</span></span>' +
         (bad.some(function (c) { return c.stopWork; }) ? chip('todo', 'Fit test expired') : bad.length ? chip('new', bad.length + ' expired') : soon.length ? chip('new', soon.length + ' due soon') : chip('done', 'All current')) + '</button>';
     }).join('') + '</div></div>';
+    var ac = actCounts();
+    h += '<button class="card" style="width:100%;text-align:left;border:0" id="acts"><div class="lbl" style="margin-top:0">Corrective actions</div><div class="it" style="border:0;padding:0"><span>' +
+      (ac.total ? ac.open + ' open · ' + ac.awaiting + ' awaiting check · ' + ac.closed + ' closed' : 'None raised') + '</span>' + (ac.overdue ? chip('todo', ac.overdue + ' overdue') : ac.open ? chip('new', 'Open') : chip('done', 'Clear')) + '</div></button>';
     h += '<div class="card"><div class="lbl" style="margin-top:0">Job documents</div><div class="list">';
     if (!docs.length) h += '<div class="small">No documents uploaded yet.' + (canUpload() ? ' Add the ARCP and the asbestos survey so they’re here on site with no signal.' : '') + '</div>';
     docs.forEach(function (d) {
@@ -1500,10 +1688,10 @@
       h += '<div class="card"><div class="lbl" style="margin-top:0">Consumables on this job</div><div class="list">' + inv.map(function (x) {
         if (x.cost != null) tot += x.used * x.cost; else if (x.used) unp++;
         return '<div class="it"><span>' + esc(x.name) + '</span><b>' + x.used + ' used <span class="small">(' + x.out + ' out, ' + x.back + ' back)</span></b></div>';
-      }).join('') + '</div><div class="small" style="margin-top:6px">Cost of priced items: <b>' + money(tot) + '</b>' + (unp ? ' · ' + unp + ' item(s) not priced yet' : '') + '</div>' +
-        '<button class="btn sec" id="invpdf" style="margin-top:10px;font-size:18px;min-height:54px;padding:12px">Inventory and cost summary PDF</button></div>';
+      }).join('') + '</div><div class="small" style="margin-top:6px">Quantities only — costed in WorkflowMax.</div>' +
+        '<button class="btn sec" id="invpdf" style="margin-top:10px;font-size:18px;min-height:54px;padding:12px">Inventory summary PDF</button></div>';
     }
-    h += '<div class="card"><div class="lbl" style="margin-top:0">Forms — ARCP Part D</div><div class="list">';
+    h += '<div class="card"><div class="lbl" style="margin-top:0">Forms — ARCP Part D, audits and actions</div><div class="list">';
     PARTD.forEach(function (d, i) {
       var n = d[2] ? jobRecs(d[2]).filter(function (r) { return !r.supersededBy; }).length : null;
       h += '<button class="it" style="width:100%;border:0;background:none;text-align:left;padding:12px 0" data-f="' + i + '"><span><b>' + d[0] + '</b> ' + esc(d[1]) + '</span>' +
@@ -1513,6 +1701,7 @@
     h += '<p class="small">' + (CONFIG.API_URL ? 'Records from every phone on this job are kept on this phone for use with no signal.' :
       'Demo: shows records made on this phone. Once connected, it shows every record for the job from every phone, and keeps them for use with no signal.') + '</p></div>';
     app.innerHTML = h; bindBack(); renderBanner();
+    var acb = $('#acts'); if (acb) acb.onclick = function () { enter(); S.actsFrom = 'file'; renderActions(); };
     $('#reg').onclick = function () { history.pushState({ v: 1 }, ''); renderRegister(); };
     $$('[data-doc]').forEach(function (b) { b.onclick = function () { openDoc(recById(b.getAttribute('data-doc'))); }; });
     var ip = $('#invpdf'); if (ip) ip.onclick = invPdf;
@@ -1772,8 +1961,7 @@
       if (x.kind === 'c') { if (x.cost != null) { line += ' · ' + money(x.used * x.cost); total += x.used * x.cost; priced++; } else if (x.used) unpriced++; }
       rows.push({ section: x.kind === 'c' ? 'Consumables' : x.kind === 'e' ? 'Equipment' : 'Other items', label: x.name + ' (' + x.unit + ')', value: line, flag: x.kind === 'e' && x.out > x.back ? 'bad' : '' });
     });
-    rows.push({ section: 'Cost of consumables used', label: 'Total (priced items, excl. GST)', value: money(total), flag: '' });
-    if (unpriced) rows.push({ section: 'Cost of consumables used', label: unpriced + ' item(s) used have no price yet — add prices in the inventory list', value: '', flag: 'bad' });
+    rows.push({ section: 'Costs', label: 'Consumables are costed in WorkflowMax from these quantities', value: '', flag: '' });
     openPdf({ id: 'INV-' + S.job.jobNo, formTitle: 'Job inventory and consumables used', formRef: FORMS.D11.ref, arcpRev: arcpRev(), createdAt: Date.now(), gps: null,
       details: jobDetails([['Printed by', S.me ? S.me.name : '']]), rows: rows, sigs: [], fileName: today() + ' Inventory and consumables summary.pdf' });
   }
