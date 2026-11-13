@@ -968,6 +968,25 @@ body.tv #version-tag{display:none}
 .bd-al-job{background:rgba(255,255,255,.07);border-radius:5px;padding:2px 8px;cursor:pointer;color:#fff}
 .bd-al-job small{color:#E9A8F7;margin-left:3px}
 .bd-alert .bd-pill{margin-left:auto}
+.mg-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.mg-head h2{font-family:var(--font-head);font-size:20px;font-weight:700;color:var(--c-white)}
+.mg-sub{font-family:var(--font-mono);font-size:11px;color:var(--c-muted)}
+.mg-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px;margin-bottom:16px}
+.mg-tile{background:var(--c-panel);border:1px solid var(--c-border);border-radius:var(--r);padding:10px 12px}
+.mg-tile .l{font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--c-muted)}
+.mg-tile .v{font-family:var(--font-head);font-size:24px;font-weight:700;color:var(--c-white);margin:3px 0}
+.mg-tile .v small{font-size:13px;color:#8E9093}
+.mg-tile .s{font-size:10.5px;color:#A8AAAD;line-height:1.4}
+.mg-tile.bad{border-color:rgba(224,64,251,.55)} .mg-tile.bad .v{color:#E040FB}
+.mg-tile.warn{border-color:rgba(245,158,11,.55)} .mg-tile.warn .v{color:#F59E0B}
+.mg-tile.ok .v{color:#A8C800} .mg-tile.inv .v{color:#A8C800}
+.mg-tbl tr.mg-h td{text-align:left!important;color:var(--c-white)!important;font-weight:700;padding-top:10px;text-transform:uppercase;font-size:10px;letter-spacing:.06em}
+.tr-tbl th.cur,.tr-tbl td.cur{background:rgba(255,255,255,.04)}
+.mg-score th,.mg-score td{text-align:right}
+.mg-score th:first-child,.mg-score td:first-child{text-align:left}
+.mg-score tbody tr:hover{background:rgba(255,255,255,.04)}
+.mg-heat td{text-align:center!important;border:1px solid var(--c-bg,#1A1B1D);min-width:62px}
+.mg-heat th{text-align:center!important}
 </style>
 </head>
 <body>
@@ -1093,6 +1112,9 @@ body.tv #version-tag{display:none}
     </div>
 
     <div class="sb-section">
+      <div class="sb-item" id="snav-mgmt" onclick="showPanel('mgmt')" title="Management overview (admin)">
+        <span class="sb-icon">📈</span><span class="sb-txt">Management 🔒</span>
+      </div>
       <div class="sb-item" id="snav-opt" onclick="showPanel('opt')" title="Staff Optimisation (admin)">
         <span class="sb-icon">📊</span><span class="sb-txt">Optimisation 🔒</span>
       </div>
@@ -1108,6 +1130,7 @@ body.tv #version-tag{display:none}
       <div class="tab" data-tab="board" onclick="showPanel('board')">Board</div>
       <div class="tab" data-tab="res" onclick="showPanel('res')">Resources</div>
       <div class="tab active" data-tab="cal" onclick="showPanel('cal')">Gantt</div>
+      <div class="tab" data-tab="mgmt" onclick="showPanel('mgmt')">Management 🔒</div>
       <div class="tab" data-tab="opt" onclick="showPanel('opt')">Staff Optimisation 🔒</div>
       <div class="tab" data-tab="setup" onclick="showPanel('setup')">⚙ Setup 🔒</div>
     </div>
@@ -1183,6 +1206,8 @@ body.tv #version-tag{display:none}
     </div>
 
     <!-- OPT -->
+    <div class="panel" id="panel-mgmt" style="overflow-y:auto!important"><div id="mgmt-body" style="padding:20px"></div></div>
+
     <div class="panel" id="panel-opt" style="overflow-y:auto!important">
       <div style="padding:20px">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-shrink:0">
@@ -1230,6 +1255,13 @@ body.tv #version-tag{display:none}
         <p style="font-size:11px;color:var(--c-muted);line-height:1.6;margin-bottom:10px">One name per line, per branch. These fill the <strong>TechClean manager</strong> and <strong>Clearance assessor</strong> dropdowns on each job and sync to every device. You can also just type a new name into the job form — it's added to that branch's list when the job is saved.</p>
         <div class="jl-grid" id="jl-grid"></div>
         <button class="btn btn-primary" style="margin-top:12px" onclick="saveJobLists()">Save lists</button>
+      </div>
+
+      <div class="setup-card">
+        <h3>Manager / supervisor emails — "needs crew" alert</h3>
+        <p style="font-size:11px;color:var(--c-muted);line-height:1.6;margin-bottom:10px">At 6am on weekdays each manager is emailed the jobs they look after (the job's <b>TechClean manager</b>) that have days with no crew, or short of crew, in the next 5 working days. Leave an email blank to skip that person. Needs the v51 sync script with <code>installNoCrewAlert</code> run once.</p>
+        <div id="mgr-emails"></div>
+        <button class="btn btn-primary" style="margin-top:10px" onclick="saveMgrEmails()">Save emails</button>
       </div>
 
       <div class="setup-card">
@@ -2003,7 +2035,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v53-202611131900';
+const APP_VERSION = 'v54-202611132000';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 
 const BLANK_BRANCH_MAP = () => ({ Auckland: {}, Wellington: {}, Christchurch: {} });
@@ -2620,6 +2652,160 @@ function renderNoCrewBanner(){
   el.innerHTML=`<div class="bd-alert"><b>⚠ ${L.length} job${L.length!==1?'s':''} in the next 5 working days need${L.length===1?'s':''} crew</b> ${L.slice(0,4).map(x=>`<span class="bd-al-job" onclick="editJob('${x.j.id}')">${_esc((x.j.site||x.j.jobno||'').split(',')[0])} <small>${x.none?'no crew':'short'} · ${_fmtD(x.d)}</small></span>`).join('')}${L.length>4?`<span style="color:#A8AAAD">+${L.length-4} more</span>`:''}<button class="bd-pill" onclick="showPanel('res')">Allocate in Resources →</button></div>`;
 }
 
+// Manager / supervisor emails for the daily "needs crew" alert — S.training.Auckland.__mgrEmails = [{name,email}]
+function mgrEmailList(){ const v=S.training&&S.training.Auckland&&S.training.Auckland.__mgrEmails; return Array.isArray(v)?v:[]; }
+function renderMgrEmails(){
+  const el=document.getElementById('mgr-emails'); if(!el) return;
+  const em={}; mgrEmailList().forEach(x=>{ if(x&&x.name) em[_nm(x.name)]=x.email||''; });
+  const names=new Map();
+  MG_BR.forEach(b=>getJobList(b,'managers').forEach(n=>{ if(!names.has(_nm(n))) names.set(_nm(n),{n,brs:[]}); names.get(_nm(n)).brs.push(BR_CODE[b]); }));
+  S.jobs.forEach(j=>{ const m=j.checklist&&j.checklist.manager; if(m&&!names.has(_nm(m))) names.set(_nm(m),{n:m,brs:[BR_CODE[j.branch]]}); });
+  const list=[...names.values()].sort((a,b)=>a.n.localeCompare(b.n));
+  el.innerHTML=list.length?list.map((x,i)=>`<div class="lv-row"><label style="min-width:180px">${_esc(x.n)}<small style="display:block;color:var(--c-muted)">${[...new Set(x.brs)].join(' · ')} · ${S.jobs.filter(j=>!j._del&&!j.done&&_nm((j.checklist||{}).manager||'')===_nm(x.n)).length} open jobs</small></label><input type="email" class="mgr-em" data-name="${_esc(x.n)}" value="${_esc(em[_nm(x.n)]||'')}" placeholder="name@techclean.co.nz" style="flex:1"></div>`).join('')
+    :`<div style="font-size:11px;color:var(--c-muted)">No managers yet — add them in Job Lists above, or pick a TechClean manager on a job.</div>`;
+}
+function saveMgrEmails(){
+  const out=[]; let bad=0;
+  document.querySelectorAll('#mgr-emails .mgr-em').forEach(i=>{ const e=i.value.trim(); if(!e) return; if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(e)){ bad++; i.style.borderColor='#EF4444'; return; } out.push({name:i.dataset.name,email:e}); });
+  if(bad){ toast(bad+' email'+(bad!==1?'s':'')+' look wrong — check the red ones','err'); return; }
+  if(!S.training.Auckland) S.training.Auckland={};
+  S.training.Auckland.__mgrEmails=out; save(); if(S.gsUrl) autoSync(); renderMgrEmails(); toast(out.length+' manager email'+(out.length!==1?'s':'')+' saved ✓');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MANAGEMENT OVERVIEW (admin) — all branches: pipeline by month, labour cost, resource allocation
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const MG_BR=['Auckland','Wellington','Christchurch'];
+let MG={off:-2, br:'All'};          // first month shown = this month + off; 12 months
+function mgSet(k,v){ if(k==='off') MG.off+=v; else MG.br=v; renderMgmt(); }
+const _mgCache={};
+// extra monthly figures on top of the trend: open pipeline, under (crew-days short), over (double-booked person-days), free
+function _mgMonth(brs,y,m){
+  const t=_trMonth(brs,y,m);
+  const key=brs.join()+'|'+y+'|'+m+'|'+S.jobs.length+'|'+S.jobs.reduce((a,j)=>a<(j.ts||'')?(j.ts||''):a,'');
+  if(_mgCache[key]) return Object.assign({},t,_mgCache[key]);
+  let pipe=0,under=0,over=0;
+  S.jobs.forEach(j=>{ if(j._del||j.done||!brs.includes(j.branch)||!j.start||!j.finish) return; pipe+=pipelineMonthVal(j,y,m); });
+  const f=dsOf(new Date(y,m,1)), l=dsOf(new Date(y,m+1,0));
+  const jobs=S.jobs.filter(j=>!j._del&&!j.done&&!isHold(j)&&brs.includes(j.branch)&&j.start&&j.finish&&j.start<=l&&j.finish>=f);
+  for(let d=new Date(y,m,1); d<=new Date(y,m+1,0); d=addD(d,1)){
+    const w=d.getDay(); if(!w||w===6) continue; const ds=dsOf(d);
+    jobs.forEach(j=>{ if(!jobActiveOnDay(j,ds)) return; const need=Number(j.staff)||0; if(need) under+=Math.max(0,need-crewOnDay(j,ds)); });
+  }
+  brs.forEach(b=>{ over+=findClashes(f,l,b).filter(c=>c.status==='open'||c.status==='over').length; });
+  const x={pipe,under,over,free:Math.max(0,t.avail-t.used)};
+  _mgCache[key]=x; return Object.assign({},t,x);
+}
+function renderMgmt(){
+  const el=document.getElementById('mgmt-body'); if(!el) return;
+  const now=new Date(), today=dsOf(now), br=MG.br, brs=br==='All'?MG_BR:[br];
+  const rate=Number(S.cfg.rate)||0, hpd=Number(S.cfg.hpd)||8, pmin=Number(S.cfg.pmin)||30, pmax=Number(S.cfg.pmax)||35;
+  const months=[...Array(12)].map((_,i)=>{ const d=new Date(now.getFullYear(),now.getMonth()+MG.off+i,1); return [d.getFullYear(),d.getMonth()]; });
+  const curK=now.getFullYear()*12+now.getMonth();
+  const M=months.map(([y,m])=>Object.assign({y,m,fut:y*12+m>curK,cur:y*12+m===curK},_mgMonth(brs,y,m)));
+  const pct=(a,b)=>b?Math.round(a/b*100)+'%':'—';
+  const labC=(c,v)=>{ if(!c||!v) return '—'; const p=c/v*100, cl=p>pmax?'#EF4444':p<pmin?'#FDD835':'#A8C800'; return `<span style="color:${cl}">${Math.round(p)}%</span>`; };
+  const utC=u=>u==null?'—':`<span style="color:${u>1?'#EF4444':u>=.85?'#A8C800':u>=.6?'#FDD835':'#8AB4F8'}">${Math.round(u*100)}%</span>`;
+
+  // ── KPI tiles (this month / today / next 5 working days, selected branches)
+  const open=S.jobs.filter(j=>!j._del&&!j.done&&brs.includes(j.branch));
+  const pipeTot=open.reduce((a,j)=>a+(Number(j.val)||0),0), undated=open.filter(j=>!j.start||!j.finish);
+  const toInv=S.jobs.filter(j=>!j._del&&brs.includes(j.branch)&&closeoutOf(j)==='finished').reduce((a,j)=>a+(Number(j.val)||0),0);
+  const cm=M.find(x=>x.cur)||_mgMonth(brs,now.getFullYear(),now.getMonth());
+  const todaySt=brs.map(b=>branchDayStats(b,today)).reduce((a,s)=>({cap:a.cap+s.cap,busy:a.busy+s.busy,free:a.free+s.free,away:a.away+s.leave+s.train}),{cap:0,busy:0,free:0,away:0});
+  const needCrew=brs.reduce((a,b)=>a.concat(noCrewSoon(b).map(x=>Object.assign({br:b},x))),[]);
+  const clashes=brs.reduce((a,b)=>a+findClashes(today,dsOf(addD(now,30)),b).filter(c=>c.status==='open'||c.status==='over').length,0);
+  const holdN=open.filter(isHold).length;
+  const tile=(l,v,sub,cls)=>`<div class="mg-tile ${cls||''}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${sub||''}</div></div>`;
+  let h=`<div class="mg-head"><h2>Management overview</h2><span class="mg-sub">${br==='All'?'All branches':br} · ${_fmtD(today)}</span>
+    <div class="tr-seg" style="margin-left:auto">${['All'].concat(MG_BR).map(b=>`<button class="${b===br?'on':''}" onclick="mgSet('br','${b}')">${b==='All'?'All':BR_CODE[b]}</button>`).join('')}</div></div>`;
+  h+=`<div class="mg-tiles">
+    ${tile('Open pipeline',_fmtK(pipeTot),`${open.length} jobs${undated.length?` · ${undated.length} undated (${_fmtK(undated.reduce((a,j)=>a+(Number(j.val)||0),0))})`:''}${holdN?` · ${holdN} on hold`:''}`)}
+    ${tile(MONTHS[now.getMonth()]+' work value',_fmtK(cm.val),`${cm.jobs} jobs · pipeline left ${_fmtK(cm.pipe)}`)}
+    ${tile('Finished · to invoice',_fmtK(toInv),'not in pipeline','inv')}
+    ${tile('Labour cost · '+MONTHS[now.getMonth()].slice(0,3),_fmtK(cm.lab),`${labC(cm.lab,cm.val)} of work value · target ${pmin}–${pmax}%`)}
+    ${tile('Crew utilisation · '+MONTHS[now.getMonth()].slice(0,3),utC(cm.util),`${cm.used} of ${cm.avail} crew-days`)}
+    ${tile('Crew today',`${todaySt.busy}<small> / ${todaySt.cap}</small>`,`${todaySt.free} free · ${todaySt.away} leave/training`)}
+    ${tile('Need crew · next 5 days',needCrew.length,needCrew.length?needCrew.slice(0,3).map(x=>(BR_CODE[x.br]+' '+(x.j.site||x.j.jobno||'').split(',')[0])).join(' · '):'all crewed ✓',needCrew.length?'bad':'ok')}
+    ${tile('Double-bookings · 30 days',clashes,clashes?'open — sort in Resources':'none ✓',clashes?'warn':'ok')}
+  </div>`;
+
+  // ── chart: work value by branch (stacked) + pipeline marker + utilisation line + labour %
+  const W=1000,H=280,L=62,R=46,T=14,B=30, cw=(W-L-R)/12;
+  const stack=months.map(([y,m])=>brs.map(b=>_mgMonth([b],y,m).val));
+  const maxV=Math.max(1,...stack.map(a=>a.reduce((x,y)=>x+y,0)),...M.map(x=>x.pipe));
+  const step=[5e3,1e4,2.5e4,5e4,1e5,2.5e5,5e5,1e6,2.5e6].find(s=>maxV/s<=5)||5e6, top=Math.ceil(maxV/step)*step;
+  const yV=v=>T+(H-T-B)*(1-v/top), yU=u=>T+(H-T-B)*(1-Math.min(u,1.2)/1.2);
+  let g=`<rect x="${L}" y="${yU(pmax/100)}" width="${W-L-R}" height="${yU(pmin/100)-yU(pmax/100)}" fill="rgba(168,200,0,.10)"/>`;
+  for(let v=0; v<=top; v+=step){ const yy=yV(v); g+=`<line x1="${L}" x2="${W-R}" y1="${yy}" y2="${yy}" stroke="rgba(255,255,255,.06)"/><text x="${L-8}" y="${yy+4}" text-anchor="end">${v>=1e6?'$'+(v/1e6)+'M':'$'+Math.round(v/1e3)+'k'}</text>`; }
+  [0,.25,.5,.75,1].forEach(u=>{ g+=`<text x="${W-R+8}" y="${yU(u)+4}">${Math.round(u*100)}%</text>`; });
+  g+=`<line x1="${L}" x2="${W-R}" y1="${yU(1)}" y2="${yU(1)}" stroke="rgba(255,255,255,.25)" stroke-dasharray="4 4"/>`;
+  M.forEach((x,i)=>{ const bx=L+i*cw+cw*.2, bw=cw*.6; let acc=0;
+    brs.forEach((b,k)=>{ const v=stack[i][k]; if(!v) return; const y0=yV(acc), y1=yV(acc+v); acc+=v;
+      g+=`<rect x="${bx}" y="${y1}" width="${bw}" height="${Math.max(0,y0-y1)}" fill="${BRANCH_COLORS[b]}" opacity="${x.fut?.4:.85}"><title>${b} · ${MONTHS[x.m]} ${x.y}: ${_fmtK(v)} work value</title></rect>`; });
+    if(x.pipe) g+=`<line x1="${bx-3}" x2="${bx+bw+3}" y1="${yV(x.pipe)}" y2="${yV(x.pipe)}" stroke="#fff" stroke-width="2"><title>${MONTHS[x.m]} ${x.y}: open pipeline ${_fmtK(x.pipe)}</title></line>`;
+    g+=`<text x="${bx+bw/2}" y="${H-10}" text-anchor="middle" style="${x.cur?'fill:#fff;font-weight:700':''}">${MONTHS[x.m].slice(0,3)}${x.m===0||i===0?' '+String(x.y).slice(2):''}</text>`; });
+  const line=(fn,col,dash,shape)=>{ let p='',pen=false; const pts=M.map((x,i)=>{ const v=fn(x); return v==null?null:[L+i*cw+cw/2,yU(v),x,v]; });
+    pts.forEach(q=>{ if(!q){pen=false;return;} p+=(pen?'L':'M')+q[0].toFixed(1)+' '+q[1].toFixed(1); pen=true; });
+    let o=`<path d="${p}" fill="none" stroke="${col}" stroke-width="2.3" ${dash?'stroke-dasharray="6 4"':''}/>`;
+    pts.forEach(q=>{ if(!q) return; o+=shape==='d'?`<rect x="${q[0]-4}" y="${q[1]-4}" width="8" height="8" fill="${col}" opacity="${q[2].fut?.45:1}" transform="rotate(45 ${q[0]} ${q[1]})"><title>${MONTHS[q[2].m]}: labour ${Math.round(q[3]*100)}% of work value</title></rect>`
+      :`<circle cx="${q[0]}" cy="${q[1]}" r="4" fill="${q[2].fut?'#1A1B1D':col}" stroke="${col}" stroke-width="2"><title>${MONTHS[q[2].m]}: ${Math.round(q[3]*100)}% utilisation</title></circle>`; });
+    return o; };
+  g+=line(x=>x.util,'#FDD835',false,'c')+line(x=>x.val&&x.lab?x.lab/x.val:null,'#FFFFFF',true,'d');
+  h+=`<div class="tr-card"><div class="tr-head"><h3>Month by month</h3>
+      <div class="tr-yr"><button onclick="mgSet('off',-3)">‹</button>${MONTHS[months[0][1]].slice(0,3)} ${months[0][0]} – ${MONTHS[months[11][1]].slice(0,3)} ${months[11][0]}<button onclick="mgSet('off',3)">›</button></div></div>
+    <div class="tr-key">${brs.map(b=>`<span><i style="background:${BRANCH_COLORS[b]}"></i>${b} work value</span>`).join('')}<span><i style="background:#fff;height:2px;vertical-align:3px"></i>Open pipeline</span><span><i style="background:#FDD835;border-radius:50%"></i>Utilisation</span><span><i style="background:#fff;transform:rotate(45deg);width:8px;height:8px"></i>Labour % (est.) · band ${pmin}–${pmax}%</span><span>Faded = future (booked so far)</span></div>
+    <div class="tr-wrap"><svg class="tr-svg" viewBox="0 0 ${W} ${H}">${g}</svg></div>`;
+  const tot=k=>M.reduce((a,x)=>a+(x[k]||0),0);
+  const row=(lbl,f,t,sec)=>`<tr${sec?' class="mg-sec"':''}><td>${lbl}</td>${M.map(x=>`<td class="${x.fut?'fut':''} ${x.cur?'cur':''}">${f(x)}</td>`).join('')}<td><b>${t}</b></td></tr>`;
+  const n0=v=>v?Math.round(v).toLocaleString('en-NZ'):'—';
+  h+=`<div class="tr-wrap"><table class="tr-tbl mg-tbl"><thead><tr><th></th>${M.map(x=>`<th class="${x.fut?'fut':''} ${x.cur?'cur':''}">${MONTHS[x.m].slice(0,3)}</th>`).join('')}<th>12 mo</th></tr></thead><tbody>
+    <tr class="mg-h"><td colspan="14">Pipeline</td></tr>
+    ${row('Work value',x=>x.val?_fmtK(x.val):'—',_fmtK(tot('val')))}
+    ${row('Open pipeline',x=>x.pipe?_fmtK(x.pipe):'—',_fmtK(tot('pipe')))}
+    ${row('Jobs',x=>x.jobs||'—','')}
+    <tr class="mg-h"><td colspan="14">Labour</td></tr>
+    ${row('Labour cost (est.)',x=>x.lab?_fmtK(x.lab):'—',_fmtK(tot('lab')))}
+    ${row('Labour % of work value',x=>labC(x.lab,x.val),labC(tot('lab'),tot('val')))}
+    ${M.some(x=>x.inv!=null)?row('Invoiced (WFM)',x=>x.inv?_fmtK(x.inv):'—',_fmtK(tot('inv')))+row('Labour % of invoiced (WFM)',x=>labC(x.cost||(x.hrs||0)*rate,x.inv),labC(M.reduce((a,x)=>a+(x.cost||(x.hrs||0)*rate),0),tot('inv'))):''}
+    <tr class="mg-h"><td colspan="14">Resource allocation (weekdays)</td></tr>
+    ${row('Crew-days available',x=>n0(x.avail),n0(tot('avail')))}
+    ${row('Crew-days allocated',x=>n0(x.used),n0(tot('used')))}
+    ${row('Utilisation',x=>utC(x.util),utC(tot('avail')?tot('used')/tot('avail'):null))}
+    ${row('Free crew-days',x=>`<span style="color:#8AB4F8">${n0(x.free)}</span>`,n0(tot('free')))}
+    ${row('Under — crew-days short',x=>x.under?`<span style="color:#E040FB">${x.under}</span>`:'—',tot('under')||'—')}
+    ${row('Over — double-booked',x=>x.over?`<span style="color:#F59E0B">${x.over}</span>`:'—',tot('over')||'—')}
+    ${row('Leave / training days',x=>(x.leave+x.train)||'—',(tot('leave')+tot('train'))||'—')}
+  </tbody></table></div></div>`;
+
+  // ── branch scorecard
+  const nm=new Date(now.getFullYear(),now.getMonth()+1,1);
+  const next10=[]; for(let c=new Date(now.getFullYear(),now.getMonth(),now.getDate(),12); next10.length<10; c=addD(c,1)){ const w=c.getDay(); if(w&&w<6) next10.push(dsOf(c)); }
+  h+=`<div class="tr-card"><div class="tr-head"><h3>Branches</h3></div><div class="tr-wrap"><table class="tr-tbl mg-score"><thead><tr><th>Branch</th><th>Staff</th><th>Open pipeline</th><th>${MONTHS[now.getMonth()].slice(0,3)} value</th><th>${MONTHS[nm.getMonth()].slice(0,3)} value</th><th>Labour %</th><th>Utilisation</th><th>Free crew-days<br><small>next 10 days</small></th><th>Need crew<br><small>next 5 days</small></th><th>Double-booked<br><small>30 days</small></th><th>To invoice</th></tr></thead><tbody>`;
+  MG_BR.forEach(b=>{
+    const a=_mgMonth([b],now.getFullYear(),now.getMonth()), n=_mgMonth([b],nm.getFullYear(),nm.getMonth());
+    const free=next10.reduce((acc,d)=>acc+branchDayStats(b,d).free,0), cap=(S.staff[b]||[]).length*10;
+    const nc=noCrewSoon(b).length, cl=findClashes(today,dsOf(addD(now,30)),b).filter(c=>c.status==='open'||c.status==='over').length;
+    const op=S.jobs.filter(j=>!j._del&&!j.done&&j.branch===b).reduce((x,j)=>x+(Number(j.val)||0),0);
+    const ti=S.jobs.filter(j=>!j._del&&j.branch===b&&closeoutOf(j)==='finished').reduce((x,j)=>x+(Number(j.val)||0),0);
+    h+=`<tr onclick="mgSet('br','${b}')" style="cursor:pointer"><td><b style="color:${BRANCH_COLORS[b]}">${b}</b></td><td>${(S.staff[b]||[]).length}</td><td>${_fmtK(op)}</td><td>${_fmtK(a.val)}</td><td>${_fmtK(n.val)}</td><td>${labC(a.lab,a.val)}</td><td>${utC(a.util)}</td><td><span style="color:#8AB4F8">${free}</span>${cap?` <small style="color:#78797C">of ${cap}</small>`:''}</td><td>${nc?`<span style="color:#E040FB">${nc}</span>`:'✓'}</td><td>${cl?`<span style="color:#F59E0B">${cl}</span>`:'✓'}</td><td>${_fmtK(ti)}</td></tr>`;
+  });
+  h+=`</tbody></table></div></div>`;
+
+  // ── next 10 working days heat map: allocated / capacity per branch
+  h+=`<div class="tr-card"><div class="tr-head"><h3>Next 10 working days — crew allocated / available</h3></div><div class="tr-wrap"><table class="tr-tbl mg-heat"><thead><tr><th></th>${next10.map(d=>{const t=toD(d); return `<th>${_DOW3[t.getDay()].slice(0,3)} ${t.getDate()}</th>`;}).join('')}</tr></thead><tbody>`;
+  MG_BR.filter(b=>(S.staff[b]||[]).length||S.jobs.some(j=>j.branch===b&&!j._del)).forEach(b=>{
+    h+=`<tr><td><b style="color:${BRANCH_COLORS[b]}">${BR_CODE[b]}</b></td>`;
+    next10.forEach(d=>{ const st=branchDayStats(b,d), av=Math.max(0,st.cap-st.leave-st.train), on=st.busy-st.lent+st.borrowed;
+      const short=S.jobs.filter(j=>j.branch===b&&!j._del&&!j.done&&jobActiveOnDay(j,d)&&crewShort(j,d)).length;
+      const r=av?on/av:0, bg=st.over||r>1?'rgba(239,68,68,.35)':r>=.85?'rgba(168,200,0,.28)':r>=.5?'rgba(253,216,53,.22)':'rgba(138,180,248,.18)';
+      h+=`<td style="background:${bg}" title="${b} ${_fmtD(d)}: ${on} on jobs of ${av} available · ${st.free} free · ${st.leave} leave · ${st.train} training${short?` · ${short} job(s) short of crew`:''}"><b>${on}</b>/${av}${st.free?`<small style="display:block;color:#8AB4F8">${st.free} free</small>`:''}${short?`<small style="display:block;color:#E040FB">${short} short</small>`:''}</td>`; });
+    h+=`</tr>`;
+  });
+  h+=`</tbody></table></div><div class="tr-key" style="margin-top:6px"><span><i style="background:rgba(138,180,248,.5)"></i>Under 50% allocated</span><span><i style="background:rgba(253,216,53,.5)"></i>50–85%</span><span><i style="background:rgba(168,200,0,.6)"></i>85–100%</span><span><i style="background:rgba(239,68,68,.7)"></i>Over-allocated</span></div></div>`;
+  el.innerHTML=h;
+}
+
 // ── Year trend (Staff Optimisation): value of work and crew utilisation for each month
 let OPT_TR={y:new Date().getFullYear(), br:'All'};
 const _trCache={};
@@ -2811,7 +2997,7 @@ function renderOpt(){
 // SETUP
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function renderSetup(){
-  try{ renderStaffMap(); }catch(e){ console.error(e); }
+  try{ renderStaffMap(); renderMgrEmails(); }catch(e){ console.error(e); }
   const {rate,pmin,pmax,hpd}=S.cfg;
   document.getElementById('set-rate').value=rate;
   document.getElementById('set-pmin').value=pmin;
@@ -3206,7 +3392,7 @@ function setBranch(br){
 
 function showPanel(name){
   // Block setup AND staff optimisation unless admin session is active
-  if((name==='setup' || name==='opt') && !checkAdminSession()){
+  if((name==='setup' || name==='opt' || name==='mgmt') && !checkAdminSession()){
     openAdminPin(name);
     return;
   }
@@ -3214,8 +3400,9 @@ function showPanel(name){
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('panel-'+name).classList.add('active');
   document.querySelector(`.tab[data-tab="${name}"]`)?.classList.add('active');
-  ['snav-opt','snav-setup'].forEach(id=>document.getElementById(id).classList.remove('active'));
-  if(name==='opt'){document.getElementById('snav-opt').classList.add('active');renderOpt()}
+  ['snav-opt','snav-setup','snav-mgmt'].forEach(id=>{ const e=document.getElementById(id); if(e) e.classList.remove('active'); });
+  if(name==='mgmt'){document.getElementById('snav-mgmt').classList.add('active');renderMgmt()}
+  else if(name==='opt'){document.getElementById('snav-opt').classList.add('active');renderOpt()}
   else if(name==='setup'){document.getElementById('snav-setup').classList.add('active');renderSetup()}
   else if(name==='cal')renderCal();
   else if(name==='board')renderBoard();
@@ -3717,9 +3904,12 @@ function json(obj) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Daily "no crew" email — jobs starting in the next working days with nobody named.
-// Setup (once): Project Settings → Script Properties → ALERT_EMAILS = a@x.co.nz, b@x.co.nz
-//               (optional per branch: ALERT_EMAILS_AUCKLAND / _WELLINGTON / _CHRISTCHURCH)
-//               then run installNoCrewAlert once and approve the email permission.
+// Who gets it:
+//   • each job's TechClean manager / supervisor — their own jobs only. Emails are entered in the app
+//     (Setup → Manager / supervisor emails) and ride the Absences sync (Auckland | training | __mgrEmails).
+//   • optional overview of everything: Script Property ALERT_EMAILS = a@x.co.nz, b@x.co.nz
+//     (optional per branch: ALERT_EMAILS_AUCKLAND / _WELLINGTON / _CHRISTCHURCH)
+// Setup (once): run installNoCrewAlert and approve the email permission. noCrewTest = dry run.
 // ─────────────────────────────────────────────────────────────────────────────
 const ALERT_DAYS = 5;   // working days ahead to check
 function installNoCrewAlert() {
@@ -3756,15 +3946,27 @@ function noCrewRun_(dryRun) {
         const crew = (o != null && String(o).trim() !== '') ? String(o).split(',').filter(function(x){ return x.trim(); }) : whole;
         return crew.length === 0 || (need && crew.length < need);
       });
-      if (empty.length) list.push({job: String(r[1] || ''), site: String(r[3] || ''), first: empty[0], days: empty.length,
+      if (empty.length) list.push({job: String(r[1] || ''), site: String(r[3] || ''), first: empty[0], days: empty.length, mgr: String(ck.manager || '').trim(),
         none: empty.some(function(d){ const o = ov[d]; const crew = (o != null && String(o).trim() !== '') ? String(o).split(',').filter(function(x){ return x.trim(); }) : whole; return !crew.length; })});
     });
     if (list.length) result[br] = list.sort(function(a, b){ return a.first.localeCompare(b.first); });
   });
-  if (dryRun || !Object.keys(result).length) return result;
+  // manager / supervisor emails from the app (Setup)
+  const mgrEmail = {};
+  const ab = ss.getSheetByName('Absences');
+  if (ab) ab.getDataRange().getValues().slice(1).forEach(function(r) {
+    if (String(r[2]) !== '__mgrEmails') return;
+    try { (JSON.parse(r[3] || '[]') || []).forEach(function(m){ if (m && m.name && m.email) mgrEmail[String(m.name).trim().toLowerCase()] = String(m.email).trim(); }); } catch (e) {}
+  });
+  const byMgr = {};
+  Object.keys(result).forEach(function(br){ result[br].forEach(function(x){
+    const e = mgrEmail[x.mgr.toLowerCase()]; if (!e) return;
+    const o = byMgr[e] || (byMgr[e] = {name: x.mgr, items: {}}); (o.items[br] = o.items[br] || []).push(x); }); });
+  if (dryRun) return {jobs: result, managers: Object.keys(byMgr).map(function(e){ return e + ' (' + byMgr[e].name + '): ' + Object.keys(byMgr[e].items).map(function(b){ return byMgr[e].items[b].map(function(x){ return x.job; }).join(', '); }).join(', '); })};
+  if (!Object.keys(result).length) return result;
   const nice = function(d){ return Utilities.formatDate(new Date(d + 'T12:00:00'), tz, 'EEE d MMM'); };
-  const block = function(br){ return '<h3 style="font-family:Arial;color:#E8192C;margin:18px 0 6px">' + br + '</h3><table style="font-family:Arial;font-size:13px;border-collapse:collapse">' +
-    result[br].map(function(x){ return '<tr><td style="padding:3px 12px 3px 0"><b>' + x.site + '</b> ' + x.job + '</td><td style="padding:3px 12px 3px 0">' + (x.none ? '<span style="color:#C000C0">no crew</span>' : 'short of crew') + '</td><td>from ' + nice(x.first) + ' · ' + x.days + ' day' + (x.days !== 1 ? 's' : '') + '</td></tr>'; }).join('') + '</table>'; };
+  const block = function(br, src){ src = src || result; return '<h3 style="font-family:Arial;color:#E8192C;margin:18px 0 6px">' + br + '</h3><table style="font-family:Arial;font-size:13px;border-collapse:collapse">' +
+    src[br].map(function(x){ return '<tr><td style="padding:3px 12px 3px 0"><b>' + x.site + '</b> ' + x.job + '</td><td style="padding:3px 12px 3px 0">' + (x.none ? '<span style="color:#C000C0">no crew</span>' : 'short of crew') + '</td><td style="padding:3px 12px 3px 0">from ' + nice(x.first) + ' · ' + x.days + ' day' + (x.days !== 1 ? 's' : '') + '</td><td style="color:#777">' + (x.mgr || '') + '</td></tr>'; }).join('') + '</table>'; };
   const send = function(to, brs) {
     if (!to || !brs.length) return;
     const n = brs.reduce(function(a, b){ return a + result[b].length; }, 0);
@@ -3773,6 +3975,15 @@ function noCrewRun_(dryRun) {
         '<p style="font-family:Arial;font-size:12px;color:#777;margin-top:18px">Sent daily at 6am on weekdays by the TechClean Operations Schedule.</p>'});
   };
   const all = Object.keys(result);
+  // each manager / supervisor: their own jobs
+  Object.keys(byMgr).forEach(function(e) {
+    const o = byMgr[e], brs = Object.keys(o.items), n = brs.reduce(function(a, b){ return a + o.items[b].length; }, 0);
+    MailApp.sendEmail({to: e, subject: 'Schedule: ' + (n === 1 ? '1 of your jobs needs' : n + ' of your jobs need') + ' crew in the next ' + ALERT_DAYS + ' working days',
+      htmlBody: '<p style="font-family:Arial">Hi ' + o.name.split(' ')[0] + ', these jobs you look after have days with no crew (or fewer than needed) in the Operations Schedule. Please allocate crew in Resources.</p>' +
+        brs.map(function(b){ return block(b, o.items); }).join('') +
+        '<p style="font-family:Arial;font-size:12px;color:#777;margin-top:18px">Sent daily at 6am on weekdays by the TechClean Operations Schedule.</p>'});
+  });
+  // overview recipients: everything
   send(props.getProperty('ALERT_EMAILS'), all);
   all.forEach(function(br){ send(props.getProperty('ALERT_EMAILS_' + br.toUpperCase()), [br]); });
   return result;
@@ -4921,6 +5132,7 @@ function renderAll(){
   else if(id==='board')renderBoard();
   else if(id==='res')renderRes();
   else if(id==='opt')renderOpt();
+  else if(id==='mgmt')renderMgmt();
   else if(id==='setup')renderSetup();
   updateSidebar();
 }
@@ -5062,6 +5274,7 @@ function openAdminPin(targetPanel){
   const sub=document.getElementById('admin-pin-sub');
   if(sub) sub.textContent = _pendingAdminPanel==='opt'
     ? 'Enter the admin PIN to access Staff Optimisation'
+    : _pendingAdminPanel==='mgmt' ? 'Enter the admin PIN to access the Management overview'
     : 'Enter the admin PIN to access Setup';
   document.querySelectorAll('#admin-overlay .pin-key').forEach(k=>k.disabled=false);
   document.getElementById('admin-overlay').classList.add('open');
