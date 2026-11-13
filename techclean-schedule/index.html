@@ -556,7 +556,7 @@ body.tv-mode #tv-bar { display:flex }
 .bd-job .crew{margin-left:auto;flex-shrink:0;font-family:var(--font-mono);font-size:10px;font-weight:600;padding:1px 6px;border-radius:9px;background:rgba(0,0,0,.22)}
 .bd-job.cont-l{border-top-left-radius:0;border-bottom-left-radius:0;margin-left:0}
 .bd-job.cont-r{border-top-right-radius:0;border-bottom-right-radius:0;margin-right:0}
-.bd-job.short{outline:2px dashed #E040FB;outline-offset:-2px;box-shadow:0 0 0 1px rgba(224,64,251,.35),0 1px 2px rgba(0,0,0,.35)}
+.bd-job.short{}   /* under-resourced: shown by the magenta crew badge only */
 .bd-job.short .crew{background:#E040FB;color:#fff}
 .bd-job.nocrew{background-image:repeating-linear-gradient(135deg,rgba(224,64,251,.55) 0 6px,transparent 6px 14px)!important}
 .bd-job.done{opacity:.42}
@@ -677,7 +677,7 @@ body.tv .bd-stat .l{font-size:11px}
 @media (max-width:760px){.jl-grid{grid-template-columns:1fr}}
 body.tv #hovercard{display:none}
 #rs-menu{position:fixed;z-index:9400;display:none;width:290px;max-height:80vh;overflow:auto;background:#232527;border:1px solid #3A3D40;border-radius:10px;padding:6px;box-shadow:0 12px 30px rgba(0,0,0,.5)}
-#rs-menu .rm-h{font-size:10px;color:#8E9093;padding:4px 8px 6px}
+#rs-menu .rm-h{font-size:10px;color:#8E9093;padding:4px 8px 6px;line-height:1.5}
 #rs-menu .rm-sec{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#78797C;padding:8px 8px 4px;border-top:1px solid #2F3134}
 .rm-job{padding:5px 8px;border-radius:6px}.rm-job:hover{background:#2A2C2E}
 .rm-jt{display:flex;align-items:center;gap:6px;font-family:var(--font-head);font-size:12px;color:#E8E8E8;white-space:nowrap;overflow:hidden}
@@ -740,10 +740,6 @@ body.sb-hidden #sidebar{display:none}
 .gt-bar.s{margin-left:3px;border-top-left-radius:7px;border-bottom-left-radius:7px}
 .gt-bar.e{margin-right:3px;border-top-right-radius:7px;border-bottom-right-radius:7px}
 .clickable-day:hover .gt-bar{filter:brightness(1.12)}
-.gt-bar.short{box-shadow:inset 0 2px 0 #E040FB,inset 0 -2px 0 #E040FB}
-.gt-bar.short.s{box-shadow:inset 2px 2px 0 #E040FB,inset 0 -2px 0 #E040FB}
-.gt-bar.short.e{box-shadow:inset -2px 2px 0 #E040FB,inset 0 -2px 0 #E040FB}
-.gt-bar.short.s.e{box-shadow:inset 0 0 0 2px #E040FB}
 .gt-bar.nocrew{background-image:repeating-linear-gradient(135deg,rgba(224,64,251,.55) 0 5px,transparent 5px 11px)}
 .gt-bar.done{opacity:.35}
 .gt-bar.ovr::after{content:'';position:absolute;top:3px;right:3px;width:5px;height:5px;border-radius:50%;background:#151515;opacity:.55}
@@ -866,7 +862,7 @@ body.tv #version-tag{display:none}
 .ag-empty{font-size:11px;color:#5A5D61;padding:8px 2px 0}
 .ag-job{margin-top:8px;background:#26282A;border-radius:10px;padding:10px 12px;border-left:5px solid var(--cc);cursor:pointer}
 .ag-job:active{background:#2E3033}
-.ag-job.short{box-shadow:inset 0 0 0 2px #E040FB}
+
 .ag-job.done{opacity:.45}
 .ag-top{display:flex;align-items:center;gap:8px;margin-bottom:4px}
 .ag-cls{font-family:var(--font-head);font-size:9px;font-weight:700;border-radius:4px;padding:1px 6px}
@@ -1093,7 +1089,7 @@ body.tv #version-tag{display:none}
         </div>
       </div>
       <div class="stat-row" id="stat-row" style="margin-bottom:8px"></div>
-      <div class="bd-legend gt-legend" style="padding:0 2px 8px"><span><i style="background:#E53935"></i>Class A</span><span><i style="background:#FDD835"></i>Class B</span><span><i style="background:#9E9E9E"></i>Roof</span><span><i style="background:#26C6DA"></i>Meth</span><span><i style="background:#43A047"></i>Mould</span><span><i style="background:transparent;outline:2px dashed #E040FB;outline-offset:-1px"></i>Under-resourced</span><span><i style="background:#2B2D2F;border-bottom:2px dashed #888"></i>Weekend / holiday inside job</span><span style="color:#FCD34D">Name ⚠ = double-booked</span><span>Hover a bar for details · click a day to change crew</span></div>
+      <div class="bd-legend gt-legend" style="padding:0 2px 8px"><span><i style="background:#E53935"></i>Class A</span><span><i style="background:#FDD835"></i>Class B</span><span><i style="background:#9E9E9E"></i>Roof</span><span><i style="background:#26C6DA"></i>Meth</span><span><i style="background:#43A047"></i>Mould</span><span><i style="background:#E040FB;border-radius:6px"></i>Under-resourced (crew badge)</span><span><i style="background:#2B2D2F;border-bottom:2px dashed #888"></i>Weekend / holiday inside job</span><span style="color:#FCD34D">Name ⚠ = double-booked</span><span>Hover a bar for details · click a day to change crew</span></div>
       </div><!-- end fixed header section -->
       <div class="cal-wrap" style="flex:1;overflow:auto;margin:0 16px 12px;border-radius:var(--r);border:1px solid var(--c-border)">
         <table id="cal-table">
@@ -1940,7 +1936,7 @@ document.addEventListener('keydown', e => {
 const PRELOAD_JOBS = [];
 const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
-const APP_VERSION = 'v50-202611132300';
+const APP_VERSION = 'v50-202611132340';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 
 const BLANK_BRANCH_MAP = () => ({ Auckland: {}, Wellington: {}, Christchurch: {} });
@@ -3507,10 +3503,10 @@ function jobColor(j, shortFlag){
   return {bg:'#FFC21A', fg:'#2A1A00'};
 }
 function boardLegend(){
-  const shortLg='<span><i style="background:transparent;outline:2px dashed #E040FB;outline-offset:-1px"></i>Under-resourced</span><span><i style="background:repeating-linear-gradient(135deg,#E040FB 0 3px,transparent 3px 6px)"></i>No crew named</span><span><i style="background:#9E9E9E;opacity:.4"></i>Finished / invoiced</span>';
+  const shortLg='<span><i style="background:#E040FB;border-radius:6px"></i>Under-resourced (crew badge)</span><span><i style="background:repeating-linear-gradient(135deg,#E040FB 0 3px,transparent 3px 6px)"></i>No crew named</span><span><i style="background:#9E9E9E;opacity:.4"></i>Finished / invoiced</span>';
   if(BOARD.color==='class') return '<span><i style="background:#E53935"></i>Class A</span><span><i style="background:#FDD835"></i>Class B</span><span><i style="background:#9E9E9E"></i>Roof</span><span><i style="background:#26C6DA"></i>Meth</span><span><i style="background:#43A047"></i>Mould</span>'+shortLg;
   if(BOARD.color==='project') return '<span>Same colour = same project</span>';
-  return '<span><i style="background:#FF6A1A"></i>On site</span><span><i style="background:#FFC21A"></i>Upcoming</span><span><i style="background:#7B1FA2;outline:1px dashed #E040FB"></i>Under-resourced</span><span><i style="background:#8D4A12"></i>Past finish – close out</span>'+(BOARD.done?'<span><i style="background:#4A4D50"></i>Done</span>':'');
+  return '<span><i style="background:#FF6A1A"></i>On site</span><span><i style="background:#FFC21A"></i>Upcoming</span><span><i style="background:#7B1FA2"></i>Under-resourced</span><span><i style="background:#8D4A12"></i>Past finish – close out</span>'+(BOARD.done?'<span><i style="background:#4A4D50"></i>Done</span>':'');
 }
 
 // Pipeline value a job contributes to a calendar month — same rule as the Gantt stat:
@@ -3787,7 +3783,7 @@ function renderRes(){
         const click=jc?`dupOpenPerson('${d}','${k.replace(/'/g,"\\'")}')`:`editJob('${j.id}')`;
         const tip=(j.jobno?j.jobno+' — ':'')+(j.site||'')+(hrs!=null?` · ${hrs}h`:'')+(st==='open'?' · DOUBLE-BOOKED — click to split hours or flag':st==='flag'?' · Schedule error: '+jc.note:'');
         const other=j.branch!==br;
-        c+=`<span class="rs-chip ${cls}" style="background:${col.bg};color:${col.fg}" data-jid="${j.id}" data-day="${d}" onclick="event.stopPropagation();${click}">${other?`<em class="rs-br" style="background:${BRANCH_COLORS[j.branch]};color:#111">${BR_CODE[j.branch]||j.branch}</em>`:''}${hrs!=null?`<em class="rs-h">${hrs}h</em>`:''}${st==='flag'?'⚑ ':''}${_esc(j.site||j.jobno||'Job')}</span>`;
+        c+=`<span class="rs-chip ${cls}" style="background:${col.bg};color:${col.fg}" data-jid="${j.id}" data-day="${d}" onclick="rsChipClick(event,'${j.id}','${d}','${k.replace(/'/g,"\\'")}')" ondblclick="rsChipDbl(event,'${j.id}')" title="Click: change / move · Double-click: open job">${other?`<em class="rs-br" style="background:${BRANCH_COLORS[j.branch]};color:#111">${BR_CODE[j.branch]||j.branch}</em>`:''}${hrs!=null?`<em class="rs-h">${hrs}h</em>`:''}${st==='flag'?'⚑ ':''}${_esc(j.site||j.jobno||'Job')}</span>`;
       });
       if(js.length) worked++;
       if(!c){
@@ -3795,7 +3791,7 @@ function renderRes(){
         c= off?'<span class="rs-free" style="color:#5A5D61">—</span>':'<span class="rs-free">● free</span>';
         if(!off && !isExtra) (freeByDay[d]=freeByDay[d]||[]).push(nm);
       }
-      r+=`<td class="${wkBreak(d)?'wk':''} rs-cell" onclick="rsCellMenu(event,'${d}','${k.replace(/'/g,"\\'")}')" title="Click to add to a job, or book leave / training">${c}</td>`;
+      r+=`<td class="${wkBreak(d)?'wk':''} rs-cell" onclick="rsCellMenu(event,'${d}','${k.replace(/'/g,"\\'")}')" title="Click a free day to add to a job / book leave · click a job to change or move · double-click a job to open it">${c}</td>`;
     });
     return r+'</tr>';
   };
@@ -4108,13 +4104,14 @@ function hoverCardHTML(j, day){
     ${chk.scope?`<div class="hc-lbl">Scope</div><div class="hc-scope">${_esc(chk.scope)}</div>`:''}
     <div class="hc-lbl">Crew ${d?'on '+_fmtD(d):''}</div>
     <div class="hc-names">${nameHtml}</div>
-    <div class="hc-foot">Click to ${clashes.some(c=>c.status!=='split')?'open job (⚠ resolve in Resources)':'edit job'}</div>`;
+    <div class="hc-foot">${day&&document.querySelector('.panel.active')&&document.querySelector('.panel.active').id==='panel-res'?'Click to change / move · double-click to open job':'Click to open job'}${clashes.some(c=>c.status!=='split')?' · ⚠ double-booked':''}</div>`;
 }
 let _hcT=null;
 document.addEventListener('mouseover',e=>{
   const el=e.target.closest&&e.target.closest('[data-jid]');
   const hc=document.getElementById('hovercard'); if(!hc) return;
-  if(!el){ clearTimeout(_hcT); hc.classList.remove('show'); return; }
+  const _rm=document.getElementById('rs-menu');
+  if(!el || (_rm && _rm.style.display==='block')){ clearTimeout(_hcT); hc.classList.remove('show'); return; }
   const j=S.jobs.find(x=>x.id===el.dataset.jid); if(!j) return;
   clearTimeout(_hcT);
   _hcT=setTimeout(()=>{ hc.innerHTML=hoverCardHTML(j, el.dataset.day||null); hc.classList.add('show'); _hcPos(e); },180);
@@ -4141,8 +4138,8 @@ function _absSet(type, br, ds, name, on){
 function rsCellMenu(ev, ds, key){
   if(ev.target.closest('.rs-chip:not(.rs-leave):not(.rs-train)')) return; // job chips keep their own click
   ev.stopPropagation();
-  const br=S.branch, name=(S.staff[br]||[]).find(n=>_nm(n)===key)||key;
-  const onLv=((S.leave[br]||{})[ds]||[]).some(n=>_nm(n)===key), onTr=((S.training[br]||{})[ds]||[]).some(n=>_nm(n)===key);
+  const br=S.branch, name=_personName(key);
+  const _ab=absenceOf(name,ds), onLv=_ab==='leave', onTr=_ab==='training';
   const m=document.getElementById('rs-menu');
   // jobs running that day — this branch first, crew-short first
   const k2=key.replace(/'/g,"\\'");
@@ -4152,7 +4149,7 @@ function rsCellMenu(ev, ds, key){
     .sort((a,b)=>(a.j.branch===br?0:1)-(b.j.branch===br?0:1)||(b.short-a.short)||String(a.j.site).localeCompare(String(b.j.site)));
   const addHtml=dayJobs.length?`<div class="rm-sec">Add to a job on ${_fmtD(ds)}</div>`+dayJobs.slice(0,8).map(({j,short,need})=>`
     <div class="rm-job"><div class="rm-jt"><span class="rm-dot" style="background:${CLASS_COLORS[classKey(j)][0]}"></span>${j.branch!==br?`<em class="rs-br">${BR_CODE[j.branch]}</em>`:''}${_esc((j.site||j.jobno||'').split(',')[0])}${short?`<b class="rm-short">${need>0?'−'+need:'short'}</b>`:''}</div>
-    <div class="rm-btns"><button onclick="rsAddToJob('${j.id}','${ds}','${k2}',false)">This day</button><button onclick="rsAddToJob('${j.id}','${ds}','${k2}',true)" title="This day and every remaining day of the job">Rest of job</button></div></div>`).join('')
+    <div class="rm-btns"><button onclick="rsAddToJob('${j.id}','${ds}','${k2}',false)">This day</button>${_restBtn(j,ds,name,`rsAddToJob('${j.id}','${ds}','${k2}',true)`)}</div></div>`).join('')
     :`<div class="rm-sec">No jobs running on ${_fmtD(ds)}</div>`;
   m.innerHTML=`<div class="rm-h">${_esc(name)} · ${_fmtD(ds)}</div>${addHtml}<div class="rm-sec">Leave / training</div>
     <button onclick="rsQuick('leave','${ds}','${key.replace(/'/g,"\\'")}',${!onLv})">${onLv?'✕ Remove leave':'🏖 On leave'}</button>
@@ -4166,12 +4163,95 @@ function rsCellMenu(ev, ds, key){
   m.style.top='0px'; const mh=m.offsetHeight; m.style.top=Math.max(8,Math.min(r.bottom+4, window.innerHeight-mh-8))+'px';
 }
 document.addEventListener('click',e=>{ const m=document.getElementById('rs-menu'); if(m&&m.style.display==='block'&&!e.target.closest('#rs-menu')) m.style.display='none'; });
+let _chipT=null;
+function rsChipDbl(ev,jobId){ ev.stopPropagation(); clearTimeout(_chipT); const m=document.getElementById('rs-menu'); if(m) m.style.display='none'; editJob(jobId); }
+function rsChipClick(ev,jobId,ds,key){
+  ev.stopPropagation();
+  clearTimeout(_chipT);
+  const target=ev.currentTarget;
+  _chipT=setTimeout(()=>rsChipMenu(target,jobId,ds,key),230);   // wait so a double-click opens the job instead
+}
+function _removeFromJob(j,days,name){
+  if(!j.dayOverrides) j.dayOverrides={};
+  days.forEach(d=>{ if(!jobActiveOnDay(j,d)) return;
+    j.dayOverrides[d]=getStaffForDay(j,d).split(',').map(x=>x.trim()).filter(x=>x&&_nm(x)!==_nm(name)).join(', ');
+    const ck=j.checklist; if(ck&&ck.splits&&ck.splits[d]) delete ck.splits[d][_nm(name)]; });
+  j.ts=new Date().toISOString();
+}
+function rsChipMenu(el,jobId,ds,key){
+  const j=S.jobs.find(x=>x.id===jobId); if(!j) return;
+  const br=S.branch, name=_personName(key), k2=key.replace(/'/g,"\\'");
+  const cl=findClashes(ds,ds).find(c=>c.key===_nm(name)&&c.jobs.includes(j)&&c.status!=='split');
+  const busyOn=new Set(jobsForPersonOnDay(name,ds).map(x=>x.id));
+  const others=S.jobs.filter(x=>!x._del&&!x.done&&jobActiveOnDay(x,ds)&&!busyOn.has(x.id))
+    .map(x=>({x,short:crewShort(x,ds),need:(Number(x.staff)||0)-crewOnDay(x,ds)}))
+    .sort((a,b)=>(a.x.branch===br?0:1)-(b.x.branch===br?0:1)||(b.short-a.short)||String(a.x.site).localeCompare(String(b.x.site)));
+  const m=document.getElementById('rs-menu');
+  m.innerHTML=`<div class="rm-h">${_esc(name)} · ${_fmtD(ds)}<br><b style="color:#E8E8E8">on ${_esc((j.site||j.jobno||'').split(',')[0])}</b></div>
+    ${cl?`<button onclick="document.getElementById('rs-menu').style.display='none';dupOpenPerson('${ds}','${k2}')">⚠ Sort out double-booking…</button>`:''}
+    <div class="rm-sec">Move to another job</div>
+    ${others.length?others.slice(0,8).map(({x,short,need})=>`<div class="rm-job"><div class="rm-jt"><span class="rm-dot" style="background:${CLASS_COLORS[classKey(x)][0]}"></span>${x.branch!==br?`<em class="rs-br">${BR_CODE[x.branch]}</em>`:''}${_esc((x.site||x.jobno||'').split(',')[0])}${short?`<b class="rm-short">${need>0?'−'+need:'short'}</b>`:''}</div>
+      <div class="rm-btns"><button onclick="rsMoveToJob('${j.id}','${x.id}','${ds}','${k2}',false)">This day</button>${_restBtn(x,ds,name,`rsMoveToJob('${j.id}','${x.id}','${ds}','${k2}',true)`)}</div></div>`).join('')
+      :`<div style="font-size:11px;color:#78797C;padding:2px 8px 6px">No other jobs running that day</div>`}
+    <div class="rm-sec">This job</div>
+    <button onclick="rsRemoveFromJob('${j.id}','${ds}','${k2}',false)">✕ Take off this job — this day</button>
+    <button onclick="rsRemoveFromJob('${j.id}','${ds}','${k2}',true)">✕ Take off this job — rest of job</button>
+    <button onclick="document.getElementById('rs-menu').style.display='none';openDayModal('${j.id}','${ds}')">👷 Change crew for this day…</button>
+    <button onclick="document.getElementById('rs-menu').style.display='none';editJob('${j.id}')">✎ Open job setup (or double-click)</button>`;
+  m.style.display='block';
+  { const hc=document.getElementById('hovercard'); if(hc) hc.classList.remove('show'); clearTimeout(_hcT); }
+  const r=el.getBoundingClientRect();
+  m.style.left=Math.min(r.left, window.innerWidth-300)+'px';
+  m.style.top='0px'; const mh=m.offsetHeight; m.style.top=Math.max(8,Math.min(r.bottom+4, window.innerHeight-mh-8))+'px';
+}
+function rsMoveToJob(fromId,toId,ds,key,rest){
+  const a=S.jobs.find(x=>x.id===fromId), b=S.jobs.find(x=>x.id===toId); if(!a||!b) return;
+  const name=_personName(key);
+  const days=personDaysFor(b,ds,name,rest).days;
+  if(!days.length){ toast('No available days for '+name.split(' ')[0]+' on that job','err'); return; }
+  _removeFromJob(a,days,name);
+  rsAddToJob(toId,ds,key,rest);   // adds, saves, syncs, toasts
+  toast(`${name.split(' ')[0]} moved to ${(b.site||b.jobno||'job').split(',')[0]} — ${days.length} day${days.length!==1?'s':''} ✓`);
+}
+function rsRemoveFromJob(jobId,ds,key,rest){
+  const j=S.jobs.find(x=>x.id===jobId); if(!j) return;
+  const name=_personName(key);
+  document.getElementById('rs-menu').style.display='none';
+  const days=rest?workingDays(ds,j.finish,true,true).filter(d=>jobActiveOnDay(j,d)):[ds];
+  _removeFromJob(j,days,name);
+  save(); if(S.gsUrl) autoSync(); renderAll();
+  toast(`${name.split(' ')[0]} taken off ${(j.site||j.jobno||'job').split(',')[0]} — ${days.length} day${days.length!==1?'s':''}`);
+}
+function _personName(key){ const hb=homeBranch(key); return hb?(S.staff[hb].find(n=>_nm(n)===_nm(key))||key):(getSecondments().find(x=>_nm(x.name)===_nm(key))||{}).name||key; }
+// Which days a person can go on a job from ds: one day, or the rest of the job — but only while they're
+// available to that job's branch (an allocated person stops at the end of their allocation) and not on leave.
+function personDaysFor(j, ds, name, rest){
+  if(!rest) return {days:[ds], until:''};
+  const k=_nm(name), native=homeBranch(name)===j.branch;
+  const sec=secondedOn(name,ds);
+  let last=j.finish||ds, until='';
+  if(!native && sec && sec.to===j.branch && sec.end<last){ last=sec.end; until=sec.end; }
+  const days=workingDays(ds,last,!!j.workSat,!!j.workSun).filter(d=>{
+    if(!jobActiveOnDay(j,d)) return false;
+    if(absenceOf(name,d)) return false;                                   // leave / training
+    const x=secondedOn(name,d); if(x && x.to!==j.branch) return false;    // allocated to another branch that day
+    if(!native && sec && sec.to===j.branch && (d<sec.start||d>sec.end)) return false;
+    return true;
+  });
+  return {days, until};
+}
+function _restBtn(j,ds,name,onclick){
+  const r=personDaysFor(j,ds,name,true);
+  const lbl=r.until?`Until ${_fmtD(r.until)}`:'Rest of job';
+  return `<button onclick="${onclick}" title="${r.days.length} day${r.days.length!==1?'s':''}${r.until?' — to the end of their allocation':''} (skips leave / days allocated elsewhere)">${lbl}</button>`;
+}
 // Add a free person to a job from the Resources grid — one day, or that day onwards
 function rsAddToJob(jobId, ds, key, rest){
   const j=S.jobs.find(x=>x.id===jobId); if(!j) return;
-  const name=homeBranch(key)?(S.staff[homeBranch(key)].find(n=>_nm(n)===key)):key;
+  const name=_personName(key);
   document.getElementById('rs-menu').style.display='none';
-  const days=rest?workingDays(ds,j.finish,!!j.workSat,!!j.workSun).filter(d=>jobActiveOnDay(j,d)):[ds];
+  const days=personDaysFor(j,ds,name,rest).days;
+  if(!days.length){ toast('No available days for '+name.split(' ')[0]+' on that job','err'); return; }
   if(!j.dayOverrides) j.dayOverrides={};
   days.forEach(d=>{
     const cur=getStaffForDay(j,d).split(',').map(x=>x.trim()).filter(Boolean);
