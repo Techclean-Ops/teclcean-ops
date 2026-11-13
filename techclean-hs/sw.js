@@ -1,5 +1,5 @@
 /* TechClean H&S — offline cache + background send (Android). Bump VERSION on every release. */
-var VERSION = 'tc-hs-v7';
+var VERSION = 'tc-hs-v10';
 var FILES = ['./', 'index.html', 'app.js', 'forms.js', 'config.js', 'pdf.js', 'jspdf.umd.min.js',
   'logo-white.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'manifest.webmanifest'];
 
@@ -41,7 +41,7 @@ async function sendAll() {
   if (!cfg || !cfg.API_URL) return;
   var recs = await req2p(db.transaction('records').objectStore('records').getAll());
   for (var i = 0; i < recs.length; i++) {
-    var r = recs[i]; if (r.status === 'sent') continue;
+    var r = recs[i]; if (r.status === 'sent' || (!r.pdf && !r.file)) continue; // PDF not built yet: the app sends it next time it opens
     var copy = {}; for (var k in r) if (k !== 'pdf' && k !== 'file') copy[k] = r[k];
     var res = await fetch(cfg.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'submit', token: cfg.token, record: copy, pdf: r.pdf || r.file, fileName: r.fileName, folder: r.folder }) });

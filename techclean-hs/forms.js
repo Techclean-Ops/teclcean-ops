@@ -3,7 +3,8 @@
    Question types:
      yn      Yes / No / N/A buttons.  bad: answers that need a note or photo (supervisor alerted).
                                        stop: answers that end the form (cannot sign on).
-     ok      OK / Fault / N/A (equipment).  Fault needs a note or photo.
+     ok      OK / Fault / N/A (equipment).  Fault needs a photo and a note.
+     photo: true on a question = a bad answer needs a live photo AND a note.  type 'photo' is required unless optional: true.
      choice  Pick one big picture button.  opts: [[value, icon, label], ...]
      text    Speak or type.
 */
@@ -17,6 +18,8 @@ var FORMS = {
       { id: 'shaven', q: 'Clean-shaven for your mask today?', type: 'yn', noNA: true, stop: ['no'],
         stopMsg: 'Not clean-shaven means no entry. Shave, then do this again.',
         help: 'Zero tolerance. Clean-shaven as per your face fit, every day.' },
+      { id: 'face', q: 'Take a photo of your face now', pdf: 'Clean-shaven photo (taken live on site)', type: 'selfie',
+        help: 'Mask off, face the camera. Live camera only — no uploads.' },
       { id: 'rpe', q: 'Which mask are you wearing today?', type: 'choice',
         opts: [['half', '😷', 'Half-face P3'], ['full', '🥽', 'Full-face P3'], ['papr', '🔋', 'Powered (PAPR)']] },
       { id: 'seal', q: 'Seal check done and passed?', type: 'yn', noNA: true, stop: ['no'],
@@ -50,7 +53,7 @@ var FORMS = {
       { id: 'swms', q: 'SWMS reviewed with everyone present?', type: 'yn', bad: ['no'], section: 'Covered at pre-start' },
       { id: 'encl', q: 'Enclosure and negative pressure checked, logged?', type: 'yn', bad: ['no'], section: 'Covered at pre-start' },
       { id: 'air', q: 'Yesterday’s air monitoring shared with crew?', type: 'yn', bad: ['no'], section: 'Covered at pre-start' },
-      { id: 'hazards', q: 'New or changed hazards on site?', type: 'yn', noNA: true, bad: ['yes'], badMsg: 'Add a note or photo of the hazard.', section: 'Covered at pre-start' },
+      { id: 'hazards', q: 'New or changed hazards on site?', type: 'yn', noNA: true, bad: ['yes'], photo: true, badMsg: 'Take a photo of the hazard and add a note.', section: 'Covered at pre-start' },
       { id: 'arcpchg', q: 'Any change to the ARCP since yesterday?', type: 'yn', noNA: true, bad: ['yes'], badMsg: 'Note the change — crew must re-sign the ARCP.', section: 'Covered at pre-start' },
       { id: 'fitness', q: 'Fitness for work discussed — fatigue, illness, medication?', type: 'yn', bad: ['no'], section: 'Covered at pre-start' },
       { id: 'concerns', q: 'Any concerns raised by the crew?', type: 'yn', noNA: true, bad: ['yes'], badMsg: 'Note the concern and what was agreed.', section: 'Covered at pre-start' },
@@ -157,35 +160,35 @@ FORMS.D6 = {
     { id: 'stage', q: 'Which stage are you checking?', type: 'choice', section: 'Stage', opts: [['setup', '🏗️', 'Set-up'], ['during', '🧰', 'During removal'], ['clear', '🧹', 'Completion and clearance']] },
     { id: 'loc', q: 'Location / area', type: 'field', section: 'Stage', optional: true },
     yn('s1', 'Site plan matches set-up, changes marked?', 'Site plan matches the site as set up; any change marked up and dated', '1. Set-up', { showIf: D6S('setup') }),
-    yn('s2', 'Boundaries, signs and barriers in place?', 'Primary and secondary boundaries established with signage and barriers', '1. Set-up', { showIf: D6S('setup') }),
+    yn('s2', 'Boundaries, signs and barriers in place?', 'Primary and secondary boundaries established with signage and barriers', '1. Set-up', { photo: true, showIf: D6S('setup') }),
     yn('s3', 'Isolations confirmed in writing?', 'All isolations confirmed in writing — fire, HVAC, electrical, sensors', '1. Set-up', { showIf: D6S('setup') }),
-    yn('s4', 'Enclosure built to B10, penetrations sealed?', 'Enclosure constructed to Section B10 and all penetrations sealed', '1. Set-up', { showIf: D6S('setup') }),
+    yn('s4', 'Enclosure built to B10, penetrations sealed?', 'Enclosure constructed to Section B10 and all penetrations sealed', '1. Set-up', { photo: true, showIf: D6S('setup') }),
     yn('s5', 'Smoke test passed and on D7?', 'Smoke test passed and recorded on Form D7', '1. Set-up', { showIf: D6S('setup') }),
     yn('s6', 'Negative pressure −5 Pa and 8 ACH logged?', 'Negative pressure achieved and logged — minimum −5 Pa and 8 air changes per hour', '1. Set-up', { showIf: D6S('setup') }),
-    yn('s7', 'Decon unit set up and working?', 'Decontamination unit set up, connected and operational', '1. Set-up', { showIf: D6S('setup') }),
-    yn('s8', 'Waste / bag lock set up and working?', 'Waste / bag lock set up and operational', '1. Set-up', { showIf: D6S('setup') }),
+    yn('s7', 'Decon unit set up and working?', 'Decontamination unit set up, connected and operational', '1. Set-up', { photo: true, showIf: D6S('setup') }),
+    yn('s8', 'Waste / bag lock set up and working?', 'Waste / bag lock set up and operational', '1. Set-up', { photo: true, showIf: D6S('setup') }),
     yn('s9', 'Baseline air monitoring done, result received?', 'Baseline air monitoring completed by the assessor and result received', '1. Set-up', { showIf: D6S('setup') }),
-    yn('r1', 'Material kept wet — no dry removal?', 'Material kept wet throughout; no dry removal at any point', '2. During removal', { showIf: D6S('during') }),
-    yn('r2', 'Only hand tools and permitted gear?', 'Only hand tools and permitted equipment in use', '2. During removal', { showIf: D6S('during') }),
-    yn('r3', 'Waste bagged as made, max two thirds, sealed?', 'Waste bagged as generated, filled no more than two thirds, sealed correctly', '2. During removal', { showIf: D6S('during') }),
-    yn('r4', 'PPE and RPE worn correctly by all?', 'Correct PPE and RPE worn correctly by everyone in the area', '2. During removal', { showIf: D6S('during') }),
-    yn('r5', 'Two inside, one outside at the unit?', 'Minimum two workers inside the enclosure; outside person at the unit', '2. During removal', { showIf: D6S('during') }),
+    yn('r1', 'Material kept wet — no dry removal?', 'Material kept wet throughout; no dry removal at any point', '2. During removal', { photo: true, showIf: D6S('during') }),
+    yn('r2', 'Only hand tools and permitted gear?', 'Only hand tools and permitted equipment in use', '2. During removal', { photo: true, showIf: D6S('during') }),
+    yn('r3', 'Waste bagged as made, max two thirds, sealed?', 'Waste bagged as generated, filled no more than two thirds, sealed correctly', '2. During removal', { photo: true, showIf: D6S('during') }),
+    yn('r4', 'PPE and RPE worn correctly by all?', 'Correct PPE and RPE worn correctly by everyone in the area', '2. During removal', { photo: true, showIf: D6S('during') }),
+    yn('r5', 'Two inside, one outside at the unit?', 'Minimum two workers inside the enclosure; outside person at the unit', '2. During removal', { photo: true, showIf: D6S('during') }),
     yn('r6', 'Enclosure and pressure checked each shift and break?', 'Enclosure and negative pressure checked at start of shift, after breaks and at end of shift', '2. During removal', { showIf: D6S('during') }),
     yn('r7', 'Control air monitoring within limits?', 'Control air monitoring results within limits', '2. During removal', { showIf: D6S('during') }),
-    yn('r8', 'Housekeeping kept up, no debris build-up?', 'Housekeeping maintained; no accumulation of debris', '2. During removal', { showIf: D6S('during') }),
+    yn('r8', 'Housekeeping kept up, no debris build-up?', 'Housekeeping maintained; no accumulation of debris', '2. During removal', { photo: true, showIf: D6S('during') }),
     yn('c1', 'All ACM removed to agreed scope?', 'All ACM removed to the agreed scope', '3. Completion and clearance', { showIf: D6S('clear') }),
-    yn('c2', 'First clean — H-class vacuum all surfaces?', 'First clean completed — H-class vacuum of all surfaces', '3. Completion and clearance', { showIf: D6S('clear') }),
-    yn('c3', 'Second clean — wet wipe all surfaces?', 'Second clean completed — wet wipe of all surfaces', '3. Completion and clearance', { showIf: D6S('clear') }),
-    yn('c4', 'Settle period with NPUs running?', 'Settle period observed with NPUs running', '3. Completion and clearance', { showIf: D6S('clear') }),
-    yn('c5', 'Supervisor visual inspection passed?', 'Supervisor visual inspection completed and passed', '3. Completion and clearance', { showIf: D6S('clear') }),
+    yn('c2', 'First clean — H-class vacuum all surfaces?', 'First clean completed — H-class vacuum of all surfaces', '3. Completion and clearance', { photo: true, showIf: D6S('clear') }),
+    yn('c3', 'Second clean — wet wipe all surfaces?', 'Second clean completed — wet wipe of all surfaces', '3. Completion and clearance', { photo: true, showIf: D6S('clear') }),
+    yn('c4', 'Settle period with NPUs running?', 'Settle period observed with NPUs running', '3. Completion and clearance', { photo: true, showIf: D6S('clear') }),
+    yn('c5', 'Supervisor visual inspection passed?', 'Supervisor visual inspection completed and passed', '3. Completion and clearance', { photo: true, showIf: D6S('clear') }),
     yn('c6', 'Assessor visual passed (Stage 2)?', 'Assessor visual inspection passed (Stage 2)', '3. Completion and clearance', { showIf: D6S('clear') }),
     yn('c7', 'Clearance air monitoring passed (Stage 3)?', 'Clearance air monitoring passed (Stage 3)', '3. Completion and clearance', { showIf: D6S('clear') }),
-    yn('c8', 'Enclosure down, final visual done (Stage 4)?', 'Enclosure dismantled and final visual completed (Stage 4)', '3. Completion and clearance', { showIf: D6S('clear') }),
+    yn('c8', 'Enclosure down, final visual done (Stage 4)?', 'Enclosure dismantled and final visual completed (Stage 4)', '3. Completion and clearance', { photo: true, showIf: D6S('clear') }),
     yn('c9', 'Clearance certificate received?', 'Clearance certificate received', '3. Completion and clearance', { showIf: D6S('clear') }),
-    { id: 'c9p', q: 'Photo of the clearance certificate', type: 'photo', section: '3. Completion and clearance', optional: true, showIf: function (a) { return a.stage && a.stage.v === 'clear' && a.c9 && a.c9.v === 'yes'; } },
+    { id: 'c9p', q: 'Photo of the clearance certificate', type: 'photo', section: '3. Completion and clearance', showIf: function (a) { return a.stage && a.stage.v === 'clear' && a.c9 && a.c9.v === 'yes'; } },
     yn('c10', 'All waste gone, disposal dockets obtained?', 'All waste removed from site and disposal dockets obtained', '3. Completion and clearance', { showIf: D6S('clear') }),
-    yn('c11', 'Site clean, tidy, secure — photos taken?', 'Site left clean, tidy and secure; photographs taken', '3. Completion and clearance', { showIf: D6S('clear') }),
-    { id: 'c11p', q: 'Photos of the finished site', type: 'photo', section: '3. Completion and clearance', optional: true, showIf: D6S('clear') },
+    yn('c11', 'Site clean, tidy, secure — photos taken?', 'Site left clean, tidy and secure; photographs taken', '3. Completion and clearance', { photo: true, showIf: D6S('clear') }),
+    { id: 'c11p', q: 'Photos of the finished site', type: 'photo', section: '3. Completion and clearance', showIf: D6S('clear') },
     { id: 'sig', q: 'Supervisor sign off', type: 'sign', section: 'Sign off' }
   ]
 };
@@ -203,7 +206,8 @@ FORMS.D7 = {
     { id: 'leaks', q: 'Leaks found and how sealed', pdf: 'Leaks found and sealed', type: 'text', section: 'Smoke test', showIf: function (a) { return a.sres && a.sres.v === 'fail'; } },
     { id: 'retest', q: 'Retest result?', pdf: 'Retest result', type: 'choice', section: 'Smoke test', showIf: function (a) { return a.sres && a.sres.v === 'fail'; },
       opts: [['pass', '✅', 'Pass'], ['fail', '❌', 'Fail — do not start']], bad: ['fail'] },
-    { id: 'sphoto', q: 'Photo (optional)', type: 'photo', section: 'Smoke test', optional: true },
+    { id: 'lphoto', q: 'Photo of the leak', type: 'photo', section: 'Smoke test', showIf: function (a) { return a.sres && a.sres.v === 'fail'; } },
+    { id: 'sphoto', q: 'Photo of the enclosure under test', type: 'photo', section: 'Smoke test' },
     { id: 'sig', q: 'Supervisor sign off', type: 'sign', section: 'Signatures' },
     { id: 'asig', q: 'Assessor signs here', type: 'sign', who: 'assessor', section: 'Signatures' }
   ]
@@ -212,21 +216,21 @@ FORMS.D7 = {
 FORMS.D8 = {
   code: 'D8', ref: 'Form D8 — Weekly site inspection', title: 'Weekly site inspection', short: 'Weekly', icon: '🗓️', who: 'supervisor', pmReview: true,
   questions: [
-    yn('w1', 'Boundaries, fencing and signs intact?', 'Boundaries, fencing and signage intact and correct', 'Weekly inspection'),
+    yn('w1', 'Boundaries, fencing and signs intact?', 'Boundaries, fencing and signage intact and correct', 'Weekly inspection', { photo: true }),
     yn('w2', 'Site folder complete and up to date?', 'Site folder complete and up to date — ARCP, SSSP, notification, survey, monitoring results', 'Weekly inspection'),
     yn('w3', 'Hazard board current?', 'Hazard board current', 'Weekly inspection'),
     yn('w4', 'SWMS signed daily by everyone?', 'SWMS for the work in progress signed daily by everyone on site', 'Weekly inspection'),
     yn('w5', 'Sign in / out register complete?', 'Sign in / out register complete', 'Weekly inspection'),
     yn('w6', 'Enclosure and pressure logs complete?', 'Enclosure integrity and negative pressure logs complete', 'Weekly inspection'),
-    yn('w7', 'Decon unit clean, working, used right?', 'Decontamination unit clean, operational and correctly used', 'Weekly inspection'),
-    yn('w8', 'PPE and RPE good, stored and used right?', 'PPE and RPE in good condition, correctly stored and correctly used', 'Weekly inspection'),
+    yn('w7', 'Decon unit clean, working, used right?', 'Decontamination unit clean, operational and correctly used', 'Weekly inspection', { photo: true }),
+    yn('w8', 'PPE and RPE good, stored and used right?', 'PPE and RPE in good condition, correctly stored and correctly used', 'Weekly inspection', { photo: true }),
     yn('w9', 'Everyone clean-shaven as per face fit?', 'Everyone on site clean-shaven as per face fit', 'Weekly inspection'),
-    yn('w10', 'Waste secure, double contained, labelled?', 'Waste stored securely, double contained, correctly labelled', 'Weekly inspection'),
-    yn('w11', 'Housekeeping — enclosure, decon, waste route, amenities?', 'Housekeeping — enclosure, decontamination unit, waste route and amenities', 'Weekly inspection'),
+    yn('w10', 'Waste secure, double contained, labelled?', 'Waste stored securely, double contained, correctly labelled', 'Weekly inspection', { photo: true }),
+    yn('w11', 'Housekeeping — enclosure, decon, waste route, amenities?', 'Housekeeping — enclosure, decontamination unit, waste route and amenities', 'Weekly inspection', { photo: true }),
     yn('w12', 'Daily checks done all week, faults closed?', 'Daily pre-start equipment and mask checks completed every day this week, and any fault closed out', 'Weekly inspection'),
-    yn('w13', 'Electrical gear tested and tagged?', 'Electrical equipment current on test and tag', 'Weekly inspection'),
-    yn('w14', 'First aid, extinguisher and air horn OK?', 'First aid kit stocked; extinguisher and air horn in place and serviceable', 'Weekly inspection'),
-    yn('w15', 'Emergency exit from enclosure clear?', 'Emergency exit route from the enclosure clear', 'Weekly inspection'),
+    yn('w13', 'Electrical gear tested and tagged?', 'Electrical equipment current on test and tag', 'Weekly inspection', { photo: true }),
+    yn('w14', 'First aid, extinguisher and air horn OK?', 'First aid kit stocked; extinguisher and air horn in place and serviceable', 'Weekly inspection', { photo: true }),
+    yn('w15', 'Emergency exit from enclosure clear?', 'Emergency exit route from the enclosure clear', 'Weekly inspection', { photo: true }),
     yn('w16', 'Air monitoring current and shared?', 'Air monitoring results current and shared with the crew', 'Weekly inspection'),
     { id: 'sig', q: 'Supervisor sign off', type: 'sign', section: 'Sign off' }
   ]
@@ -235,9 +239,9 @@ FORMS.D8 = {
 FORMS.D9 = {
   code: 'D9', ref: 'Form D9 — End of shift decontamination and RPE check', title: 'End of shift', short: 'End of shift', icon: '🚿', who: 'supervisor',
   questions: [
-    yn('dcu', 'Decon unit clean and working?', 'DCU clean and operational', 'End of shift'),
-    yn('water', 'Water and filtration working?', 'Water / filtration working', 'End of shift'),
-    yn('rpe', 'RPE cleaned and stored?', 'RPE cleaned and stored', 'End of shift')
+    yn('dcu', 'Decon unit clean and working?', 'DCU clean and operational', 'End of shift', { photo: true }),
+    yn('water', 'Water and filtration working?', 'Water / filtration working', 'End of shift', { photo: true }),
+    yn('rpe', 'RPE cleaned and stored?', 'RPE cleaned and stored', 'End of shift', { photo: true })
   ]
 };
 
@@ -251,7 +255,8 @@ FORMS.D10 = {
     { id: 'rego', q: 'Vehicle rego', pdf: 'Vehicle rego', type: 'field', section: 'Waste load' },
     { id: 'facility', q: 'Disposal facility', pdf: 'Facility', type: 'field', section: 'Waste load' },
     { id: 'docket', q: 'Docket number', pdf: 'Docket no.', type: 'field', section: 'Waste load', optional: true, help: 'Add it later with a new version if the docket comes back after.' },
-    { id: 'dphoto', q: 'Photo of the docket', type: 'photo', section: 'Waste load', optional: true, help: 'Check the docket shows this site address.' },
+    { id: 'lphoto', q: 'Photo of the load', type: 'photo', section: 'Waste load', help: 'Bags or wrapped sheet on the truck, before it leaves.' },
+    { id: 'dphoto', q: 'Photo of the docket', type: 'photo', section: 'Waste load', optional: true, help: 'If you have it now. Check it shows this site address. Add it later with a new version if not.' },
     { id: 'sig', q: 'Signed', type: 'sign', section: 'Sign off' }
   ]
 };
@@ -263,7 +268,7 @@ FORMS.D11 = {
     { id: 'item', q: 'Item description', pdf: 'Item description', type: 'field', section: 'Inventory' },
     { id: 'qty', q: 'How many?', pdf: 'Qty', type: 'number', unit: '', section: 'Inventory' },
     { id: 'cond', q: 'Condition on return?', pdf: 'Condition', type: 'choice', section: 'Inventory', showIf: function (a) { return a.dir && a.dir.v === 'back'; },
-      opts: [['good', '👍', 'Good'], ['service', '🔧', 'Needs service'], ['damaged', '💥', 'Damaged'], ['lost', '❓', 'Missing']], bad: ['service', 'damaged', 'lost'] },
+      opts: [['good', '👍', 'Good'], ['service', '🔧', 'Needs service'], ['damaged', '💥', 'Damaged'], ['lost', '❓', 'Missing']], bad: ['service', 'damaged', 'lost'], photo: true },
     { id: 'iphoto', q: 'Photo (optional)', type: 'photo', section: 'Inventory', optional: true }
   ]
 };

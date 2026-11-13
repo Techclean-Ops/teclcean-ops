@@ -149,6 +149,8 @@
     rec.status = 'saved';
     rec.device = navigator.userAgent.slice(0, 120);
     if (rec.form === 'DOC') { await DB.put(rec); await refreshRecs(); sendOutbox(); return rec; }
+    await DB.put(rec); // save the answers straight away; the PDF is added next (rebuilt later if the app closes first)
+    if (old) { old.supersededBy = rec.id; old.supersededAt = Date.now(); await DB.put(old); }
     try {
       var doc = await PDF.build(rec);
       rec.pdf = doc.output('datauristring');
@@ -180,6 +182,7 @@
       var waiting = RECS.filter(function (r) { return r.status !== 'sent'; });
       for (var i = 0; i < waiting.length; i++) {
         var r = waiting[i];
+        if (!r.pdf && r.form !== 'DOC') { try { r.pdf = (await PDF.build(r)).output('datauristring'); await DB.put(r); } catch (e) {} }
         var body = JSON.stringify({ action: 'submit', token: localStorage.getItem('tc.token') || '', record: stripForSend(r), pdf: r.pdf || r.file, fileName: r.fileName, folder: r.folder });
         var res = await fetch(CONFIG.API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: body });
         var j = await res.json();
@@ -247,19 +250,46 @@
     return '<div class="voice"><textarea id="' + id + '" placeholder="' + esc(ph) + '">' + esc(val || '') + '</textarea><button class="mic" type="button" aria-label="Speak">🎤</button></div>';
   }
 
-  /* Photos: camera, shrink to 1280px JPEG */
-  function photoBox(id) { return '<label class="photo" id="' + id + '"><span>📷 Tap to take photo</span><input type="file" accept="image/*" capture="environment" class="hidden"></label>'; }
+  /* Evidence photos: live in-app camera only (no gallery), stamped with name, job, time and GPS. */
+  function photoBox(id) { return '<div class="photo" id="' + id + '" role="button"><span>📷 Tap to take photo</span><input type="file" accept="image/*" capture="environment" class="hidden"></div>'; }
   function bindPhotos(box, list, onChange) {
     var input = box.querySelector('input');
     function draw() {
-      var html = list.map(function (p) { return '<img src="' + p.img + '" alt="">'; }).join('');
-      box.querySelector('span').outerHTML = '<span>' + (html || '📷 Tap to take photo') + (html ? ' ＋' : '') + '</span>';
+      var html = list.map(function (p, i) { return '<span style="position:relative;display:inline-block"><img src="' + p.img + '" alt=""><button type="button" data-rm="' + i + '" style="position:absolute;top:-6px;right:-6px;width:28px;height:28px;border-radius:50%;border:0;background:#111;color:#fff;font-weight:800">×</button></span>'; }).join('');
+      box.querySelector('span').outerHTML = '<span>' + (html ? html + ' <b style="font-size:28px;vertical-align:middle">＋</b>' : '📷 Tap to take photo') + '</span>';
+      box.querySelectorAll('[data-rm]').forEach(function (b) { b.onclick = function (e) { e.stopPropagation(); list.splice(+b.getAttribute('data-rm'), 1); draw(); if (onChange) onChange(); }; });
     }
+    box.onclick = function () {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        openCamera().then(function (d) { if (d) { list.push({ img: d, caption: 'Taken live ' + hm(Date.now()), live: true, at: Date.now() }); draw(); if (onChange) onChange(); } });
+      } else input.click();   // very old phones: the camera via the system picker
+    };
     input.onchange = function () {
       var f = input.files && input.files[0]; if (!f) return;
       shrink(f).then(function (d) { list.push({ img: d, caption: hm(Date.now()) }); draw(); input.value = ''; if (onChange) onChange(); });
     };
     draw();
+  }
+  function openCamera() {
+    return new Promise(function (resolve) {
+      var ov = document.createElement('div');
+      ov.style.cssText = 'position:fixed;inset:0;background:#000;z-index:20;display:flex;flex-direction:column';
+      ov.innerHTML = '<video playsinline autoplay muted style="flex:1;width:100%;object-fit:contain;min-height:0"></video><div id="camerr" style="color:#fff;padding:8px 16px;font-weight:700"></div>' +
+        '<div style="display:flex;gap:10px;padding:12px 14px calc(14px + env(safe-area-inset-bottom,0px))"><button class="btn sec" id="camx" style="flex:1">Cancel</button><button class="btn" id="camok" style="flex:2">📸 Take photo</button></div>';
+      document.body.appendChild(ov);
+      var v = ov.querySelector('video'), stream = null;
+      function close(val) { if (stream) stream.getTracks().forEach(function (t) { t.stop(); }); ov.remove(); resolve(val); }
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1600 } }, audio: false }).then(function (s) { stream = s; v.srcObject = s; v.play().catch(function () {}); })
+        .catch(function () { ov.querySelector('#camerr').textContent = 'Camera blocked. Allow camera access for this app in your phone settings.'; });
+      ov.querySelector('#camx').onclick = function () { close(null); };
+      ov.querySelector('#camok').onclick = function () {
+        if (!stream || !v.videoWidth) return;
+        var c = document.createElement('canvas'), k = Math.min(1, 1280 / Math.max(v.videoWidth, v.videoHeight));
+        c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k);
+        c.getContext('2d').drawImage(v, 0, 0, c.width, c.height); stampPhoto(c, stampLines());
+        close(c.toDataURL('image/jpeg', 0.75));
+      };
+    });
   }
   function shrink(file) {
     return new Promise(function (res) {
@@ -275,6 +305,50 @@
       };
       fr.readAsDataURL(file);
     });
+  }
+
+  /* Live camera (fit for work face photo): no gallery uploads. The photo is stamped with name, job, time and GPS. */
+  var camStream = null;
+  function stopCam() { if (camStream) { camStream.getTracks().forEach(function (t) { t.stop(); }); camStream = null; } }
+  function stampPhoto(canvas, lines) {
+    var ctx = canvas.getContext('2d'), h = Math.round(canvas.height * 0.13), fs = Math.round(h / 3.2);
+    ctx.fillStyle = 'rgba(0,0,0,.72)'; ctx.fillRect(0, canvas.height - h, canvas.width, h);
+    ctx.fillStyle = '#E8192C'; ctx.fillRect(0, canvas.height - h, canvas.width, Math.max(3, h * 0.05));
+    ctx.fillStyle = '#fff'; ctx.font = 'bold ' + fs + 'px Arial, sans-serif';
+    ctx.fillText(lines[0], fs * 0.6, canvas.height - h + fs * 1.35);
+    ctx.font = fs * 0.85 + 'px Arial, sans-serif';
+    ctx.fillText(lines[1], fs * 0.6, canvas.height - h + fs * 2.55);
+  }
+  function stampLines() {
+    var g = gpsNow(), d = new Date();
+    return [(S.me ? S.me.name : 'Visitor') + ' · ' + (S.job ? S.job.jobNo + ' ' + S.job.street : ''),
+      d.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) +
+      ' · ' + (g ? g.lat.toFixed(5) + ', ' + g.lng.toFixed(5) : 'GPS not available') + ' · live camera'];
+  }
+  function bindSelfie(a, onChange) {
+    var v = $('#camv'), snap = $('#snap'), msg = $('#cammsg');
+    function show() {
+      var img = a.photos[0];
+      $('#camimg').innerHTML = img ? '<img src="' + img.img + '" style="width:100%;border-radius:14px;display:block">' : '';
+      v.classList.toggle('hidden', !!img); snap.textContent = img ? '↺ Retake' : '📸 Take photo';
+    }
+    function start() {
+      if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { msg.textContent = 'This phone can\u2019t open the camera inside the app. Talk to your supervisor.'; snap.disabled = true; return; }
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 } }, audio: false }).then(function (s) {
+        camStream = s; v.srcObject = s; v.play().catch(function () {}); msg.textContent = '';
+      }).catch(function () { msg.textContent = 'Camera blocked. Allow camera access for this app in your phone settings, then try again.'; });
+    }
+    snap.onclick = function () {
+      if (a.photos[0]) { a.photos.length = 0; a.v = null; show(); onChange(); if (!camStream) start(); return; }
+      if (!camStream || !v.videoWidth) { toast('Camera not ready yet'); return; }
+      var c = document.createElement('canvas'), k = Math.min(1, 1024 / Math.max(v.videoWidth, v.videoHeight));
+      c.width = Math.round(v.videoWidth * k); c.height = Math.round(v.videoHeight * k);
+      c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+      stampPhoto(c, stampLines());
+      a.photos.length = 0; a.photos.push({ img: c.toDataURL('image/jpeg', 0.8), caption: 'Taken live ' + hm(Date.now()), live: true, at: Date.now() });
+      a.v = 'taken'; stopCam(); show(); onChange();
+    };
+    show(); if (!a.photos[0]) start();
   }
 
   /* Signature pad */
@@ -301,7 +375,7 @@
 
   /* ---------- screens ---------- */
   function renderToday() {
-    S.onBack = null; S.amend = null;
+    stopCam(); S.onBack = null; S.amend = null;
     if (!S.me) return S.qrJob ? renderQrNoPerson() : renderSetup();
     if (!S.job) {
       app.innerHTML = top('Kia ora ' + first(S.me.name), longDate()) +
@@ -450,6 +524,7 @@
     return out;
   }
   function showQ(F) {
+    stopCam();
     var qs = qList(F.def, F.a);
     if (F.i >= qs.length) { if (F.code === 'FFW') return finishFfw(F, 'pass'); if (F.code === 'D5') return renderCrewSign(F); return finishGeneric(F); }
     var q = qs[F.i], a = F.a[q.id] || {}, pct = Math.round(F.i / qs.length * 100);
@@ -464,11 +539,11 @@
         var cls = isBad(q, o[0]) ? 'bad' : o[0] === 'na' ? 'na' : 'good';
         return '<button data-v="' + o[0] + '" class="' + cls + (a.v === o[0] ? ' on' : '') + '">' + o[1] + '</button>';
       }).join('') + '</div>';
-      h += '<div id="badbox" class="' + (a.v && isBad(q, a.v) && !isStop(q, a.v) ? '' : 'hidden') + '"><div class="warn">' + esc(q.badMsg || 'Add a note or photo — your supervisor is told.') + '</div>' +
+      h += '<div id="badbox" class="' + (a.v && isBad(q, a.v) && !isStop(q, a.v) ? '' : 'hidden') + '"><div class="warn">' + esc(q.badMsg && !(q.photo || q.type === 'ok') ? q.badMsg : (q.photo || q.type === 'ok') ? 'Take a photo and add a note — your supervisor is told.' : 'Add a note or photo — your supervisor is told.') + '</div>' +
         '<div class="lbl">Note</div>' + voiceBox('note', 'Tap the mic to speak, or type…', a.note) + '<div class="lbl">Photo</div>' + photoBox('ph') + '</div>';
     } else if (q.type === 'choice') {
       h += '<div class="pics">' + q.opts.map(function (o) { return '<button data-v="' + o[0] + '" class="' + (a.v === o[0] ? 'on' : '') + '"><span>' + o[1] + '</span>' + esc(o[2]) + '</button>'; }).join('') + '</div>';
-      if (q.bad) h += '<div id="badbox" class="' + (a.v && isBad(q, a.v) ? '' : 'hidden') + '"><div class="warn">Add a note or photo.</div><div class="lbl">Note</div>' + voiceBox('note', 'Tap the mic to speak, or type…', a.note) + '<div class="lbl">Photo</div>' + photoBox('ph') + '</div>';
+      if (q.bad) h += '<div id="badbox" class="' + (a.v && isBad(q, a.v) ? '' : 'hidden') + '"><div class="warn">' + (q.photo ? 'Take a photo and add a note.' : 'Add a note or photo.') + '</div><div class="lbl">Note</div>' + voiceBox('note', 'Tap the mic to speak, or type…', a.note) + '<div class="lbl">Photo</div>' + photoBox('ph') + '</div>';
     } else if (q.type === 'text') {
       h += voiceBox('txt', 'Tap the mic to speak, or type…', a.v);
     } else if (q.type === 'field') {
@@ -484,6 +559,9 @@
     } else if (q.type === 'time') {
       if (!a.v) { var nd = new Date(); a.v = pad(nd.getHours()) + ':' + pad(nd.getMinutes()); F.a[q.id] = a; }
       h += '<input type="time" id="tm" value="' + esc(a.v) + '" style="font-size:28px;font-weight:800"><p class="help">Set to now — change it if needed.</p>';
+    } else if (q.type === 'selfie') {
+      h += '<div style="position:relative;background:#111;border-radius:14px;overflow:hidden"><video id="camv" playsinline autoplay muted style="width:100%;display:block;transform:scaleX(-1);min-height:240px"></video><div id="camimg"></div></div>' +
+        '<div id="cammsg" class="warn"></div><button class="btn dark" id="snap" type="button" style="margin-top:12px">📸 Take photo</button>';
     } else if (q.type === 'photo') {
       h += photoBox('ph');
     } else if (q.type === 'crewpick') {
@@ -497,13 +575,16 @@
     app.innerHTML = h; bindBack(); renderBanner(); bindVoice();
     a.photos = a.photos || [];
     var ph = $('#ph'); if (ph) bindPhotos(ph, a.photos, check);
+    if (q.type === 'selfie') bindSelfie(a, function () { F.a[q.id] = a; saveDraft(F); check(); });
     var next = $('#next');
     function check() {
       var ok = (a.v !== undefined && a.v !== null && String(a.v).trim() !== '') || q.optional;
       if (q.type === 'number' && a.v && isNaN(+a.v)) ok = false;
-      if (q.type === 'photo') ok = true;
+      if (q.type === 'photo') ok = !!q.optional || (a.photos || []).length > 0;
       if (q.type === 'sign') ok = !!a.sig;
-      if (ok && a.v && isBad(q, a.v) && !isStop(q, a.v)) ok = !!((a.note || '').trim() || (a.photos || []).length);
+      if (q.type === 'selfie') ok = !!(a.photos && a.photos[0]);
+      if (ok && a.v && needsPhoto(q, a.v)) ok = !!((a.note || '').trim() && (a.photos || []).length);
+      else if (ok && a.v && isBad(q, a.v) && !isStop(q, a.v)) ok = !!((a.note || '').trim() || (a.photos || []).length);
       if (q.type === 'photo' && a.photos.length) a.v = a.photos.length + ' photo' + (a.photos.length > 1 ? 's' : '');
       next.disabled = !ok;
     }
@@ -534,6 +615,7 @@
     if (q.type === 'choice' && q.bad) return q.bad.indexOf(v) >= 0;
     return (q.bad && q.bad.indexOf(v) >= 0) || (q.stop && q.stop.indexOf(v) >= 0) || (q.type === 'ok' && v === 'fault');
   }
+  function needsPhoto(q, v) { return isBad(q, v) && !isStop(q, v) && (q.photo || q.type === 'ok'); }
   function subjectName(F) {
     var w = F.a.who || {};
     if (w.v === 'other') return (F.a.wname || {}).v || 'Person inducted';
@@ -559,6 +641,7 @@
     qList(F.def, F.a).forEach(function (q) {
       var a = F.a[q.id]; if (!a) return;
       (a.photos || []).forEach(function (p) { photos.push({ img: p.img, caption: q.q.slice(0, 40) + ' · ' + p.caption }); });
+      if (q.type === 'selfie') { rows.push({ section: q.section || F.def.title, label: q.pdf || q.q, value: a.photos && a.photos[0] ? 'Taken live ' + hm(a.photos[0].at) + ' — see photo' : 'Missing', flag: a.photos && a.photos[0] ? 'good' : 'bad' }); return; }
       if (q.type === 'sign' || q.type === 'photo') return;
       var label = q.pdf || q.q, val, flag;
       if (q.type === 'text' || q.type === 'field') { val = a.v || '—'; flag = ''; }
@@ -719,6 +802,8 @@
       if (st.ffw && st.ffw.data.result === 'fail') fit = '<span class="chip todo">Not fit — no entry</span>';
       else if (st.ffw) fit = '<span class="chip done">Fit ✓ ' + hm(st.ffw.createdAt) + '</span>';
       else fit = '<span class="chip new">Fit check not done</span>';
+      var face = st.ffw && st.ffw.data.answers.face && st.ffw.data.answers.face.photos && st.ffw.data.answers.face.photos[0];
+      if (face) fit = '<img src="' + face.img + '" alt="" style="width:46px;height:46px;object-fit:cover;border-radius:10px;vertical-align:middle;margin-right:8px">' + fit;
       var right = c && c.sig ? '<span class="chip done">Signed ✓</span>' : c && c.absent ? '<span class="chip lock">Not here</span>' : '';
       h += '<button class="crew' + (c && c.sig ? ' signed' : '') + '" data-p="' + pid + '"' + (st.ffw && st.ffw.data.result === 'fail' ? ' disabled' : '') + '><span class="nm">' + esc(p.name) +
         '<br><span class="st">' + fit + '</span></span>' + right + '</button>';
@@ -746,7 +831,7 @@
     j.crewIds.forEach(function (pid) {
       var p = person(pid), st = statusFor(pid), c = F.crew[pid] || {}, ffw = st.ffw;
       var a = ffw ? ffw.data.answers : {};
-      var rpe = ffw ? [answerLabel(FORMS.FFW.questions[1], (a.rpe || {}).v), 'Clean-shaven ' + ((a.shaven || {}).v === 'yes' ? '✓' : '✗'),
+      var rpe = ffw ? [answerLabel(FORMS.FFW.questions.filter(function (q) { return q.id === 'rpe'; })[0], (a.rpe || {}).v), 'Clean-shaven ' + ((a.shaven || {}).v === 'yes' ? '✓' : '✗'),
         'Seal ' + ((a.seal || {}).v === 'yes' ? '✓' : '✗'), 'Filters ' + ((a.filters || {}).v === 'yes' ? '✓' : (a.filters || {}).v === 'na' ? 'N/A' : '✗')].join(' · ') : 'Fit check not done';
       rf.rows.push({ section: 'RPE and mask check — every person on site today', label: p.name, value: ffw && ffw.data.result === 'fail' ? 'NOT FIT — no entry' : c.absent ? 'Not on site' : rpe,
         flag: ffw && ffw.data.result === 'pass' ? 'good' : c.absent ? '' : 'bad' });
@@ -774,7 +859,7 @@
     var types = FORMS.D12.types;
     var h = top('Report something', j.street + ' · auto-filled', true) + '<div class="body">' +
       '<div class="lbl" style="margin-top:4px">What happened?</div><div class="chips" id="types">' + types.map(function (t) { return '<button data-t="' + t[0] + '">' + esc(t[1]) + '</button>'; }).join('') + '</div>' +
-      '<div class="lbl">Photo</div>' + photoBox('ph') +
+      '<div class="lbl">Photo — required</div>' + photoBox('ph') +
       '<div class="lbl">Tell us briefly</div>' + voiceBox('what', 'Tap the mic to speak, or type…') +
       '<div class="lbl">Anyone hurt?</div><div class="yn two" id="hurt"><button data-h="yes" class="bad">Yes</button><button data-h="no" class="good">No</button></div>' +
       '<div id="call" class="stop hidden" style="margin-top:12px;padding:14px"><b>Badly hurt? Call 111 now.</b> Then finish this report.</div>' +
@@ -785,7 +870,7 @@
       '</div><div class="foot"><button class="btn" id="send" disabled>Send to ' + esc(first(sup ? sup.name : 'supervisor')) + ' &amp; PM</button></div>';
     app.innerHTML = h; bindBack(); renderBanner(); bindVoice();
     var send = $('#send');
-    function check() { send.disabled = !(R.type && R.hurt && (($('#what').value || '').trim() || R.photos.length)); }
+    function check() { send.disabled = !(R.type && R.hurt && ($('#what').value || '').trim() && R.photos.length); }
     bindPhotos($('#ph'), R.photos, check);
     $$('[data-t]').forEach(function (b) { b.onclick = function () { R.type = b.getAttribute('data-t'); $$('[data-t]').forEach(function (x) { x.classList.toggle('on', x === b); }); $('#exp').classList.toggle('hidden', R.type !== 'exposure'); check(); }; });
     $$('[data-h]').forEach(function (b) { b.onclick = function () { R.hurt = b.getAttribute('data-h'); $$('[data-h]').forEach(function (x) { x.classList.toggle('on', x === b); }); $('#call').classList.toggle('hidden', R.hurt !== 'yes'); check(); }; });
