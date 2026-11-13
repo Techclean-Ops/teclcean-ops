@@ -122,7 +122,7 @@
       if (want ? keys.indexOf(want) >= 0 : (S.me && x.crewIds.indexOf(S.me.id) >= 0)) { j = x; if (want) break; }
     }
     S.job = j;
-    S.notRostered = !!(j && S.me && j.crewIds.indexOf(S.me.id) < 0);   // scanned / tapped a job they're not crewed on today
+    S.notRostered = !!(j && S.me && j.crewIds.indexOf(S.me.id) < 0 && !MGR_ROLES[S.me.role]);   // scanned / tapped a job they're not crewed on today
   }
 
   /* ---------- records and status ---------- */
@@ -405,6 +405,7 @@
   function renderToday() {
     stopCam(); S.onBack = null; S.amend = null; S.atHome = true;
     if (!S.me) return S.qrJob ? renderQrNoPerson() : renderSetup();
+    if (isMgr() && (!S.job || S.job.crewIds.indexOf(S.me.id) < 0)) return renderMgrToday();
     if (!S.job) {
       app.innerHTML = top('Kia ora ' + first(S.me.name), longDate()) +
         '<div class="body"><div class="card"><h2 style="margin:0 0 6px">No job for you today</h2><div class="small">If you think this is wrong, talk to your supervisor.</div></div>' + footLinks() + '</div>';
@@ -479,7 +480,7 @@
     var st = statusFor(S.me.id);
     if (what === 'ffw') { enter(); startFlow('FFW'); }
     else if (what === 'd13') {
-      if (!(st.ffw && st.ffw.data.result === 'pass')) { enter(); renderNeedFfw(); return; }
+      if (!isMgr() && !(st.ffw && st.ffw.data.result === 'pass')) { enter(); renderNeedFfw(); return; }
       enter(); renderSignOn();
     }
     else if (what === 'd5') { enter(); startFlow('D5'); }
@@ -487,6 +488,229 @@
     else if (what === 'd12') { enter(); renderReport(); }
     else if (what === 'file') { enter(); renderSiteFile(); }
     else if (what === 'forms') { enter(); renderJobForms(); }
+    else if (what === 'aud') { enter(); renderAudit(); }
+  }
+
+  /* ---------- management: PM / Branch Manager / HSC / GM Ops on the job QR code or link ---------- */
+  function renderMgrToday() {
+    var j = S.job;
+    if (!j) {   // opened the app without a job link: today's jobs in their branch
+      var list = S.jobs.filter(function (x) { return S.me.role === 'admin' || S.me.role === 'hsc' || !x.branch || x.branch === S.me.branch; });
+      var h0 = top('Kia ora ' + first(S.me.name), longDate() + ' · ' + roleName(S.me)) + '<div class="body"><div class="lbl" style="margin-top:0">Today’s jobs — tap one for a site visit or audit</div>';
+      if (!list.length) h0 += '<div class="card"><div class="small">No jobs on today.</div></div>';
+      list.forEach(function (x) {
+        var sp = person(x.supervisorId);
+        h0 += '<button class="card job" style="width:100%;text-align:left;border-top:0;border-right:0;border-bottom:0" data-j="' + esc(x.jobKey || x.jobNo) + '"><h2>' + esc(x.street) + (x.suburb ? ', ' + esc(x.suburb) : '') + '</h2><div class="meta"><span class="chip cls">Class ' + esc(x.cls) + '</span>' +
+          esc(x.jobNo) + (sp ? ' · ' + esc(sp.name) : '') + (x.status === 'hold' ? ' · on hold' : x.status === 'closed' ? ' · closed' : '') + '</div></button>';
+      });
+      app.innerHTML = h0 + footLinks() + '</div>'; renderBanner(); bindFootLinks();
+      $$('[data-j]').forEach(function (b) { b.onclick = function () { S.qrJob = b.getAttribute('data-j'); resolveJob(); history.replaceState(null, '', location.pathname + '?job=' + encodeURIComponent(S.qrJob)); renderToday(); }; });
+      return;
+    }
+    var sup = person(j.supervisorId), st = statusFor(S.me.id), on = st.d13 && st.d13.data.in && !st.d13.data.out;
+    var aud = RECS.filter(function (r) { return r.form === 'AUD' && r.jobNo === j.jobNo && !r.supersededBy; }).sort(function (x, y) { return y.createdAt - x.createdAt; })[0];
+    var h = top('Kia ora ' + first(S.me.name), longDate() + ' · ' + roleName(S.me)) + '<div class="body">' +
+      '<div class="card job"><h2>' + esc(j.street) + ', ' + esc(j.suburb) + '</h2><div class="meta"><span class="chip cls">Class ' + esc(j.cls) + '</span>' +
+      esc(j.jobNo) + ' · Supervisor ' + esc(sup ? sup.name : '') + '</div></div>';
+    if (j.status === 'closed') h += '<div class="banner">Job closed — site file is read only.</div>';
+    else if (j.status === 'hold') h += '<div class="banner">On hold — start TBC.</div>';
+    if (j.status !== 'closed') {
+      h += tile('d13', on ? '🚪' : '✅', 'g', on ? 'Sign off site' : 'Sign on — site visit', on ? chip('done', 'On ' + hm(st.d13.data.in)) : st.d13 && st.d13.data.out ? chip('done', 'Off ' + hm(st.d13.data.out)) : chip('todo', 'To do'));
+      h += tile('aud', '🔎', 'r', 'Site audit', aud ? chip('done', 'Last ' + (aud.date === today() ? hm(aud.createdAt) : certDate(aud.date))) : chip('new', 'Start'));
+    }
+    h += tile('file', '📁', 'b', 'Site file', chip('wait', onSiteNow().length + ' on site'));
+    if (j.status !== 'closed') {
+      h += tile('d12', '⚠️', 'p', 'Report incident / hazard', '');
+      h += tile('ffw', '🧑‍🔧', 'y', 'Fit for work', '<span class="small">only if entering the work area</span>');
+    }
+    h += '<p class="small center">Opened from the job’s QR code or link. ' + (S.jobs.length > 1 ? '<button class="link" id="other">Other jobs today</button>' : '') + '</p>';
+    app.innerHTML = h + footLinks() + '</div>'; renderBanner(); bindFootLinks();
+    $$('[data-go]').forEach(function (b) { b.onclick = function () { go(b.getAttribute('data-go')); }; });
+    var o = $('#other'); if (o) o.onclick = function () { S.qrJob = null; S.job = null; history.replaceState(null, '', location.pathname); renderMgrToday(); };
+  }
+
+  /* ---------- Site audit TC-QA-AUD-001 (management) ---------- */
+  function audKey() { return 'tc.draft.AUD.' + S.job.jobNo + '.' + today() + '.' + S.me.id; }
+  function audSave(AU) { var c = {}; for (var k in AU) if (k !== 'photos' && k !== 'sigImg') c[k] = AU[k]; try { localStorage.setItem(audKey(), JSON.stringify(c)); } catch (e) {} }
+  function audItems(AU) {   // the items that apply to the class of work being audited
+    var cls = AU.det.cls;
+    return AUDIT.sections.map(function (s) { return { n: s.n, title: s.title, items: s.items.filter(function (it) { return cls === 'ACD' || it.cls === 'A+B' || it.cls === cls; }) }; });
+  }
+  function audCrit(id) { return AUDIT.critical.indexOf(id) >= 0; }
+  function addDays(n) { var d = new Date(Date.now() + n * 864e5); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  var SEV_DAYS = { Critical: 0, Major: 1, Minor: 7 };
+  function audCounts(AU) {
+    var c = 0, nc = 0, na = 0, crit = 0, maj = 0;
+    audItems(AU).forEach(function (s) { s.items.forEach(function (it) { var a = AU.a[it.id] || {}; if (a.v === 'c') c++; else if (a.v === 'na') na++; else if (a.v === 'nc') { nc++; if (a.sev === 'Critical') crit++; else if (a.sev === 'Major') maj++; } }); });
+    var total = 0; AUDIT.sections.forEach(function (s) { total += s.items.length; });
+    var shown = 0; audItems(AU).forEach(function (s) { shown += s.items.length; });
+    return { c: c, nc: nc, na: na, naClass: total - shown, crit: crit, maj: maj, pct: c + nc ? Math.round(c / (c + nc) * 100) : 100 };
+  }
+  function renderAudit() {
+    getGps();
+    var j = S.job, sup = person(j.supervisorId), AU = null;
+    try { AU = JSON.parse(localStorage.getItem(audKey()) || 'null'); } catch (e) {}
+    if (!AU) AU = { p: 0, start: Date.now(), det: { cls: j.cls === 'A' ? 'A' : 'B', type: '', client: j.client || '', notif: j.worksafeNotification || '', notifiedOn: '', workStart: j.startDate || '', scope: j.scope || '' }, a: {}, rating: '', positives: '', summary: '' };
+    AU.photos = AU.photos || {};
+    var SECS = function () { return audItems(AU); };
+    var last = 1 + AUDIT.sections.length;   // pages: 0 details, 1..11 sections, last = result, last+1 = sign off
+    function page() {
+      var y = window.scrollY, sameP = page.lastP === AU.p; page.lastP = AU.p;
+      S.onBack = AU.p > 0 ? function () { AU.p--; audSave(AU); page(); window.scrollTo(0, 0); } : null;
+      var h = top('Site audit', j.street + ' · ' + j.jobNo, true) + '<div class="body"><div class="progress"><i style="width:' + Math.round(AU.p / (last + 1) * 100) + '%"></i></div>', ok = true;
+      if (AU.p === 0) {
+        h += '<div class="small">' + AUDIT.doc + ' Rev ' + AUDIT.rev + ' · ' + esc(AUDIT.title) + '</div><div class="lbl">Audit type</div><div class="chips">' +
+          ['Announced', 'Unannounced', 'Follow-up'].map(function (t) { return '<button data-ty="' + t + '" class="' + (AU.det.type === t ? 'on' : '') + '">' + t + '</button>'; }).join('') + '</div>' +
+          '<div class="lbl">Removal class</div><div class="chips">' + [['A', 'Class A (friable)'], ['B', 'Class B (non-friable)'], ['ACD', 'ACD']].map(function (t) { return '<button data-cl="' + t[0] + '" class="' + (AU.det.cls === t[0] ? 'on' : '') + '">' + t[1] + '</button>'; }).join('') + '</div>' +
+          '<div class="lbl">Client / PCBU</div><input type="text" id="d-client" value="' + esc(AU.det.client) + '">' +
+          '<div class="lbl">Scope of work — ACM type, location, quantity, method</div>' + voiceBox('d-scope', 'e.g. textured ceiling, lounge and hall, 60 m², wet scrape', AU.det.scope) +
+          '<div class="lbl">WorkSafe notification no.</div><input type="text" id="d-notif" value="' + esc(AU.det.notif) + '">' +
+          '<div class="lbl">Notified on</div><input type="date" id="d-non" value="' + esc(AU.det.notifiedOn) + '" style="width:100%;font-size:18px;padding:12px;border:2px solid #ddd;border-radius:14px">' +
+          '<div class="lbl">Work start date</div><input type="date" id="d-ws" value="' + esc(AU.det.workStart) + '" style="width:100%;font-size:18px;padding:12px;border:2px solid #ddd;border-radius:14px">' +
+          '<div class="card" style="margin-top:14px"><div class="small">Auto-filled: job ' + esc(j.jobNo) + ' · ' + esc(j.branch || '') + ' · supervisor ' + esc(sup ? sup.name : '') + ' · auditor ' + esc(S.me.name) + ' (' + esc(roleName(S.me)) + ') · on site from ' + hm(AU.start) +
+          ' · workers on site now: ' + esc(onSiteNow().map(function (r) { return regName(r); }).join(', ') || 'none signed in') + '</div></div>';
+        ok = !!AU.det.type;
+      } else if (AU.p <= AUDIT.sections.length) {
+        var sec = SECS()[AU.p - 1];
+        h += '<div class="lbl" style="margin-top:0">Section ' + AU.p + ' of ' + AUDIT.sections.length + '</div><h2 style="margin:0 0 4px">' + sec.n + '. ' + esc(sec.title) + '</h2>' +
+          '<p class="help">C = conforms · NC = non-conformance · N/A = not applicable to this job.' + (sec.items.length < AUDIT.sections[AU.p - 1].items.length ? ' Items for the other class are hidden.' : '') + '</p>';
+        if (!sec.items.length) h += '<div class="card"><div class="small">Nothing in this section applies to Class ' + esc(AU.det.cls) + ' — tap Next.</div></div>';
+        sec.items.forEach(function (it) {
+          var a = AU.a[it.id] || {}, k = it.id.replace('.', '_');
+          h += '<div class="card" id="it' + k + '"><div class="small"><b>' + it.id + '</b> · ' + it.cls + (audCrit(it.id) ? ' · <b style="color:#c62828">critical — stop-work trigger</b>' : '') + '</div><p style="margin:6px 0 0;font-size:17px">' + esc(it.q) + '</p>' +
+            '<div class="yn" style="margin-top:10px"><button data-a="' + it.id + '" data-v="c" class="good' + (a.v === 'c' ? ' on' : '') + '" style="min-height:60px">C</button><button data-a="' + it.id + '" data-v="nc" class="bad' + (a.v === 'nc' ? ' on' : '') + '" style="min-height:60px">NC</button><button data-a="' + it.id + '" data-v="na" class="na' + (a.v === 'na' ? ' on' : '') + '" style="min-height:60px">N/A</button></div>';
+          if (it.unit) h += '<div class="lbl">Reading (' + it.unit + ')</div><input type="text" inputmode="decimal" data-rd="' + it.id + '" value="' + esc(a.read || '') + '">';
+          if (a.v === 'nc') {
+            h += '<div class="lbl">Non-conformance — what’s wrong (required)</div>' + voiceBox('n' + k, 'What you found', a.note) +
+              '<div class="lbl">Severity</div><div class="chips">' + ['Critical', 'Major', 'Minor'].map(function (sv) { return '<button data-sv="' + it.id + '" data-s="' + sv + '" class="' + (a.sev === sv ? 'on' : '') + '"' + (audCrit(it.id) && sv !== 'Critical' ? ' disabled' : '') + '>' + sv + '</button>'; }).join('') + '</div>' +
+              '<div class="lbl">Corrective action required</div>' + voiceBox('x' + k, 'What has to be done', a.action) +
+              '<div class="lbl">Responsible</div><input type="text" data-who="' + it.id + '" value="' + esc(a.who || '') + '">' +
+              '<div class="lbl">Due</div><input type="date" data-due="' + it.id + '" value="' + esc(a.due || '') + '" style="width:100%;font-size:18px;padding:12px;border:2px solid #ddd;border-radius:14px">' +
+              '<div class="lbl">Photo (recommended)</div>' + photoBox('p' + k);
+            if (!(a.note || '').trim()) ok = false;
+          }
+          h += '</div>';
+          if (!a.v) ok = false;
+        });
+      } else if (AU.p === last) {
+        var c = audCounts(AU), sug = c.crit ? 'stop' : c.maj ? 'major' : c.nc ? 'minor' : 'ok';
+        if (!AU.rating) AU.rating = sug;
+        h += '<h2 style="margin:0 0 8px">13. Audit result</h2><div class="card"><div class="list">' +
+          [['Conforms', c.c], ['Non-conformances', c.nc], ['Not applicable', c.na + (c.naClass ? ' (+' + c.naClass + ' other class)' : '')], ['Critical NCs', c.crit], ['Conformance %', c.pct + '%']].map(function (r) { return '<div class="it"><span>' + r[0] + '</span><b>' + r[1] + '</b></div>'; }).join('') +
+          '</div><div class="small" style="margin-top:8px">Conformance % = conforms ÷ (conforms + non-conformances). Any critical non-conformance fails the audit regardless of score.</div></div>';
+        if (c.crit) h += '<div class="stop" style="margin:12px 0"><h2>STOP WORK</h2>Critical non-conformance. Halt work now and notify the Branch Manager and GM Operations immediately. Saving this audit alerts them.</div>';
+        h += '<div class="lbl">Overall rating</div><div class="chips">' + AUDIT.ratings.map(function (r) { return '<button data-rt="' + r[0] + '" class="' + (AU.rating === r[0] ? 'on' : '') + '">' + r[1] + '</button>'; }).join('') + '</div>' +
+          (c.crit ? '<div class="small" style="margin-top:6px">Audit FAILED — critical non-conformance.</div>' : '') +
+          '<div class="lbl">Positives observed</div>' + voiceBox('pos', 'What’s going well', AU.positives) +
+          '<div class="lbl">Auditor summary</div>' + voiceBox('sum', 'Summary for the branch', AU.summary);
+        var acts = audActions(AU);
+        h += '<div class="lbl">14. Corrective actions (' + acts.length + ')</div>';
+        if (!acts.length) h += '<div class="card"><div class="small">No non-conformances — no actions.</div></div>';
+        acts.forEach(function (x, i) { h += '<div class="card"><div class="small"><b>' + (i + 1) + '. Item ' + x.id + '</b> · ' + x.sev + ' · due ' + (x.due ? certDate(x.due) : '—') + ' · ' + esc(x.who || 'responsible not set') + '</div><div>' + esc(x.note) + (x.action ? '<br><i>' + esc(x.action) + '</i>' : '') + '</div></div>'; });
+        ok = !!AU.rating;
+      } else {
+        h += '<h2 style="margin:0 0 8px">15. Sign-off</h2><div class="lbl">Auditor — ' + esc(S.me.name) + ', ' + esc(roleName(S.me)) + '</div>' + sigBox() +
+          '<div class="lbl">Site supervisor — findings received' + (sup ? ' (' + esc(sup.name) + ')' : '') + '</div><div class="chips" style="margin-bottom:8px"><button id="noSup" class="' + (AU.supAbsent ? 'on' : '') + '">Supervisor not on site</button></div>' +
+          (AU.supAbsent ? '' : '<div id="sup2">' + sigBox() + '</div>') +
+          '<p class="small">Branch Manager (actions accepted)' + (audCounts(AU).crit ? ' and GM Operations (critical NC review)' : '') + ' sign off later — the audit shows as pending for them.</p>';
+        ok = false;
+      }
+      var isLast = AU.p === last + 1;
+      h += '</div><div class="foot"><button class="btn" id="nx"' + (ok ? '' : ' disabled') + '>' + (isLast ? 'Save audit' : 'Next →') + '</button></div>';
+      app.innerHTML = h; bindBack(); renderBanner(); bindVoice();
+      if (sameP) window.scrollTo(0, y);
+      var nx = $('#nx');
+      function recheck() { page(); }
+      // details
+      $$('[data-ty]').forEach(function (b) { b.onclick = function () { AU.det.type = b.getAttribute('data-ty'); audSave(AU); recheck(); }; });
+      $$('[data-cl]').forEach(function (b) { b.onclick = function () { AU.det.cls = b.getAttribute('data-cl'); audSave(AU); recheck(); }; });
+      [['d-client', 'client'], ['d-scope', 'scope'], ['d-notif', 'notif'], ['d-non', 'notifiedOn'], ['d-ws', 'workStart']].forEach(function (f) { var el = $('#' + f[0]); if (el) el.oninput = el.onchange = function () { AU.det[f[1]] = el.value; audSave(AU); }; });
+      // items
+      $$('[data-a]').forEach(function (b) { b.onclick = function () {
+        var id = b.getAttribute('data-a'), a = AU.a[id] = AU.a[id] || {}; a.v = b.getAttribute('data-v');
+        if (a.v === 'nc' && !a.sev) { a.sev = audCrit(id) ? 'Critical' : 'Minor'; a.due = a.due || addDays(SEV_DAYS[a.sev]); a.who = a.who || (sup ? sup.name : ''); }
+        audSave(AU); recheck();
+      }; });
+      $$('[data-sv]').forEach(function (b) { b.onclick = function () { var a = AU.a[b.getAttribute('data-sv')]; a.sev = b.getAttribute('data-s'); a.due = addDays(SEV_DAYS[a.sev]); audSave(AU); recheck(); }; });
+      $$('[data-rd]').forEach(function (el) { el.oninput = function () { var a = AU.a[el.getAttribute('data-rd')] = AU.a[el.getAttribute('data-rd')] || {}; a.read = el.value; audSave(AU); }; });
+      $$('[data-who]').forEach(function (el) { el.oninput = function () { AU.a[el.getAttribute('data-who')].who = el.value; audSave(AU); }; });
+      $$('[data-due]').forEach(function (el) { el.onchange = function () { AU.a[el.getAttribute('data-due')].due = el.value; audSave(AU); }; });
+      if (AU.p >= 1 && AU.p <= AUDIT.sections.length) SECS()[AU.p - 1].items.forEach(function (it) {
+        var a = AU.a[it.id]; if (!a || a.v !== 'nc') return;
+        var k = it.id.replace('.', '_'), n = $('#n' + k), x = $('#x' + k);
+        n.oninput = function () { a.note = n.value; audSave(AU); var all = SECS()[AU.p - 1].items.every(function (i2) { var q = AU.a[i2.id]; return q && q.v && (q.v !== 'nc' || (q.note || '').trim()); }); nx.disabled = !all; };
+        x.oninput = function () { a.action = x.value; audSave(AU); };
+        AU.photos[it.id] = AU.photos[it.id] || [];
+        bindPhotos($('#p' + k), AU.photos[it.id], function () { AU.photos[it.id].forEach(function (ph) { ph.caption = 'Item ' + it.id + ' — ' + (a.note || ''); }); });
+      });
+      // result
+      $$('[data-rt]').forEach(function (b) { b.onclick = function () { AU.rating = b.getAttribute('data-rt'); audSave(AU); recheck(); }; });
+      var pos = $('#pos'), sum = $('#sum');
+      if (pos) pos.oninput = function () { AU.positives = pos.value; audSave(AU); };
+      if (sum) sum.oninput = function () { AU.summary = sum.value; audSave(AU); };
+      // sign-off
+      var s1 = null, s2 = null;
+      if (isLast) {
+        var wraps = $$('.sigwrap');
+        var chk = function () { nx.disabled = !(s1 && !s1.isEmpty() && (AU.supAbsent || (s2 && !s2.isEmpty()))); };
+        s1 = bindSig(wraps[0], chk); if (wraps[1]) s2 = bindSig(wraps[1], chk);
+        $('#noSup').onclick = function () { AU.supAbsent = !AU.supAbsent; audSave(AU); recheck(); };
+      }
+      nx.onclick = async function () {
+        if (!isLast) { AU.p++; audSave(AU); history.pushState({ v: 1 }, ''); page(); window.scrollTo(0, 0); return; }
+        nx.disabled = true;
+        var rec = await saveAudit(AU, s1.data(), s2 && !AU.supAbsent ? s2.data() : null);
+        localStorage.removeItem(audKey());
+        history.replaceState({ v: 1 }, ''); S.onBack = null;
+        var cc = audCounts(AU);
+        app.innerHTML = top('Audit saved', j.street) + '<div class="body"><div class="card center"><div class="big">' + (cc.crit ? '🛑' : '✅') + '</div><h2 style="margin:0">' +
+          (cc.crit ? 'STOP WORK — Branch Manager and GM Ops alerted' : cc.nc ? cc.nc + ' corrective action' + (cc.nc > 1 ? 's' : '') + ' raised' : 'Compliant — no actions') + '</h2>' +
+          '<p class="small">' + cc.pct + '% conformance · ' + (isOnline() && CONFIG.API_URL ? 'filed to the job’s H&S folder' : 'saved — files when there’s signal') + '</p></div></div>' +
+          '<div class="foot"><button class="btn" id="pdf">View PDF</button><button class="btn sec" id="home">Back to today</button></div>';
+        renderBanner(); $('#home').onclick = function () { renderToday(); }; $('#pdf').onclick = function () { openPdf(rec); };
+      };
+    }
+    page();
+  }
+  function audActions(AU) {
+    var out = [];
+    audItems(AU).forEach(function (s) { s.items.forEach(function (it) { var a = AU.a[it.id]; if (a && a.v === 'nc') out.push({ id: it.id, note: a.note || '', action: a.action || '', who: a.who || '', sev: a.sev || 'Minor', due: a.due || '' }); }); });
+    return out;
+  }
+  async function saveAudit(AU, auditorSig, supSig) {
+    var j = S.job, sup = person(j.supervisorId), c = audCounts(AU), acts = audActions(AU), rows = [], photos = [];
+    var rl = AUDIT.ratings.filter(function (r) { return r[0] === AU.rating; })[0];
+    audItems(AU).forEach(function (s) {
+      s.items.forEach(function (it) {
+        var a = AU.a[it.id] || {};
+        rows.push({ section: s.n + ' ' + s.title, label: it.id + '  ' + it.q + (audCrit(it.id) ? ' (critical)' : ''),
+          value: (a.v === 'c' ? 'C' : a.v === 'nc' ? 'NC — ' + (a.sev || '') + ': ' + (a.note || '') : 'N/A') + (a.read ? ' · reading ' + a.read + ' ' + it.unit : ''), flag: a.v === 'c' ? 'good' : a.v === 'nc' ? 'bad' : '' });
+        (AU.photos[it.id] || []).forEach(function (ph) { photos.push({ img: ph.img, caption: 'Item ' + it.id + ' — ' + (a.note || '') }); });
+      });
+    });
+    if (c.naClass) rows.push({ section: 'Items not applicable to this class', label: c.naClass + ' item' + (c.naClass > 1 ? 's' : '') + ' for the other class of work', value: 'N/A', flag: '' });
+    rows.push({ section: '13 Audit result', label: 'Conforms', value: String(c.c), flag: '' }, { section: '13 Audit result', label: 'Non-conformances', value: String(c.nc), flag: c.nc ? 'bad' : '' },
+      { section: '13 Audit result', label: 'Not applicable', value: String(c.na + c.naClass), flag: '' }, { section: '13 Audit result', label: 'Critical NCs', value: String(c.crit), flag: c.crit ? 'bad' : '' },
+      { section: '13 Audit result', label: 'Conformance %', value: c.pct + '%' + (c.crit ? ' — FAILED (critical NC)' : ''), flag: c.crit ? 'bad' : 'good' },
+      { section: '13 Audit result', label: 'Overall rating', value: rl ? rl[1] : '', flag: AU.rating === 'ok' ? 'good' : 'bad' });
+    if (AU.positives) rows.push({ section: '13 Audit result', label: 'Positives observed', value: AU.positives, flag: '' });
+    if (AU.summary) rows.push({ section: '13 Audit result', label: 'Auditor summary', value: AU.summary, flag: '' });
+    acts.forEach(function (x, i) { rows.push({ section: '14 Corrective action register', label: (i + 1) + '. Item ' + x.id + ' — ' + x.note + (x.action ? ' — Action: ' + x.action : ''), value: x.sev + ' · ' + (x.who || '—') + ' · due ' + (x.due || '—') + ' · open', flag: 'bad' }); });
+    rows.push({ section: '15 Sign-off', label: 'Site supervisor — findings received', value: AU.supAbsent ? 'Supervisor not on site — to be given the findings' : 'Signed', flag: '' },
+      { section: '15 Sign-off', label: 'Branch Manager — actions accepted', value: 'Pending', flag: '' });
+    if (c.crit) rows.push({ section: '15 Sign-off', label: 'GM Operations — review (critical NC)', value: 'Pending', flag: '' });
+    var sigs = [{ name: S.me.name, label: 'Auditor — ' + roleName(S.me), time: Date.now(), img: auditorSig }];
+    if (supSig) sigs.push({ name: sup ? sup.name : 'Site supervisor', label: 'Site supervisor — findings received', time: Date.now(), img: supSig });
+    var det = AU.det;
+    var rec = { form: 'AUD', formTitle: 'Asbestos site audit — ' + det.type + (c.crit ? ' — STOP WORK' : ''), formRef: AUDIT.doc + ' Rev ' + AUDIT.rev + ' — ' + AUDIT.title, jobNo: j.jobNo, personId: S.me.id,
+      data: { det: det, answers: AU.a, rating: AU.rating, counts: c, actions: acts, positives: AU.positives, summary: AU.summary, supAbsent: !!AU.supAbsent },
+      details: jobDetails([['Client / PCBU', det.client || '—'], ['Time on site', hm(AU.start) + ' – ' + hm(Date.now())], ['Workers on site', onSiteNow().map(regName).join(', ') || '—'],
+        ['Auditor', S.me.name + ', ' + roleName(S.me)], ['Audit type', det.type], ['Removal class', det.cls === 'ACD' ? 'ACD' : 'Class ' + det.cls], ['Scope of work', det.scope || '—'],
+        ['WorkSafe notif. no.', det.notif || '—'], ['Notified on', det.notifiedOn || '—'], ['Work start date', det.workStart || '—'], ['Class A licence', AUDIT.licence]]).filter(function (r) { return r[0] !== 'Class of work'; }),
+      rows: rows, photos: photos, sigs: sigs, alert: c.crit > 0 || AU.rating === 'stop' };
+    rec.fileName = fileName({ date: today() }, 'Site audit' + (c.crit ? ' – STOP WORK' : ''), S.me.name); rec.folder = folderFor(j);
+    await saveRecord(rec);
+    return rec;
   }
 
   /* ---------- the supervisor's numbered job sequence ---------- */
@@ -934,6 +1158,7 @@
     if (c === 'D4') return 'Induction – ' + subjectName(F);
     if (c === 'D6') return 'Quality control – ' + answerLabel(FORMS.D6.questions[0], (a.stage || {}).v);
     if (c === 'D7') return 'Smoke test ' + hhmm() + ' – ' + (((a.retest || {}).v || (a.sres || {}).v) === 'pass' ? 'pass' : 'FAIL');
+    if (c === 'AUD') return answerLabel(FORMS.AUD.questions[0], (a.vtype || {}).v) || 'Site audit';
     if (c === 'D10') return 'Waste load ' + hhmm() + ((a.docket || {}).v ? ' docket ' + a.docket.v : '');
     if (c === 'D11') return 'Equipment ' + ((a.dir || {}).v === 'back' ? 'back' : 'out') + ' – ' + ((a.item || {}).v || '');
     return F.def.title;
@@ -943,10 +1168,10 @@
     qList(F.def, F.a).forEach(function (q) {
       var a = F.a[q.id];
       if (q.type === 'sign' && a && a.sig) sigs.push({ name: q.who === 'subject' ? subjectName(F) : q.who === 'assessor' ? ((F.a.assessor || {}).v || 'Assessor') + ((F.a.acomp || {}).v ? ', ' + F.a.acomp.v : '') : S.me.name,
-        label: q.who === 'subject' ? 'Person inducted' : q.who === 'assessor' ? 'Assessor — witnessed the smoke test' : 'Site Supervisor', time: Date.now(), img: a.sig });
+        label: q.who === 'subject' ? 'Person inducted' : q.who === 'assessor' ? 'Assessor — witnessed the smoke test' : roleName(S.me), time: Date.now(), img: a.sig });
     });
     if (F.code === 'D4') sigs.push({ name: S.me.name, label: 'Inducted by', time: Date.now() });
-    if (!sigs.length) sigs.push({ name: S.me.name, label: 'Site Supervisor', time: Date.now() });
+    if (!sigs.length) sigs.push({ name: S.me.name, label: roleName(S.me), time: Date.now() });
     if (F.def.pmReview) rf.rows.push({ section: 'Sign off', label: 'Project Manager review', value: 'Pending', flag: '' });
     var extra = [['Completed by', S.me.name]];
     if (F.code === 'D4') extra.push(['Person inducted', subjectName(F) + ((F.a.wco || {}).v ? ', ' + F.a.wco.v : '')]);
@@ -1007,7 +1232,8 @@
     rec.details = jobDetails([['Name', p.name], ['Company', 'TechClean']]);
     rec.rows = [{ section: 'Site sign in / out register', label: 'Time in', value: rec.data.in ? hm(rec.data.in) : '—', flag: '' },
       { section: 'Site sign in / out register', label: 'Time out', value: rec.data.out ? hm(rec.data.out) : 'Still on site', flag: '' }];
-    if (S.job.crewIds.indexOf(pid) < 0) { rec.data.notRostered = true; rec.alert = true; rec.rows.push({ section: 'Site sign in / out register', label: 'Rostered on this job today?', value: 'No — not on today’s crew in the schedule', flag: 'bad' }); }
+    if (isMgr(p) && S.job.crewIds.indexOf(pid) < 0) { rec.data.mgrVisit = true; rec.details = jobDetails([['Name', p.name], ['Company', 'TechClean — ' + roleName(p)], ['Visit', 'Management site visit']]); }
+    else if (S.job.crewIds.indexOf(pid) < 0) { rec.data.notRostered = true; rec.alert = true; rec.rows.push({ section: 'Site sign in / out register', label: 'Rostered on this job today?', value: 'No — not on today’s crew in the schedule', flag: 'bad' }); }
     rec.sigs = [{ name: p.name, label: pid === S.me.id ? 'Signed on own phone' : 'Signed in / out by ' + S.me.name, time: Date.now() }];
     rec.fileName = fileName({ date: today() }, 'Sign in-out', p.name); rec.folder = folderFor(S.job);
     if (out) rec.gpsOut = gpsNow();
@@ -1237,6 +1463,9 @@
   function onSiteNow() { return regToday().filter(function (r) { return r.data.in && !r.data.out; }); }
   function regName(r) { return r.form === 'D14' ? r.data.name + ' (' + r.data.company + ', visitor)' : (person(r.personId) || {}).name || r.personId; }
   function isSup() { return S.me && S.job && S.me.id === S.job.supervisorId; }
+  var MGR_ROLES = { pm: 'Project Manager', branch_manager: 'Branch Manager', hsc: 'H&S Coordinator', admin: 'GM Operations', manager: 'Manager' };
+  function isMgr(p) { p = p || S.me; return !!(p && MGR_ROLES[p.role]); }
+  function roleName(p) { return MGR_ROLES[(p || {}).role] || ((p || {}).role === 'supervisor' ? 'Site Supervisor' : 'Crew'); }
   function whoMade(r) { var p = person(r.personId); return p ? p.name : r.form === 'D14' ? r.data.name : r.personId; }
   function recLabel(r) { return r.fileName.replace(/^\d{4}-\d\d-\d\d /, '').replace('.pdf', ''); }
   function niceDate(d) { var p = d.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]).toLocaleDateString('en-NZ', { weekday: 'short', day: 'numeric', month: 'short' }); }
@@ -1364,7 +1593,7 @@
     if (!S.me || r.supersededBy || !S.job || S.job.status === 'closed') return false;
     if (r.form === 'FFW' || r.form === 'D1') return r.personId === S.me.id;
     if (r.form === 'D14') return isSup();
-    return r.personId === S.me.id || isSup();
+    return r.personId === S.me.id || isSup() || isMgr();
   }
   function renderRecord(r, d) {
     var hist = RECS.filter(function (x) { return (x.rootId || x.id) === (r.rootId || r.id); }).sort(function (a, b) { return (b.version || 1) - (a.version || 1); });
@@ -1550,7 +1779,7 @@
   }
 
   /* ---------- upload a document (ARCP, survey report, WSN, clearance certificate …) ---------- */
-  function canUpload() { return isSup() && S.job && S.job.status !== 'closed'; }
+  function canUpload() { return (isSup() || isMgr()) && S.job && S.job.status !== 'closed'; }
   function renderAddDoc() {
     var D = { type: null, file: null, mime: null, name: null };
     S.onBack = function () { history.pushState({ v: 1 }, ''); renderSiteFile(); };

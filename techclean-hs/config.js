@@ -104,6 +104,8 @@ var DEMO = {
       certs: { ffhalf: '2026-12-01', fffull: '2026-12-01', medical: '2027-11-14', sitesafe: '2028-08-21', firstaid: '2027-09-01' } },
     { id: 'P04', name: 'Sione Fifita', role: 'crew', branch: 'Auckland',
       certs: { ffhalf: '2027-03-03', fffull: '2024-09-24', medical: '2027-04-04', sitesafe: '2025-02-16' } },
+    { id: 'P06', name: 'Sam Taylor', role: 'pm', branch: 'Auckland',   /* Project Manager — opens the job QR / link for a site visit or audit */
+      certs: { ffhalf: '2027-04-20', fffull: '2027-04-20', medical: '2027-06-01', sitesafe: '2028-05-05' } },
     { id: 'P05', name: 'Tama Wiremu', role: 'crew', branch: 'Auckland',   /* not on today's crew — to try the "not rostered" sign-on */
       certs: { ffhalf: '2027-08-11', fffull: '2027-08-11', medical: '2027-09-30', sitesafe: '2028-03-14' } }
   ],

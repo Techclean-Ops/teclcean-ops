@@ -287,6 +287,148 @@ FORMS.D11 = {
 };
 
 /* Supervisor's "Job forms" menu, in Part D order. D7 is Class A only. */
+/* Site audit — TC-QA-AUD-001 Rev 1.5, Asbestos site audit Class A / B (PM, Branch Manager, HSC, GM Ops; opened from the job QR code or link).
+   Items as in the Word form. class: 'A' = Class A only, 'B' = Class B only, 'A+B' = both. unit = a reading to record.
+   critical: the form's legend has ▲ critical items but no rows are marked in Rev 1.5, so these are mapped from its STOP-WORK TRIGGERS — confirm. */
+var AUDIT = {
+  doc: 'TC-QA-AUD-001', rev: '1.5', title: 'Asbestos site audit — Class A / B', licence: 'RA17100151',
+  critical: ["2.2", "2.3", "2.5", "3.1", "3.3", "3.6", "4.5", "4.10", "5.3", "5.4", "6.1", "6.2", "6.9", "6.10", "7.3", "8.1", "8.3", "12.6"],
+  triggers: ['No ARCP on site, or work not matching the ARCP method', 'WorkSafe notification missing, late or materially wrong', 'Removal outside the licence class for the material',
+    'Untrained or unfit-tested worker in the removal area', 'No supervisor present on Class A work', 'Enclosure breach or negative pressure failure',
+    'Dry removal, or abrasive power tools used on ACM', 'Decontamination bypassed or unavailable', 'Uncontrolled fibre release, or contamination outside the exclusion zone',
+    'Unauthorised person inside the removal area', 'Unexpected friable material or asbestos-containing dust found', 'Area reoccupied before a clearance certificate is issued'],
+  ratings: [['ok', 'Compliant'], ['minor', 'Minor NCs — close within 7 days'], ['major', 'Major NCs — close within 24 hours'], ['stop', 'STOP WORK ISSUED']],
+  sections: [
+    { n: "2", title: "Documentation and notification", items: [
+      { id: "2.1", q: "Current asbestos survey / register for the work area is on site and matches what is being removed", cls: "A+B" },
+      { id: "2.2", q: "Asbestos Removal Control Plan (ARCP) on site, job-specific, signed and current", cls: "A+B" },
+      { id: "2.3", q: "Work on site matches the method described in the ARCP (no undocumented change of method)", cls: "A+B" },
+      { id: "2.4", q: "Site-specific safety plan / task analysis on site and signed by all workers", cls: "A+B" },
+      { id: "2.5", q: "WorkSafe notified in writing at least 5 days before work started; notification details match the actual work", cls: "A+B" },
+      { id: "2.6", q: "Any change to dates, scope or method notified to WorkSafe and recorded", cls: "A+B" },
+      { id: "2.7", q: "Neighbouring occupiers, other PCBUs and the building owner informed before work started", cls: "A+B" },
+      { id: "2.8", q: "Independent licensed asbestos assessor engaged and booked for air monitoring and clearance", cls: "A" },
+      { id: "2.9", q: "Daily site diary and pre-start records completed and up to date", cls: "A+B" },
+      { id: "2.10", q: "Emergency plan on site — site address, nearest medical facility, asbestos-specific response", cls: "A+B" },
+      { id: "2.11", q: "Safety data sheets available for encapsulants, sealants and chemicals in use", cls: "A+B" }
+    ] },
+    { n: "3", title: "Licence, competency and supervision", items: [
+      { id: "3.1", q: "Work is within the scope of TechClean's licence class for the material being removed", cls: "A+B" },
+      { id: "3.2", q: "Copy of the removal licence displayed or available on site", cls: "A+B" },
+      { id: "3.3", q: "Supervisor present in the removal area at all times, from set-up through to completion of the clearance inspection", cls: "A" },
+      { id: "3.4", q: "Class B: supervisor present or readily available as required — contactable and able to attend", cls: "B" },
+      { id: "3.5", q: "Supervisor holds the prescribed supervision qualification for the class of work", cls: "A+B" },
+      { id: "3.6", q: "All workers hold current training / unit standards for the class of removal work being done", cls: "A+B" },
+      { id: "3.7", q: "Training and competency records verifiable on site (app, folder or card)", cls: "A+B" },
+      { id: "3.8", q: "Health monitoring current for all workers carrying out licensed removal work", cls: "A+B" },
+      { id: "3.9", q: "Workers can explain the method, the controls and the emergency procedure when asked", cls: "A+B" },
+      { id: "3.10", q: "Subcontractors and labour hire on site are inducted, competent and covered by the ARCP", cls: "A+B" }
+    ] },
+    { n: "4", title: "Site set-up, signage and exclusion zone", items: [
+      { id: "4.1", q: "Removal area clearly defined and separated from other work and the public", cls: "A+B" },
+      { id: "4.2", q: "Compliant asbestos warning signage displayed at every approach to the area", cls: "A+B" },
+      { id: "4.3", q: "Barriers are solid or substantial where no enclosure is used — not tape alone where access is likely", cls: "A+B" },
+      { id: "4.4", q: "Exclusion zone distance appropriate for the method, weather and adjacent activity", cls: "A+B" },
+      { id: "4.5", q: "Access controlled — only authorised, trained people entering; visitor log in use", cls: "A+B" },
+      { id: "4.6", q: "Services isolated as required (power, HVAC, sprinklers, smoke detectors) with permits and tags in place", cls: "A+B" },
+      { id: "4.7", q: "Fixtures, fittings and contents removed or protected before removal started", cls: "A+B" },
+      { id: "4.8", q: "Ground or floor protection laid where fibres or debris could fall, with sealed joins", cls: "A+B" },
+      { id: "4.9", q: "Non-asbestos hazards controlled — height, edge protection, scaffold tags, electrical, confined space", cls: "A+B" },
+      { id: "4.10", q: "Site tidy — no loose ACM debris, offcuts or fragments outside the controlled area", cls: "A+B" },
+      { id: "4.11", q: "Vehicle, plant and waste routes defined and kept clear of occupied areas", cls: "A+B" }
+    ] },
+    { n: "5", title: "Enclosure and negative pressure", items: [
+      { id: "5.1", q: "Enclosure constructed as described in the ARCP; surfaces smooth, sound, pre-cleaned or lined", cls: "A" },
+      { id: "5.2", q: "Smoke test completed and recorded before removal started; result satisfactory", cls: "A" },
+      { id: "5.3", q: "Enclosure integrity visually checked each shift; no tears, sagging or failed seals", cls: "A" },
+      { id: "5.4", q: "Negative pressure unit(s) running, correctly sized, and discharging outside the enclosure", cls: "A" },
+      { id: "5.5", q: "Pressure differential monitored and recorded; readings within the range set in the ARCP", cls: "A", unit: "Pa" },
+      { id: "5.6", q: "NPU HEPA filters tested or certified, in date, with change records held", cls: "A" },
+      { id: "5.7", q: "Airlocks and entry / exit stages built and used in the correct sequence", cls: "A" },
+      { id: "5.8", q: "Viewing panel or observation of the work area maintained", cls: "A" },
+      { id: "5.9", q: "Enclosure decontaminated before dismantling; dismantling method matches the ARCP", cls: "A" },
+      { id: "5.10", q: "Class B: containment, drop sheets, sealed penetrations and weather protection adequate for the method", cls: "B" }
+    ] },
+    { n: "6", title: "Removal method and fibre control", items: [
+      { id: "6.1", q: "Wet methods, encapsulation or suppression used and effective; material kept damp throughout", cls: "A+B" },
+      { id: "6.2", q: "No abrasive power tools, high-pressure water blasting or compressed air used on ACM", cls: "A+B" },
+      { id: "6.3", q: "Material removed whole where practicable — unscrewed, not broken or dropped", cls: "A+B" },
+      { id: "6.4", q: "Sheets and components lowered, not dropped, to the ground or into a lined bin", cls: "A+B" },
+      { id: "6.5", q: "Glove bag or mini-enclosure technique correct where used", cls: "A" },
+      { id: "6.6", q: "H-class / asbestos-rated vacuum in use, in test, and dedicated to asbestos work", cls: "A+B" },
+      { id: "6.7", q: "Progressive clean-up as work proceeds — debris not accumulating in the work area", cls: "A+B" },
+      { id: "6.8", q: "Substrate and residual material sealed or encapsulated where it remains in place", cls: "A+B" },
+      { id: "6.9", q: "Asbestos-containing dust (ACD) identified and handled under the correct licence and method", cls: "A+B" },
+      { id: "6.10", q: "Unexpected or additional ACM found work stopped, area secured, ARCP and notification reviewed", cls: "A+B" },
+      { id: "6.11", q: "Weather suitable; work stops in high wind or driving rain where fibre release is likely", cls: "A+B" }
+    ] },
+    { n: "7", title: "Respiratory protection and PPE", items: [
+      { id: "7.1", q: "RPE selected matches the method and class of work per the ARCP", cls: "A+B" },
+      { id: "7.2", q: "RPE always worn correctly in the removal area — no facial hair compromising seal", cls: "A+B" },
+      { id: "7.3", q: "Current fit-test records held for each worker and each mask type in use", cls: "A+B" },
+      { id: "7.4", q: "Fit checks done at each donning; workers can demonstrate the check", cls: "A+B" },
+      { id: "7.5", q: "PAPR or air-fed units charged, filters in date, maintenance and battery records available", cls: "A" },
+      { id: "7.6", q: "Coveralls disposable and correct type, hood over mask straps, no pockets in use", cls: "A+B" },
+      { id: "7.7", q: "Footwear, gloves and eye protection appropriate and dedicated to the removal area", cls: "A+B" },
+      { id: "7.8", q: "No eating, drinking, vaping or smoking in the removal area", cls: "A+B" },
+      { id: "7.9", q: "Spare RPE, filters and coveralls available on site for the crew size", cls: "A+B" },
+      { id: "7.10", q: "Work and rest cycles managed for heat, fatigue and RPE wear time", cls: "A+B" }
+    ] },
+    { n: "8", title: "Decontamination", items: [
+      { id: "8.1", q: "Three-stage decontamination unit in place, correctly sequenced and connected to the enclosure", cls: "A" },
+      { id: "8.2", q: "Hot water with adequate supply; wastewater filtered before discharge", cls: "A" },
+      { id: "8.3", q: "Personal decontamination procedure followed in the correct order and observed in practice", cls: "A+B" },
+      { id: "8.4", q: "RPE removed last and decontaminated or disposed of correctly", cls: "A+B" },
+      { id: "8.5", q: "Used coveralls bagged as asbestos waste — not reused or taken home", cls: "A+B" },
+      { id: "8.6", q: "Tools and plant decontaminated before leaving the area, or sealed and labelled for transfer", cls: "A+B" },
+      { id: "8.7", q: "Clean and dirty zones clearly separated; no cross-contamination of the clean end", cls: "A+B" },
+      { id: "8.8", q: "Class B: bucket-and-brush or wet-wipe decontamination set up and used before leaving the area", cls: "B" },
+      { id: "8.9", q: "Mobile DCU has its own clearance certificate before it leaves site or moves to the next job", cls: "A" },
+      { id: "8.10", q: "Vehicles carrying crew and waste are lined, clean and free of debris", cls: "A+B" }
+    ] },
+    { n: "9", title: "Air monitoring and exposure monitoring", items: [
+      { id: "9.1", q: "Air monitoring carried out by an independent licensed asbestos assessor", cls: "A" },
+      { id: "9.2", q: "Monitoring positions match the ARCP and cover the likely fibre release points", cls: "A" },
+      { id: "9.3", q: "Results available on site and reviewed by the supervisor", cls: "A+B", unit: "f/mL" },
+      { id: "9.4", q: "Response to elevated results understood and documented — review, investigate, stop work", cls: "A+B" },
+      { id: "9.5", q: "Exposure monitoring considered or carried out where required for the method and material", cls: "A+B" },
+      { id: "9.6", q: "Monitoring records retained and linked to the job file and worker records", cls: "A+B" }
+    ] },
+    { n: "10", title: "Waste containment, transport and disposal", items: [
+      { id: "10.1", q: "Waste double-bagged or in sealed lined containers; bags not overfilled", cls: "A+B" },
+      { id: "10.2", q: "All waste correctly labelled as asbestos", cls: "A+B" },
+      { id: "10.3", q: "Waste decontaminated on the outside before leaving the removal area", cls: "A+B" },
+      { id: "10.4", q: "Waste stored securely on site — locked, covered, out of public reach", cls: "A+B" },
+      { id: "10.5", q: "Skips and bins lined, covered and signed; no exposed ACM visible", cls: "A+B" },
+      { id: "10.6", q: "Transported by an appropriate operator to a facility authorised to accept asbestos waste", cls: "A+B" },
+      { id: "10.7", q: "Disposal dockets obtained and filed against the job", cls: "A+B" },
+      { id: "10.8", q: "Waste removed from site as soon as practicable; no long-term accumulation", cls: "A+B" },
+      { id: "10.9", q: "Contaminated water managed and disposed of correctly; no run-off to stormwater", cls: "A+B" }
+    ] },
+    { n: "11", title: "Emergency preparedness and incidents", items: [
+      { id: "11.1", q: "Crew can describe the response to an enclosure breach, NPU failure or power loss", cls: "A+B" },
+      { id: "11.2", q: "Rescue plan in place for a worker injured inside the enclosure", cls: "A" },
+      { id: "11.3", q: "First aid kit, eyewash and a trained first aider available", cls: "A+B" },
+      { id: "11.4", q: "Fire extinguisher and escape routes clear; enclosure has a defined emergency exit", cls: "A+B" },
+      { id: "11.5", q: "Communication available between the enclosure and the outside", cls: "A" },
+      { id: "11.6", q: "Any exposure, breach or near miss since the last audit reported and investigated", cls: "A+B" },
+      { id: "11.7", q: "Notifiable event obligations understood by the supervisor", cls: "A+B" }
+    ] },
+    { n: "12", title: "Completion, clearance and reinstatement", items: [
+      { id: "12.1", q: "Visual inspection completed by the crew before calling for clearance; area free of visible residue", cls: "A+B" },
+      { id: "12.2", q: "Four-stage clearance process followed for Class A work", cls: "A" },
+      { id: "12.3", q: "Clearance carried out by an independent licensed asbestos assessor", cls: "A" },
+      { id: "12.4", q: "Class B: clearance carried out by a competent independent person", cls: "B" },
+      { id: "12.5", q: "Disturbance testing carried out in line with current clearance requirements", cls: "A+B" },
+      { id: "12.6", q: "Written clearance certificate issued before the area is reoccupied", cls: "A+B" },
+      { id: "12.7", q: "Asbestos register or management plan updated and returned to the client", cls: "A+B" },
+      { id: "12.8", q: "Signage, barriers and containment removed only after clearance", cls: "A+B" },
+      { id: "12.9", q: "Job pack complete for the file — ARCP, notification, monitoring, dockets, clearance, photos", cls: "A+B" }
+    ] }
+  ]
+};
+FORMS.AUD = { code: 'AUD', ref: 'TC-QA-AUD-001 Rev 1.5 — Asbestos site audit, Class A / B', title: 'Site audit', short: 'Audit', icon: '🔎', who: 'manager', custom: true };
+
 var JOB_FORMS = ['D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11'];
 
 /* ---------- The job sequence (supervisor's phone) ----------
