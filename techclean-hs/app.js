@@ -52,8 +52,8 @@
     var cs = (p && p.certs) || {};
     return CERT_TYPES.filter(function (t) { return cs[t.id]; }).map(function (t) {
       var e = typeof cs[t.id] === 'string' ? { date: cs[t.id] } : cs[t.id];   // { date, file, url } from the back end
-      var days = Math.floor((new Date(e.date + 'T23:59') - new Date()) / 864e5);
-      return { id: t.id, name: t.name, date: e.date, file: e.file || null, url: e.url || null, days: days, expired: days < 0, soon: days >= 0 && days <= CERT_WARN_DAYS, stopWork: !!t.stopWork, dateOnly: !!t.dateOnly };
+      var days = t.noExpiry ? 99999 : Math.floor((new Date(e.date + 'T23:59') - new Date()) / 864e5);
+      return { id: t.id, name: t.name, date: e.date, file: e.file || null, url: e.url || null, days: days, expired: days < 0, soon: days >= 0 && days <= CERT_WARN_DAYS, stopWork: !!t.stopWork, dateOnly: !!t.dateOnly, noExpiry: !!t.noExpiry };
     });
   }
   function certWarnings(p) { return certList(p).filter(function (c) { return c.expired; }); }
@@ -532,12 +532,87 @@
     var o = $('#other'); if (o) o.onclick = function () { S.qrJob = null; S.job = null; history.replaceState(null, '', location.pathname); renderMgrToday(); };
   }
 
+  /* ---------- Answers the app already has: filled in from records and certificates, shown to the supervisor and printed on the PDF ---------- */
+  function weekRecs(form) { var from = addDays(-6); return live(form).filter(function (r) { return r.date >= from; }); }
+  function crewCertRows(section) {
+    var rows = [], cls = S.job.cls;
+    S.job.crewIds.forEach(function (pid) {
+      var p = person(pid); if (!p) return;
+      var cl = certList(p), has = function (id) { return cl.filter(function (c) { return c.id === id && !c.expired; })[0]; };
+      var lic = cls === 'A' ? (has('aclass') || has('supervise')) : (has('bclass') || has('aclass') || has('supervise'));
+      var fts = cl.filter(function (c) { return (c.id === 'ffhalf' || c.id === 'fffull') && !c.expired; });
+      var med = cl.filter(function (c) { return c.id === 'medical'; })[0];
+      rows.push({ section: section, label: p.name + ' — licence / unit standard (Class ' + cls + ')', value: lic ? 'Yes — ' + lic.name : 'Not on record', flag: lic ? 'good' : 'bad' });
+      rows.push({ section: section, label: p.name + ' — face fit test', value: fts.length ? fts.map(function (c) { return c.name.replace('Face fit test — ', '') + ' to ' + c.date; }).join(', ') : 'No current fit test — stop work', flag: fts.length ? 'good' : 'bad' });
+      rows.push({ section: section, label: p.name + ' — health monitoring (asbestos medical)', value: med ? (med.expired ? 'Expired ' : 'Current to ') + med.date : 'Not on record', flag: med && !med.expired ? 'good' : 'bad' });
+    });
+    return rows;
+  }
+  function autoRows(F) {
+    var c = F.code, sec = 'Filled in from the app’s records', rows = [];
+    if (c === 'D2') {
+      var issues = crewCertRows('x').filter(function (r) { return r.flag === 'bad'; });
+      rows.push({ section: sec, label: 'Every crew member current on fit test, training for the class of work and health monitoring', value: issues.length ? issues.length + ' problem(s): ' + issues.map(function (r) { return r.label + ' ' + r.value; }).join('; ') : 'Yes — all current', flag: issues.length ? 'bad' : 'good' });
+      rows.push({ section: sec, label: 'Clean-shaven as per face fit', value: 'Checked for each person on fit for work every day (live photo)', flag: '' });
+      rows.push({ section: sec, label: 'Inductions, ARCP / SSSP signing and the toolbox talk', value: 'Recorded as their own steps in the job sequence (D4, D1, D5)', flag: '' });
+      rows.push({ section: sec, label: 'Isolations, site plan, signage and barriers, boundaries, baseline air monitoring', value: 'Recorded on the set-up check (D6, set-up stage)', flag: '' });
+    }
+    if (c === 'D3') rows = crewCertRows('Site personnel register — from certificates');
+    if (c === 'D6' && (F.a.stage || {}).v === 'setup') {
+      var d7 = live('D7').filter(function (r) { var a = r.data.answers || {}; return ((a.retest || {}).v || (a.sres || {}).v) === 'pass'; })[0];
+      rows.push({ section: sec, label: 'Smoke test passed and recorded on Form D7', value: S.job.cls !== 'A' ? 'N/A — Class B' : d7 ? 'Yes — passed ' + niceDate(d7.date) : 'No passed smoke test on record', flag: S.job.cls !== 'A' ? '' : d7 ? 'good' : 'bad' });
+    }
+    if (c === 'D8') {
+      var days = {}; weekRecs('D13').forEach(function (r) { days[r.date] = 1; }); var worked = Object.keys(days).length;
+      var unsigned = S.job.crewIds.filter(function (pid) { return !statusFor(pid).d1; }).map(function (pid) { return (person(pid) || {}).name; });
+      rows.push({ section: sec, label: 'ARCP / SWMS signed by everyone on the crew (current revision)', value: unsigned.length ? 'Not signed: ' + unsigned.join(', ') : 'Yes', flag: unsigned.length ? 'bad' : 'good' });
+      var noOut = weekRecs('D13').filter(function (r) { return r.date < today() && r.data.in && !r.data.out; }).length;
+      rows.push({ section: sec, label: 'Sign in / out register complete this week', value: worked + ' day(s) worked' + (noOut ? ' — ' + noOut + ' sign-out(s) missing' : ' — complete'), flag: noOut ? 'bad' : 'good' });
+      var d5 = weekRecs('D5'), d5days = {}; d5.forEach(function (r) { d5days[r.date] = 1; });
+      rows.push({ section: sec, label: 'Daily pre-start done every day worked', value: Object.keys(d5days).length + ' of ' + worked + ' day(s)', flag: Object.keys(d5days).length >= worked ? 'good' : 'bad' });
+      var faults = []; d5.forEach(function (r) { var a = r.data.answers || {}; ['enclok', 'vac', 'dcu', 'wet', 'tags', 'plant'].forEach(function (k) { if ((a[k] || {}).v === 'fault') faults.push(niceDate(r.date) + ' ' + k); }); if ((a.exit || {}).v === 'no') faults.push(niceDate(r.date) + ' exit not shown'); if ((a.air || {}).v === 'no') faults.push(niceDate(r.date) + ' air results not shared'); });
+      rows.push({ section: sec, label: 'Daily checks this week — enclosure and pressure, test and tag, emergency exit, air results shared', value: faults.length ? faults.length + ' fault(s): ' + faults.join('; ') + ' — check each was closed out' : 'No faults recorded', flag: faults.length ? 'bad' : 'good' });
+      if (S.job.cls === 'A') { var d6 = weekRecs('D6').filter(function (r) { return ((r.data.answers || {}).stage || {}).v === 'during'; }); rows.push({ section: sec, label: 'Enclosure and negative pressure checks logged (D6 during removal)', value: d6.length + ' this week for ' + worked + ' day(s) worked', flag: d6.length >= worked ? 'good' : 'bad' }); }
+      var ffw = weekRecs('FFW'), fails = ffw.filter(function (r) { return r.data.result !== 'pass'; }).length;
+      rows.push({ section: sec, label: 'Everyone clean-shaven as per face fit (fit for work, live photo)', value: ffw.length + ' check(s) this week' + (fails ? ' — ' + fails + ' failed (not allowed on)' : ' — all passed'), flag: fails ? 'bad' : 'good' });
+    }
+    return rows;
+  }
+  function autoCard(F) {
+    var r = autoRows(F); if (!r.length) return '';
+    return '<div class="card"><div class="lbl" style="margin-top:0">' + esc(r[0].section) + '</div><div class="list">' + r.map(function (x) {
+      return '<div class="it"><span style="flex:1">' + esc(x.label) + '<br><span class="small">' + esc(x.value) + '</span></span>' + (x.flag === 'good' ? chip('done', '✓') : x.flag === 'bad' ? chip('todo', 'Check') : '') + '</div>';
+    }).join('') + '</div><div class="small" style="margin-top:6px">Not asked again — taken from today’s records and the certificates. Anything marked Check needs sorting before you sign.</div></div>';
+  }
+
   /* ---------- Site audit TC-QA-AUD-001 (management) ---------- */
   function audKey() { return 'tc.draft.AUD.' + S.job.jobNo + '.' + today() + '.' + S.me.id; }
   function audSave(AU) { var c = {}; for (var k in AU) if (k !== 'photos' && k !== 'sigImg') c[k] = AU[k]; try { localStorage.setItem(audKey(), JSON.stringify(c)); } catch (e) {} }
   function audItems(AU) {   // the items that apply to the class of work being audited
     var cls = AU.det.cls;
     return AUDIT.sections.map(function (s) { return { n: s.n, title: s.title, items: s.items.filter(function (it) { return cls === 'ACD' || it.cls === 'A+B' || it.cls === cls; }) }; });
+  }
+  /* What the app's own records say about an audit point — shown to the auditor as evidence, never answers it for them. */
+  function audHint(id) {
+    var docs = jobDocs(), doc = function (t) { return docs.filter(function (d) { return d.data.type === t; })[0]; };
+    var crew = crewCertRows('x'), bad = function (word) { return crew.filter(function (r) { return r.flag === 'bad' && r.label.indexOf(word) >= 0; }).map(function (r) { return r.label.split(' — ')[0]; }); };
+    var d5 = live('D5'), d7 = live('D7').filter(function (r) { var a = r.data.answers || {}; return ((a.retest || {}).v || (a.sres || {}).v) === 'pass'; })[0];
+    var clr = live('D6').filter(function (r) { return ((r.data.answers || {}).c9 || {}).v === 'yes'; })[0];
+    switch (id) {
+      case '2.1': var sv = doc('survey'); return sv ? 'Survey in the site file: ' + sv.data.title : 'No survey uploaded to the site file';
+      case '2.2': var ar = doc('arcp'); return ar ? 'ARCP in the site file' + (ar.data.rev ? ' — Rev ' + ar.data.rev : '') : 'No ARCP uploaded to the site file';
+      case '2.5': var ws = doc('wsn'); return ws ? 'WorkSafe notification in the site file' : (S.job.worksafeNotification ? 'Schedule: notification ' + S.job.worksafeNotification : 'No notification on record');
+      case '2.9': return d5.length + ' pre-start record(s) on this job, last ' + (d5[0] ? niceDate(d5[0].date) : '—');
+      case '3.6': var t = bad('licence'); return t.length ? 'Training not on record: ' + t.join(', ') : 'Training on record for all crew';
+      case '3.7': return 'Certificates are in the app — Site file › crew tickets';
+      case '3.8': var m = bad('health'); return m.length ? 'Medical expired or missing: ' + m.join(', ') : 'Asbestos medicals current for all crew';
+      case '5.2': return S.job.cls !== 'A' ? '' : d7 ? 'Smoke test passed ' + niceDate(d7.date) + ' (D7)' : 'No passed smoke test on record';
+      case '7.2': var f = live('FFW').filter(function (r) { return r.date === today(); }); return f.length + ' fit for work check(s) today with clean-shaven photo';
+      case '7.3': var ft = bad('face fit'); return ft.length ? 'No current fit test: ' + ft.join(', ') : 'Fit tests current for all crew';
+      case '10.7': var d10 = live('D10'); return d10.length + ' waste load(s) recorded, ' + d10.filter(function (r) { return ((r.data.answers || {}).docket || {}).v; }).length + ' with docket numbers';
+      case '12.6': return clr ? 'Clearance certificate recorded ' + niceDate(clr.date) + ' (D6)' : 'No clearance certificate recorded yet';
+    }
+    return '';
   }
   function audCrit(id) { return AUDIT.critical.indexOf(id) >= 0; }
   function addDays(n) { var d = new Date(Date.now() + n * 864e5); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
@@ -568,8 +643,8 @@
           '<div class="lbl">Client / PCBU</div><input type="text" id="d-client" value="' + esc(AU.det.client) + '">' +
           '<div class="lbl">Scope of work — ACM type, location, quantity, method</div>' + voiceBox('d-scope', 'e.g. textured ceiling, lounge and hall, 60 m², wet scrape', AU.det.scope) +
           '<div class="lbl">WorkSafe notification no.</div><input type="text" id="d-notif" value="' + esc(AU.det.notif) + '">' +
-          '<div class="lbl">Notified on</div><input type="date" id="d-non" value="' + esc(AU.det.notifiedOn) + '" style="width:100%;font-size:18px;padding:12px;border:2px solid #ddd;border-radius:14px">' +
-          '<div class="lbl">Work start date</div><input type="date" id="d-ws" value="' + esc(AU.det.workStart) + '" style="width:100%;font-size:18px;padding:12px;border:2px solid #ddd;border-radius:14px">' +
+          '<div class="lbl">Notified on</div><input type="date" id="d-non" value="' + esc(AU.det.notifiedOn) + '">' +
+          '<div class="lbl">Work start date</div><input type="date" id="d-ws" value="' + esc(AU.det.workStart) + '">' +
           '<div class="card" style="margin-top:14px"><div class="small">Auto-filled: job ' + esc(j.jobNo) + ' · ' + esc(j.branch || '') + ' · supervisor ' + esc(sup ? sup.name : '') + ' · auditor ' + esc(S.me.name) + ' (' + esc(roleName(S.me)) + ') · on site from ' + hm(AU.start) +
           ' · workers on site now: ' + esc(onSiteNow().map(function (r) { return regName(r); }).join(', ') || 'none signed in') + '</div></div>';
         ok = !!AU.det.type;
@@ -580,7 +655,7 @@
         if (!sec.items.length) h += '<div class="card"><div class="small">Nothing in this section applies to Class ' + esc(AU.det.cls) + ' — tap Next.</div></div>';
         sec.items.forEach(function (it) {
           var a = AU.a[it.id] || {}, k = it.id.replace('.', '_');
-          h += '<div class="card" id="it' + k + '"><div class="small"><b>' + it.id + '</b> · ' + it.cls + (audCrit(it.id) ? ' · <b style="color:#c62828">critical — stop-work trigger</b>' : '') + '</div><p style="margin:6px 0 0;font-size:17px">' + esc(it.q) + '</p>' +
+          h += '<div class="card" id="it' + k + '"><div class="small"><b>' + it.id + '</b> · ' + it.cls + (audCrit(it.id) ? ' · <b style="color:#fca5a5">critical — stop-work trigger</b>' : '') + '</div><p style="margin:6px 0 0;font-size:17px">' + esc(it.q) + '</p>' + (audHint(it.id) ? '<div class="small" style="margin-top:6px;color:#d9f05a">📎 ' + esc(audHint(it.id)) + '</div>' : '') +
             '<div class="yn" style="margin-top:10px"><button data-a="' + it.id + '" data-v="c" class="good' + (a.v === 'c' ? ' on' : '') + '" style="min-height:60px">C</button><button data-a="' + it.id + '" data-v="nc" class="bad' + (a.v === 'nc' ? ' on' : '') + '" style="min-height:60px">NC</button><button data-a="' + it.id + '" data-v="na" class="na' + (a.v === 'na' ? ' on' : '') + '" style="min-height:60px">N/A</button></div>';
           if (it.unit) h += '<div class="lbl">Reading (' + it.unit + ')</div><input type="text" inputmode="decimal" data-rd="' + it.id + '" value="' + esc(a.read || '') + '">';
           if (a.v === 'nc') {
@@ -588,7 +663,7 @@
               '<div class="lbl">Severity</div><div class="chips">' + ['Critical', 'Major', 'Minor'].map(function (sv) { return '<button data-sv="' + it.id + '" data-s="' + sv + '" class="' + (a.sev === sv ? 'on' : '') + '"' + (audCrit(it.id) && sv !== 'Critical' ? ' disabled' : '') + '>' + sv + '</button>'; }).join('') + '</div>' +
               '<div class="lbl">Corrective action required</div>' + voiceBox('x' + k, 'What has to be done', a.action) +
               '<div class="lbl">Responsible</div><input type="text" data-who="' + it.id + '" value="' + esc(a.who || '') + '">' +
-              '<div class="lbl">Due</div><input type="date" data-due="' + it.id + '" value="' + esc(a.due || '') + '" style="width:100%;font-size:18px;padding:12px;border:2px solid #ddd;border-radius:14px">' +
+              '<div class="lbl">Due</div><input type="date" data-due="' + it.id + '" value="' + esc(a.due || '') + '">' +
               '<div class="lbl">Photo (recommended)</div>' + photoBox('p' + k);
             if (!(a.note || '').trim()) ok = false;
           }
@@ -808,7 +883,7 @@
       '<div class="lbl">Where is it at?</div><div class="chips" id="st"><button data-s="fixed">✅ Fixed</button><button data-s="progress">⏳ In progress</button><button data-s="escalate">⚠️ Can’t fix on site</button></div>' +
       '<div class="lbl">What was done (required)</div>' + voiceBox('note', 'Tap the mic to speak, or type…') +
       '<div id="phw" class="hidden"><div class="lbl">Photo of the fix — required</div>' + photoBox('ph') + '</div>' +
-      '<div id="ndw" class="hidden"><div class="lbl">New due date</div><input type="date" id="nd" value="' + esc(a.curDue || '') + '" style="width:100%;font-size:18px;padding:12px;border:2px solid #ddd;border-radius:14px"></div>' +
+      '<div id="ndw" class="hidden"><div class="lbl">New due date</div><input type="date" id="nd" value="' + esc(a.curDue || '') + '"></div>' +
       (mgr ? '<div id="vw" class="hidden"><div class="chips" style="margin-top:12px"><button id="ver">I’ve checked it myself — close it</button></div></div>' : '') +
       '<div class="lbl">Sign</div>' + sigBox() + '</div><div class="foot"><button class="btn" id="go" disabled>Save follow-up</button></div>';
     app.innerHTML = h; bindBack(); renderBanner(); bindVoice();
@@ -872,7 +947,7 @@
       '<div class="lbl">Action required</div>' + voiceBox('ac', 'What has to be done') +
       '<div class="lbl">Severity</div><div class="chips">' + ['Critical', 'Major', 'Minor'].map(function (t) { return '<button data-sv="' + t + '"' + (t === 'Minor' ? ' class="on"' : '') + '>' + t + '</button>'; }).join('') + '</div>' +
       '<div class="lbl">Responsible</div><input type="text" id="who" value="' + esc(sup ? sup.name : '') + '">' +
-      '<div class="lbl">Due</div><input type="date" id="due" value="' + addDays(7) + '" style="width:100%;font-size:18px;padding:12px;border:2px solid #ddd;border-radius:14px">' +
+      '<div class="lbl">Due</div><input type="date" id="due" value="' + addDays(7) + '">' +
       '</div><div class="foot"><button class="btn" id="go" disabled>Raise action</button></div>';
     app.innerHTML = h; bindBack(); renderBanner(); bindVoice();
     var go = $('#go');
@@ -948,7 +1023,7 @@
       return { done: of > 0 ? n === of : step.key === 'OUT', n: n, of: of };
     }
     if (step.key === 'D2') rec = live('D2')[0];
-    else if (step.key === 'D3') { rec = live('D3').sort(function (x, y) { return y.createdAt - x.createdAt; })[0]; if (rec && !present().every(function (pid) { return (rec.data.answers || {})['lic_' + pid]; })) return { done: false, note: 'Crew changed — update it' }; }
+    else if (step.key === 'D3') { rec = live('D3').sort(function (x, y) { return y.createdAt - x.createdAt; })[0]; if (rec && !present().every(function (pid) { return (rec.data.crewIds || []).indexOf(pid) >= 0 || (rec.data.answers || {})['lic_' + pid]; })) return { done: false, note: 'Crew changed — update it' }; }
     else if (step.key === 'D7') { rec = live('D7').filter(function (r) { var a = r.data.answers || {}; return ((a.retest || {}).v || (a.sres || {}).v) === 'pass'; })[0]; }
     else if (step.key === 'D6S') rec = stageRec('setup');
     else if (step.key === 'D6R') rec = stageRec('during', true);
@@ -1030,8 +1105,8 @@
   function stepRow(x) {
     var s = x.st, cls, sub;
     if (s.done) { cls = 'background:var(--green);color:#fff'; sub = s.at ? 'Done ' + (s.rec && s.rec.date !== today() ? niceDate(s.rec.date) : hm(s.at)) : (s.of !== undefined ? 'All ' + s.of + ' done' : 'Done'); }
-    else if (x.open) { cls = 'background:var(--red);color:#fff'; sub = s.note || (s.of ? s.n + ' of ' + s.of + ' done' : 'To do'); }
-    else { cls = 'background:#ddd;color:#777'; sub = '🔒 Locked — finish the step before'; }
+    else if (x.open) { cls = 'background:var(--lime);color:#1A1A1A'; sub = s.note || (s.of ? s.n + ' of ' + s.of + ' done' : 'To do'); }
+    else { cls = 'background:#4A4D50;color:#A8AAAD'; sub = '🔒 Locked — finish the step before'; }
     if (x.step.key === 'D8' && !s.done) sub = x.open ? 'Due this week' : '🔒 After today’s pre-start';
     if (x.step.group === 'finish' && !s.done && x.open) sub = 'When removal is finished';
     return '<button class="it" style="width:100%;border:0;background:none;text-align:left;padding:12px 0;gap:12px;justify-content:flex-start' + (x.open || s.done ? '' : ';opacity:.6') + '" data-step="' + x.step.key + '">' +
@@ -1207,7 +1282,7 @@
         '<button data-v="other" class="' + (a.v === 'other' ? 'on' : '') + '"><span>🧑‍💼</span>Someone else</button></div>';
     } else if (q.type === 'sign') {
       var whoName = q.who === 'subject' ? subjectName(F) : q.who === 'assessor' ? ((F.a.assessor || {}).v || 'Assessor') : S.me.name;
-      h += '<p class="help"><b>' + esc(whoName) + '</b>' + (a.sig ? ' — already signed. Tap Next, or sign again.' : '') + '</p>' + sigBox();
+      h += (q.who ? '' : autoCard(F)) + '<p class="help"><b>' + esc(whoName) + '</b>' + (a.sig ? ' — already signed. Tap Next, or sign again.' : '') + '</p>' + sigBox();
     }
     h += '</div><div class="foot"><button class="btn" id="next">Next →</button></div>';
     app.innerHTML = h; bindBack(); renderBanner(); bindVoice();
@@ -1349,6 +1424,7 @@
   }
   async function finishGeneric(F) {
     var j = S.job, rf = rowsFrom(F), sigs = [], name = genericName(F);
+    rf.rows = rf.rows.concat(autoRows(F));
     qList(F.def, F.a).forEach(function (q) {
       var a = F.a[q.id];
       if (q.type === 'sign' && a && a.sig) sigs.push({ name: q.who === 'subject' ? subjectName(F) : q.who === 'assessor' ? ((F.a.assessor || {}).v || 'Assessor') + ((F.a.acomp || {}).v ? ', ' + F.a.acomp.v : '') : S.me.name,
@@ -1362,6 +1438,7 @@
     var rec = { form: F.code, formTitle: F.def.ref.split(' — ')[1] + (F.code === 'D4' ? ' — ' + subjectName(F) : ''), formRef: F.def.ref, jobNo: j.jobNo, personId: S.me.id,
       data: { answers: stripSigs(F.a) }, details: jobDetails(extra), rows: rf.rows, photos: rf.photos, sigs: sigs };
     rec.data.answers = F.a; // keep signatures with the answers so a new version can carry them
+    if (F.code === 'D3') rec.data.crewIds = present();   // who the register covered — a crew change asks for it again
     rec.fileName = fileName({ date: today() }, name.replace(/[\\/:*?"<>|]/g, ''), S.me.name); rec.folder = folderFor(j);
     await saveRecord(rec); localStorage.removeItem(draftKey(F.code)); localStorage.removeItem(draftKey(F.code) + '.amend');
     history.replaceState({ v: 1 }, ''); S.onBack = null;
@@ -1718,7 +1795,7 @@
     var h = top(p.name, 'Tickets and certificates', true) + '<div class="body"><div class="card list">';
     if (!cl.length) h += '<div class="small">No certificates on record.</div>';
     cl.forEach(function (c, i) {
-      h += '<button class="it" style="width:100%;border:0;background:none;text-align:left" data-c="' + i + '"><span><b>' + esc(c.name) + '</b><br><span class="small">' + (c.expired ? 'Expired ' : 'Expires ') + certDate(c.date) +
+      h += '<button class="it" style="width:100%;border:0;background:none;text-align:left" data-c="' + i + '"><span><b>' + esc(c.name) + '</b><br><span class="small">' + (c.noExpiry ? 'Held since ' : c.expired ? 'Expired ' : 'Expires ') + certDate(c.date) +
         (c.dateOnly ? ' · date only' : c.url ? ' · 📄 tap to view' : c.file ? ' · copy on file' : ' · no copy on file') + '</span></span>' +
         (c.expired ? chip('todo', c.stopWork ? 'Expired — stop work' : 'Expired') : c.soon ? chip('new', c.days + ' days left') : chip('done', 'Current')) + '</button>';
     });
@@ -2027,6 +2104,7 @@
   function blankPdf(code) {
     var f = FORMS[code === 'FFW' ? 'FFW' : code], rows = [];
     if (f.questions) qList(f, {}, true).forEach(function (q) { if (q.type === 'sign' || q.type === 'photo') return; rows.push({ section: q.section || f.title, label: q.pdf || q.q, value: q.type === 'multi' ? q.opts.map(function (o) { return '☐ ' + o[2]; }).join('   ') : (q.type === 'text' || q.type === 'field' || q.type === 'date' || q.type === 'time' || q.type === 'crewpick') ? '' : q.type === 'number' ? '______ ' + (q.unit || '') : q.type === 'ok' ? 'OK / Fault / N/A' : q.type === 'choice' ? q.opts.map(function (o) { return o[2]; }).join(' / ') : q.noNA ? 'Yes / No' : 'Yes / No / N/A', flag: '' }); });
+    if (f.questions && S.job) autoRows({ code: f.code, a: { stage: { v: 'setup' } } }).forEach(function (r) { rows.push({ section: 'Checked from records (app) — tick on paper', label: r.label, value: 'Yes / No', flag: '' }); });
     if (code === 'D12') rows = [{ section: 'Event', label: 'Type: ' + f.types.map(function (t) { return t[1]; }).join(' / '), value: '', flag: '' },
       { section: 'Event', label: 'Anyone hurt?', value: 'Yes / No', flag: '' }, { section: 'What happened', label: ' \n \n ', value: '', flag: '' }, { section: 'Immediate action taken', label: ' \n \n ', value: '', flag: '' }];
     if (code === 'D11') INVENTORY.consumables.concat(INVENTORY.equipment).forEach(function (it) { rows.push({ section: 'Item (unit) · out · back', label: it.name + ' (' + it.unit + ')', value: 'Out ____  Back ____', flag: '' }); });

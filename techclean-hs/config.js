@@ -88,6 +88,7 @@ var CERT_TYPES = [
   { id: 'ffhalf', name: 'Face fit test — half', stopWork: true }, { id: 'fffull', name: 'Face fit test — full', stopWork: true },
   { id: 'medical', name: 'Asbestos medical', dateOnly: true }, { id: 'sitesafe', name: 'Site Safe' }, { id: 'firstaid', name: 'First aid' },
   { id: 'wahb', name: 'Working at heights — basic' }, { id: 'waha', name: 'Working at heights — advanced' }, { id: 'confined', name: 'Confined space' },
+  { id: 'bclass', name: 'B Class removal', noExpiry: true }, { id: 'aclass', name: 'A Class removal', noExpiry: true }, { id: 'supervise', name: 'Supervise removal', noExpiry: true },
   { id: 'mewp', name: 'MEWP' }, { id: 'permit', name: 'Permit receiver' }, { id: 'licence', name: 'Driver licence' }
 ];
 var CERT_WARN_DAYS = 60;
@@ -97,13 +98,13 @@ var CERT_WARN_DAYS = 60;
 var DEMO = {
   people: [
     { id: 'P01', name: 'Jack Reid', role: 'supervisor', branch: 'Auckland',
-      certs: { ffhalf: '2027-06-05', fffull: '2027-06-05', medical: '2027-07-16', sitesafe: '2028-02-28', firstaid: '2028-02-05', wahb: '2028-01-10' } },
+      certs: { aclass: '2019-03-01', supervise: '2019-03-01', ffhalf: '2027-06-05', fffull: '2027-06-05', medical: '2027-07-16', sitesafe: '2028-02-28', firstaid: '2028-02-05', wahb: '2028-01-10' } },
     { id: 'P02', name: 'Ivan Popov', role: 'crew', branch: 'Auckland',
-      certs: { ffhalf: '2027-05-26', fffull: '2027-05-26', medical: '2028-12-15', sitesafe: '2028-09-23', firstaid: '2025-05-02' } },
+      certs: { bclass: '2021-06-10', ffhalf: '2027-05-26', fffull: '2027-05-26', medical: '2028-12-15', sitesafe: '2028-09-23', firstaid: '2025-05-02' } },
     { id: 'P03', name: 'Mere Tane', role: 'crew', branch: 'Auckland',
-      certs: { ffhalf: '2026-12-01', fffull: '2026-12-01', medical: '2027-11-14', sitesafe: '2028-08-21', firstaid: '2027-09-01' } },
+      certs: { bclass: '2022-02-14', ffhalf: '2026-12-01', fffull: '2026-12-01', medical: '2027-11-14', sitesafe: '2028-08-21', firstaid: '2027-09-01' } },
     { id: 'P04', name: 'Sione Fifita', role: 'crew', branch: 'Auckland',
-      certs: { ffhalf: '2027-03-03', fffull: '2024-09-24', medical: '2027-04-04', sitesafe: '2025-02-16' } },
+      certs: { bclass: '2023-08-30', ffhalf: '2027-03-03', fffull: '2024-09-24', medical: '2027-04-04', sitesafe: '2025-02-16' } },
     { id: 'P06', name: 'Sam Taylor', role: 'pm', branch: 'Auckland',   /* Project Manager — opens the job QR / link for a site visit or audit */
       certs: { ffhalf: '2027-04-20', fffull: '2027-04-20', medical: '2027-06-01', sitesafe: '2028-05-05' } },
     { id: 'P05', name: 'Tama Wiremu', role: 'crew', branch: 'Auckland',   /* not on today's crew — to try the "not rostered" sign-on */

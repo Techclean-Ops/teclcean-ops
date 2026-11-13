@@ -57,7 +57,7 @@ var FORMS = {
       { id: 'tasks', q: 'Today’s work — who is doing what?', pdf: 'Work planned for today and who is doing what', type: 'text', section: 'Briefing — what the crew were told',
         help: 'Say it out loud as you brief the crew — the mic types it.' },
       { id: 'hazsel', q: 'Hazards discussed today', pdf: 'Hazards discussed today', type: 'multi', section: 'Briefing — what the crew were told',
-        help: 'Tap every hazard you talked through.', opts: HAZARDS },
+        help: 'Tap every hazard you talked through — include anything new or changed since yesterday.', opts: HAZARDS },
       { id: 'controls', q: 'Controls agreed for those hazards', pdf: 'Controls agreed', type: 'text', section: 'Briefing — what the crew were told' },
       { id: 'topic', q: 'Toolbox topic today', pdf: 'Toolbox topic', type: 'field', section: 'Briefing — what the crew were told' },
       { id: 'assembly', q: 'Emergency assembly point', pdf: 'Emergency assembly point', type: 'field', section: 'Emergency', help: 'Filled in from the last pre-start — check it.' },
@@ -69,16 +69,11 @@ var FORMS = {
       { id: 'stopwork', q: 'Stop-work authority reminded?', pdf: 'Crew reminded they can stop work if controls fail', type: 'yn', noNA: true, bad: ['no'], section: 'Site today' },
       { id: 'understood', q: 'Everyone understood — no language help needed?', pdf: 'Everyone understood the briefing (language help given if needed)', type: 'yn', noNA: true, bad: ['no'],
         badMsg: 'Note who needed help and how it was given.', section: 'Site today' },
-      { id: 'plan', q: 'Today’s work and who does what covered?', type: 'yn', bad: ['no'], section: 'Covered at pre-start' },
       { id: 'swms', q: 'SWMS reviewed with everyone present?', type: 'yn', bad: ['no'], section: 'Covered at pre-start' },
-      { id: 'encl', q: 'Enclosure and negative pressure checked, logged?', type: 'yn', bad: ['no'], section: 'Covered at pre-start' },
       { id: 'air', q: 'Yesterday’s air monitoring shared with crew?', type: 'yn', bad: ['no'], section: 'Covered at pre-start' },
-      { id: 'hazards', q: 'New or changed hazards on site?', type: 'yn', noNA: true, bad: ['yes'], photo: true, badMsg: 'Take a photo of the hazard and add a note.', section: 'Covered at pre-start' },
       { id: 'arcpchg', q: 'Any change to the ARCP since yesterday?', type: 'yn', noNA: true, bad: ['yes'], badMsg: 'Note the change — crew must re-sign the ARCP.', section: 'Covered at pre-start' },
-      { id: 'fitness', q: 'Fitness for work discussed — fatigue, illness, medication?', type: 'yn', bad: ['no'], section: 'Covered at pre-start' },
       { id: 'concerns', q: 'Any concerns raised by the crew?', type: 'yn', noNA: true, bad: ['yes'], badMsg: 'Note the concern and what was agreed.', section: 'Covered at pre-start' },
-      { id: 'npu', q: 'NPUs running, manometer in range?', type: 'ok', section: 'Equipment check' },
-      { id: 'enclok', q: 'Enclosure intact, smoke test current?', type: 'ok', section: 'Equipment check' },
+      { id: 'enclok', q: 'Enclosure intact, NPUs running, pressure in range, smoke test current?', pdf: 'Enclosure intact, NPUs running, negative pressure in range, smoke test current', type: 'ok', section: 'Equipment check' },
       { id: 'vac', q: 'H-class vacuums working, filters in date?', type: 'ok', section: 'Equipment check' },
       { id: 'dcu', q: 'Decon unit clean, water and filters working?', type: 'ok', section: 'Equipment check' },
       { id: 'wet', q: 'Wetting and spray gear working?', type: 'ok', section: 'Equipment check' },
@@ -110,8 +105,6 @@ FORMS.D2 = {
     yn('y1', 'ARCP and method read and understood?', 'ARCP and method — read and understood', 'Before leaving the yard'),
     yn('y2', 'SSSP read and understood?', 'SSSP — read and understood', 'Before leaving the yard'),
     yn('y3', 'WorkSafe notification matches crew going?', 'WorkSafe notification — dates, supervisor and workers checked against the crew going to site', 'Before leaving the yard'),
-    yn('y4', 'Crew clean-shaven and fit tests current?', 'Every crew member clean-shaven as per their face fit and current on fit test', 'Before leaving the yard'),
-    yn('y5', 'Crew training current for this class?', 'Every crew member current on training for the class of work', 'Before leaving the yard'),
     yn('y6', 'Assessor told the start time?', 'Independent assessor informed of the start time', 'Before leaving the yard'),
     yn('y7', 'Survey and asbestos register in site folder?', 'Survey and asbestos register in the site folder', 'Before leaving the yard'),
     yn('y8', 'Forms, incident reports and SDS packed?', 'Forms — toolbox, incident reports, safety data sheets', 'Before leaving the yard'),
@@ -123,28 +116,17 @@ FORMS.D2 = {
     yn('y13', 'Decon unit and water system loaded?', 'Decontamination unit and water management system loaded', 'Before leaving the yard'),
     yn('y14', 'Poly, bags, tape, signs, PPE, RPE, filters loaded?', 'Consumables — polythene, bags, tape, signage, PPE, RPE, filters', 'Before leaving the yard'),
     yn('y15', 'Everyone understands the full scope?', 'Full scope of works understood by everyone going to site', 'Before leaving the yard'),
-    yn('a1', 'Everyone on site inducted?', 'Induct all TechClean staff and any others on site', 'On arrival — before starting'),
-    yn('a2', 'All required documents signed?', 'Sign all required documents', 'On arrival — before starting'),
-    yn('a3', 'Isolations confirmed in writing?', 'Confirm all isolations in writing — fire, HVAC, electrical, sensors', 'On arrival — before starting', { help: 'Fire, HVAC, electrical, sensors.' }),
-    yn('a4', 'Toolbox talk done with input from all?', 'Perform a thorough toolbox talk with input from all staff', 'On arrival — before starting'),
-    yn('a5', 'Site plan matches the site?', 'Confirm the site plan matches the site; mark up any change', 'On arrival — before starting', { help: 'Mark up any change on the plan.' }),
     yn('a6', 'Neighbours and occupiers notified?', 'Confirm neighbours and occupiers have been notified', 'On arrival — before starting'),
-    yn('a7', 'Signs and barriers up?', 'Place all signage and barriers', 'On arrival — before starting'),
     yn('a8', 'Sign in / out notice at the entrance?', 'Place laminated sign in / out notice at the entrance', 'On arrival — before starting'),
-    yn('a9', 'Primary and secondary boundaries set?', 'Establish the primary and secondary boundaries', 'On arrival — before starting'),
     yn('a10', 'Waste bin delivery and removal arranged?', 'Confirm waste bin delivery and removal arranged', 'On arrival — before starting'),
-    yn('a11', 'Baseline air monitoring done by assessor?', 'Confirm baseline air monitoring completed by the assessor', 'On arrival — before starting'),
     { id: 'sig', q: 'Supervisor sign off', type: 'sign', section: 'Sign off' }
   ]
 };
 
 FORMS.D3 = {
   code: 'D3', ref: 'Form D3 — Site personnel register', title: 'Site personnel register', short: 'Personnel', icon: '👥', who: 'supervisor',
-  help: 'At job start, and again on any crew change.',
+  help: 'At job start, and again on any crew change. Licence, face fit and health monitoring come from each person\u2019s certificates — check and sign.',
   questions: [
-    { id: 'lic', perCrew: true, q: 'licence / unit standards current?', pdf: 'Licence / unit standard current', type: 'yn', noNA: true, bad: ['no'], section: 'Site personnel register' },
-    { id: 'ff', perCrew: true, q: 'face fit expiry date', pdf: 'Face fit expiry', type: 'date', badIf: 'past', section: 'Site personnel register' },
-    { id: 'hm', perCrew: true, q: 'health monitoring current?', pdf: 'Health monitoring current', type: 'yn', noNA: true, bad: ['no'], section: 'Site personnel register' },
     { id: 'sig', q: 'Supervisor sign off', type: 'sign', section: 'Sign off' }
   ]
 };
@@ -183,7 +165,6 @@ FORMS.D6 = {
     yn('s2', 'Boundaries, signs and barriers in place?', 'Primary and secondary boundaries established with signage and barriers', '1. Set-up', { photo: true, showIf: D6S('setup') }),
     yn('s3', 'Isolations confirmed in writing?', 'All isolations confirmed in writing — fire, HVAC, electrical, sensors', '1. Set-up', { showIf: D6S('setup') }),
     yn('s4', 'Enclosure built to B10, penetrations sealed?', 'Enclosure constructed to Section B10 and all penetrations sealed', '1. Set-up', { photo: true, showIf: D6S('setup') }),
-    yn('s5', 'Smoke test passed and on D7?', 'Smoke test passed and recorded on Form D7', '1. Set-up', { showIf: D6S('setup') }),
     yn('s6', 'Negative pressure −5 Pa and 8 ACH logged?', 'Negative pressure achieved and logged — minimum −5 Pa and 8 air changes per hour', '1. Set-up', { showIf: D6S('setup') }),
     yn('s7', 'Decon unit set up and working?', 'Decontamination unit set up, connected and operational', '1. Set-up', { photo: true, showIf: D6S('setup') }),
     yn('s8', 'Waste / bag lock set up and working?', 'Waste / bag lock set up and operational', '1. Set-up', { photo: true, showIf: D6S('setup') }),
@@ -239,19 +220,11 @@ FORMS.D8 = {
     yn('w1', 'Boundaries, fencing and signs intact?', 'Boundaries, fencing and signage intact and correct', 'Weekly inspection', { photo: true }),
     yn('w2', 'Site folder complete and up to date?', 'Site folder complete and up to date — ARCP, SSSP, notification, survey, monitoring results', 'Weekly inspection'),
     yn('w3', 'Hazard board current?', 'Hazard board current', 'Weekly inspection'),
-    yn('w4', 'SWMS signed daily by everyone?', 'SWMS for the work in progress signed daily by everyone on site', 'Weekly inspection'),
-    yn('w5', 'Sign in / out register complete?', 'Sign in / out register complete', 'Weekly inspection'),
-    yn('w6', 'Enclosure and pressure logs complete?', 'Enclosure integrity and negative pressure logs complete', 'Weekly inspection'),
     yn('w7', 'Decon unit clean, working, used right?', 'Decontamination unit clean, operational and correctly used', 'Weekly inspection', { photo: true }),
     yn('w8', 'PPE and RPE good, stored and used right?', 'PPE and RPE in good condition, correctly stored and correctly used', 'Weekly inspection', { photo: true }),
-    yn('w9', 'Everyone clean-shaven as per face fit?', 'Everyone on site clean-shaven as per face fit', 'Weekly inspection'),
     yn('w10', 'Waste secure, double contained, labelled?', 'Waste stored securely, double contained, correctly labelled', 'Weekly inspection', { photo: true }),
     yn('w11', 'Housekeeping — enclosure, decon, waste route, amenities?', 'Housekeeping — enclosure, decontamination unit, waste route and amenities', 'Weekly inspection', { photo: true }),
-    yn('w12', 'Daily checks done all week, faults closed?', 'Daily pre-start equipment and mask checks completed every day this week, and any fault closed out', 'Weekly inspection'),
-    yn('w13', 'Electrical gear tested and tagged?', 'Electrical equipment current on test and tag', 'Weekly inspection', { photo: true }),
     yn('w14', 'First aid, extinguisher and air horn OK?', 'First aid kit stocked; extinguisher and air horn in place and serviceable', 'Weekly inspection', { photo: true }),
-    yn('w15', 'Emergency exit from enclosure clear?', 'Emergency exit route from the enclosure clear', 'Weekly inspection', { photo: true }),
-    yn('w16', 'Air monitoring current and shared?', 'Air monitoring results current and shared with the crew', 'Weekly inspection'),
     { id: 'sig', q: 'Supervisor sign off', type: 'sign', section: 'Sign off' }
   ]
 };
@@ -287,11 +260,11 @@ FORMS.D11 = {
 };
 
 /* Supervisor's "Job forms" menu, in Part D order. D7 is Class A only. */
-/* Site audit — TC-QA-AUD-001 Rev 1.5, Asbestos site audit Class A / B (PM, Branch Manager, HSC, GM Ops; opened from the job QR code or link).
+/* Site audit — TC-QA-AUD-001 Rev 1.6, Asbestos site audit Class A / B (PM, Branch Manager, HSC, GM Ops; opened from the job QR code or link).
    Items as in the Word form. class: 'A' = Class A only, 'B' = Class B only, 'A+B' = both. unit = a reading to record.
-   critical: the form's legend has ▲ critical items but no rows are marked in Rev 1.5, so these are mapped from its STOP-WORK TRIGGERS — confirm. */
+   critical: the ▲ items in Rev 1.6 (taken from the form's stop-work triggers; confirmed by Alistair 13 Nov 2026). */
 var AUDIT = {
-  doc: 'TC-QA-AUD-001', rev: '1.5', title: 'Asbestos site audit — Class A / B', licence: 'RA17100151',
+  doc: 'TC-QA-AUD-001', rev: '1.6', title: 'Asbestos site audit — Class A / B', licence: 'RA17100151',
   critical: ["2.2", "2.3", "2.5", "3.1", "3.3", "3.6", "4.5", "4.10", "5.3", "5.4", "6.1", "6.2", "6.9", "6.10", "7.3", "8.1", "8.3", "12.6"],
   triggers: ['No ARCP on site, or work not matching the ARCP method', 'WorkSafe notification missing, late or materially wrong', 'Removal outside the licence class for the material',
     'Untrained or unfit-tested worker in the removal area', 'No supervisor present on Class A work', 'Enclosure breach or negative pressure failure',
@@ -430,7 +403,7 @@ var AUDIT = {
 /* Corrective actions: raised from site audits (section 14) or on site (CAR), followed up and closed out with evidence (CAF), then verified by a manager. */
 FORMS.CAR = { code: 'CAR', ref: 'Corrective action raised', title: 'Corrective action', short: 'Action', icon: '🛠️', custom: true };
 FORMS.CAF = { code: 'CAF', ref: 'Corrective action follow-up and close-out (TC-QA-AUD-001 section 14)', title: 'Corrective action follow-up', short: 'Follow-up', icon: '✅', custom: true };
-FORMS.AUD = { code: 'AUD', ref: 'TC-QA-AUD-001 Rev 1.5 — Asbestos site audit, Class A / B', title: 'Site audit', short: 'Audit', icon: '🔎', who: 'manager', custom: true };
+FORMS.AUD = { code: 'AUD', ref: 'TC-QA-AUD-001 Rev 1.6 — Asbestos site audit, Class A / B', title: 'Site audit', short: 'Audit', icon: '🔎', who: 'manager', custom: true };
 
 var JOB_FORMS = ['D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11'];
 
