@@ -1989,7 +1989,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v52-202611131730';
+const APP_VERSION = 'v52-202611131800';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 
 const BLANK_BRANCH_MAP = () => ({ Auckland: {}, Wellington: {}, Christchurch: {} });
@@ -2550,10 +2550,11 @@ function _trMonth(brs,y,m){
       used+=st.busy-st.lent+st.borrowed; avail+=Math.max(0,st.cap-st.leave-st.train)+st.borrowed-st.lent; leave+=st.leave; train+=st.train; });
   }
   const ym=y+'-'+String(m+1).padStart(2,'0'), W=S.wfmMonthly||{};
-  let inv=null,invN=0,hrs=null,bill=0;
+  let inv=null,invN=0,hrs=null,bill=0,cost=0;
   brs.concat(brs.length>1?['Unassigned']:[]).forEach(b=>{ const o=W[b]&&W[b][ym]; if(!o) return;
-    inv=(inv||0)+(Number(o.inv)||0); invN+=Number(o.n)||0; hrs=(hrs||0)+(Number(o.hrs)||0); bill+=Number(o.bill)||0; });
-  return (_trCache[key]={val,jobs,used,avail:Math.max(avail,0),leave,train,util:avail>0?used/avail:null,inv,invN,hrs,bill});
+    inv=(inv||0)+(Number(o.inv)||0); invN+=Number(o.n)||0; hrs=(hrs||0)+(Number(o.hrs)||0); bill+=Number(o.bill)||0; cost+=Number(o.cost)||0; });
+  return (_trCache[key]={val,jobs,used,avail:Math.max(avail,0),leave,train,util:avail>0?used/avail:null,inv,invN,hrs,bill,cost,
+    lab:used*(Number(S.cfg.hpd)||8)*(Number(S.cfg.rate)||0)});
 }
 function renderOptTrend(){
   const el=document.getElementById('opt-trend'); if(!el) return;
@@ -2578,17 +2579,26 @@ function renderOptTrend(){
   const pts=M.map((x,i)=>x.util==null?null:[L+i*cw+cw/2,yU(x.util),x]);
   let path='',pen=false; pts.forEach(p=>{ if(!p){pen=false;return;} path+=(pen?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1); pen=true; });
   g+=`<path d="${path}" fill="none" stroke="#FDD835" stroke-width="2.5" stroke-linejoin="round"/>`;
+  { const pmn=(Number(S.cfg.pmin)||30)/100, pmx=(Number(S.cfg.pmax)||35)/100;
+    g=`<rect x="${L}" y="${yU(pmx)}" width="${W-L-R}" height="${yU(pmn)-yU(pmx)}" fill="rgba(168,200,0,.10)"><title>Labour target ${Math.round(pmn*100)}–${Math.round(pmx*100)}%</title></rect>`+g;
+    const lp=M.map((x,i)=>x.val&&x.lab?[L+i*cw+cw/2,yU(x.lab/x.val),x]:null); let lpath='',lpen=false;
+    lp.forEach(p=>{ if(!p){lpen=false;return;} lpath+=(lpen?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1); lpen=true; });
+    g+=`<path d="${lpath}" fill="none" stroke="#FFFFFF" stroke-width="2" stroke-dasharray="6 4" opacity=".85"/>`;
+    lp.forEach(p=>{ if(!p) return; const x=p[2]; g+=`<rect x="${p[0]-4}" y="${p[1]-4}" width="8" height="8" fill="#fff" opacity="${x.fut?.4:1}" transform="rotate(45 ${p[0]} ${p[1]})"><title>${MONTHS[x.m]} ${y}: labour ${Math.round(x.lab/x.val*100)}% of work value — ${_fmtK(x.lab)} est. (${x.used} crew-days × ${Number(S.cfg.hpd)||8}h × $${Number(S.cfg.rate)||0}/h)</title></rect>`; }); }
   pts.forEach(p=>{ if(!p) return; const x=p[2];
     g+=`<circle cx="${p[0]}" cy="${p[1]}" r="4.5" fill="${x.fut?'#1A1B1D':'#FDD835'}" stroke="#FDD835" stroke-width="2"><title>${MONTHS[x.m]} ${y}: ${Math.round(x.util*100)}% crew utilisation — ${x.used} of ${x.avail} available crew-days${x.fut?' (booked so far)':''}</title></circle>`; });
-  const tot=M.reduce((a,x)=>({val:a.val+x.val,used:a.used+x.used,avail:a.avail+x.avail,leave:a.leave+x.leave,train:a.train+x.train,inv:a.inv+(x.inv||0),hrs:a.hrs+(x.hrs||0),bill:a.bill+(x.bill||0)}),{val:0,used:0,avail:0,leave:0,train:0,inv:0,hrs:0,bill:0});
-  const rate=Number(S.cfg&&S.cfg.rate)||0, lab=(h,v)=>h&&v&&rate?Math.round(h*rate/v*100)+'%':'—';
+  const tot=M.reduce((a,x)=>({val:a.val+x.val,used:a.used+x.used,avail:a.avail+x.avail,leave:a.leave+x.leave,train:a.train+x.train,inv:a.inv+(x.inv||0),hrs:a.hrs+(x.hrs||0),bill:a.bill+(x.bill||0),cost:a.cost+(x.cost||0),lab:a.lab+x.lab}),{val:0,used:0,avail:0,leave:0,train:0,inv:0,hrs:0,bill:0,cost:0,lab:0});
+  const rate=Number(S.cfg&&S.cfg.rate)||0, pmin=Number(S.cfg.pmin)||30, pmax=Number(S.cfg.pmax)||35;
+  const pctC=(c,v)=>{ if(!c||!v) return '—'; const p=c/v*100, cl=p>pmax?'#EF4444':p<pmin?'#FDD835':'#A8C800'; return `<span style="color:${cl}">${Math.round(p)}%</span>`; };
+  const wCost=x=>x.cost?x.cost:(x.hrs?x.hrs*rate:0);   // actual WFM timesheet cost, else hours × labour rate
+  const anyActual=M.some(x=>x.cost>0);
   const pc=u=>u==null?'—':Math.round(u*100)+'%';
   const row=(lbl,f,t)=>`<tr><td>${lbl}</td>${M.map(x=>`<td class="${x.fut?'fut':''}">${f(x)}</td>`).join('')}<td><b>${t}</b></td></tr>`;
   el.innerHTML=`<div class="tr-card">
     <div class="tr-head"><h3>Year trend — ${br==='All'?'all branches':br}</h3>
       <div class="tr-seg">${['All','Auckland','Wellington','Christchurch'].map(b=>`<button class="${b===br?'on':''}" onclick="optTrendSet('br','${b}')">${b==='All'?'All':BR_CODE[b]}</button>`).join('')}</div>
       <div class="tr-yr"><button onclick="optTrendSet('y',-1)">‹</button>${y}<button onclick="optTrendSet('y',1)">›</button></div></div>
-    <div class="tr-key"><span><i style="background:${col}"></i>Value of work in the month (multi-month jobs split across months, incl. finished / invoiced)</span><span><i style="background:#FDD835;border-radius:50%"></i>Crew utilisation = crew-days on jobs ÷ crew-days available (weekdays, less leave &amp; training)</span><span>Faded = future months, booked so far</span>${hasW?`<span><i style="background:#A8C800"></i>Invoiced in WorkflowMax (ex GST, by invoice date)</span>`:`<span style="color:#78797C">📥 WorkflowMax actuals (invoiced $ and timesheet hours) appear here once WorkflowMax is connected</span>`}</div>
+    <div class="tr-key"><span><i style="background:${col}"></i>Value of work in the month (multi-month jobs split across months, incl. finished / invoiced)</span><span><i style="background:#FDD835;border-radius:50%"></i>Crew utilisation = crew-days on jobs ÷ crew-days available (weekdays, less leave &amp; training)</span><span><i style="background:#fff;transform:rotate(45deg);width:8px;height:8px"></i>Labour % of work value (schedule estimate) · green band = ${Number(S.cfg.pmin)||30}–${Number(S.cfg.pmax)||35}% target</span><span>Faded = future months, booked so far</span>${hasW?`<span><i style="background:#A8C800"></i>Invoiced in WorkflowMax (ex GST, by invoice date)</span>`:`<span style="color:#78797C">📥 WorkflowMax actuals (invoiced $ and timesheet hours) appear here once WorkflowMax is connected</span>`}</div>
     <div class="tr-wrap"><svg class="tr-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">${g}</svg></div>
     <div class="tr-wrap"><table class="tr-tbl"><thead><tr><th></th>${M.map(x=>`<th class="${x.fut?'fut':''}">${MONTHS[x.m].slice(0,3)}</th>`).join('')}<th>Year</th></tr></thead><tbody>
       ${row('Value',x=>x.val?_fmtK(x.val):'—',_fmtK(tot.val))}
@@ -2597,12 +2607,15 @@ function renderOptTrend(){
       ${row('Crew-days available',x=>x.avail||'—',tot.avail)}
       ${row('Utilisation',x=>pc(x.util),pc(tot.avail?tot.used/tot.avail:null))}
       ${row('Leave / training days',x=>(x.leave+x.train)||'—',tot.leave+tot.train)}
+      ${row('Labour cost (est.)',x=>x.lab?_fmtK(x.lab):'—',_fmtK(tot.lab))}
+      ${row('Labour % of work value',x=>pctC(x.lab,x.val),pctC(tot.lab,tot.val))}
       ${hasW?`<tr><td colspan="14" style="text-align:left;color:#A8C800;padding-top:10px">WorkflowMax actuals${S.wfmMonthly&&S.wfmMonthly.updated?` · updated ${_esc(String(S.wfmMonthly.updated).slice(0,16).replace('T',' '))}`:''}</td></tr>
       ${row('Invoiced ex GST',x=>x.inv?_fmtK(x.inv):'—',_fmtK(tot.inv))}
       ${row('Invoices',x=>x.invN||'—','')}
       ${row('Timesheet hrs',x=>x.hrs?Math.round(x.hrs).toLocaleString('en-NZ'):'—',Math.round(tot.hrs).toLocaleString('en-NZ'))}
       ${row('Billable hrs',x=>x.bill?Math.round(x.bill).toLocaleString('en-NZ'):'—',Math.round(tot.bill).toLocaleString('en-NZ'))}
-      ${row('Labour % of invoiced',x=>lab(x.hrs,x.inv),lab(tot.hrs,tot.inv))}}`:''}
+      ${row(anyActual?'Labour cost (WFM actual)':'Labour cost (WFM hrs × rate)',x=>!wCost(x)?'—':(anyActual&&!x.cost?`<span title="No WorkflowMax cost for this month — estimated as hours × $${rate}/h">~${_fmtK(wCost(x))}</span>`:_fmtK(wCost(x))),_fmtK(M.reduce((a,x)=>a+wCost(x),0)))}
+      ${row('Labour % of invoiced',x=>pctC(wCost(x),x.inv),pctC(M.reduce((a,x)=>a+wCost(x),0),tot.inv))}`:''}
     </tbody></table></div></div>`;
 }
 
@@ -3585,12 +3598,14 @@ function handleGetJobs() {
   const wfmMonthly = {Auckland:{}, Wellington:{}, Christchurch:{}, Unassigned:{}};
   const wmSheet = ss.getSheetByName('WFM_Monthly');
   if (wmSheet && wmSheet.getLastRow() > 1) {
-    wmSheet.getRange(2, 1, wmSheet.getLastRow() - 1, 7).getValues().forEach(function(r) {
+    const wmCols = Math.max(7, wmSheet.getLastColumn());
+    wmSheet.getRange(2, 1, wmSheet.getLastRow() - 1, wmCols).getValues().forEach(function(r) {
       const ym = r[0] instanceof Date ? Utilities.formatDate(r[0], 'Pacific/Auckland', 'yyyy-MM') : String(r[0] || '').slice(0, 7);
       const br = String(r[1] || '').trim();
-      if (ym && wfmMonthly[br]) wfmMonthly[br][ym] = {inv: Number(r[2]) || 0, n: Number(r[3]) || 0, hrs: Number(r[4]) || 0, bill: Number(r[5]) || 0};
+      const hasCost = wmCols >= 8;   // 'Labour cost' column (wfm v3 with timesheet costs)
+      if (ym && wfmMonthly[br]) wfmMonthly[br][ym] = {inv: Number(r[2]) || 0, n: Number(r[3]) || 0, hrs: Number(r[4]) || 0, bill: Number(r[5]) || 0, cost: hasCost ? (Number(r[6]) || 0) : 0};
     });
-    wfmMonthly.updated = String(wmSheet.getRange(2, 7).getValue() || '');
+    wfmMonthly.updated = String(wmSheet.getRange(2, wmCols >= 8 ? 8 : 7).getValue() || '');
   }
 
   return json({ok:true, jobs:allJobs, staff:staff, leave:leave, training:training, wfmMonthly:wfmMonthly, count:allJobs.length});
