@@ -93,6 +93,22 @@ var CERT_TYPES = [
 ];
 var CERT_WARN_DAYS = 60;
 
+/* Method Library (TC-METH-LIB-001) and SWMS — DEMO entries only, to show how it works.
+   The real library comes from the Master Data workbook ('Method Library' sheet) and the library folder in Microsoft 365, through the back end.
+   kind: 'material' (one per asbestos material — names the method it covers) or 'task' (high-risk task). cls: 'A', 'B' or 'A/B'. */
+var LIBRARY_DEMO = [
+  { code: 'DEMO-M01', title: 'Textured ceiling — wet scrape', kind: 'material', cls: 'B', rev: '1.0', rpe: 'P3 half face (min)', summary: 'Demo entry — replaced by the real Method Library.' },
+  { code: 'DEMO-M02', title: 'Vinyl and backing — hand removal', kind: 'material', cls: 'B', rev: '1.0', rpe: 'P3 half face (min)', summary: 'Demo entry — replaced by the real Method Library.' },
+  { code: 'DEMO-M03', title: 'Roof sheeting (e.g. Super Six) — unscrew and lower', kind: 'material', cls: 'B', rev: '1.0', rpe: 'P3 half face (min)', summary: 'Demo entry — replaced by the real Method Library.' },
+  { code: 'DEMO-M04', title: 'Pipe lagging — full enclosure', kind: 'material', cls: 'A', rev: '1.0', rpe: 'P3 full face / PAPR', summary: 'Demo entry — replaced by the real Method Library.' },
+  { code: 'DEMO-M05', title: 'Glove bag — small friable section', kind: 'material', cls: 'A', rev: '1.0', rpe: 'P3 full face / PAPR', summary: 'Demo entry — replaced by the real Method Library.' },
+  { code: 'DEMO-T01', title: 'Working at height', kind: 'task', cls: 'A/B', rev: '1.0', summary: 'Demo entry — task SWMS.' },
+  { code: 'DEMO-T02', title: 'Confined or restricted space entry', kind: 'task', cls: 'A/B', rev: '1.0', summary: 'Demo entry — task SWMS.' },
+  { code: 'DEMO-T03', title: 'Electrical isolation', kind: 'task', cls: 'A/B', rev: '1.0', summary: 'Demo entry — task SWMS.' },
+  { code: 'DEMO-T04', title: 'Hot work', kind: 'task', cls: 'A/B', rev: '1.0', summary: 'Demo entry — task SWMS.' },
+  { code: 'DEMO-T05', title: 'Site traffic and waste loading', kind: 'task', cls: 'A/B', rev: '1.0', summary: 'Demo entry — task SWMS.' }
+];
+
 /* Demo data — replaced by today's jobs and crew from the schedule's hsFeed (read-only, via the H&S back end) once API_URL is set.
    Jobs are found by jobKey (= Job No, or the schedule ID when there's no Job No): <app URL>?job=<JOBKEY> */
 var DEMO = {
@@ -107,6 +123,8 @@ var DEMO = {
       certs: { bclass: '2023-08-30', ffhalf: '2027-03-03', fffull: '2024-09-24', medical: '2027-04-04', sitesafe: '2025-02-16' } },
     { id: 'P06', name: 'Sam Taylor', role: 'pm', branch: 'Auckland',   /* Project Manager — opens the job QR / link for a site visit or audit */
       certs: { ffhalf: '2027-04-20', fffull: '2027-04-20', medical: '2027-06-01', sitesafe: '2028-05-05' } },
+    { id: 'P07', name: 'Lena Chen', role: 'supervisor', branch: 'Auckland',   /* a second supervisor — to try a handover from the job QR code */
+      certs: { aclass: '2018-05-01', supervise: '2018-05-01', ffhalf: '2027-09-10', fffull: '2027-09-10', medical: '2027-10-02', sitesafe: '2028-01-20' } },
     { id: 'P05', name: 'Tama Wiremu', role: 'crew', branch: 'Auckland',   /* not on today's crew — to try the "not rostered" sign-on */
       certs: { ffhalf: '2027-08-11', fffull: '2027-08-11', medical: '2027-09-30', sitesafe: '2028-03-14' } }
   ],
@@ -114,6 +132,6 @@ var DEMO = {
     { jobKey: 'J0104551', id: 'j_demo_0001', jobNo: 'J0104551', folderNo: '3365', street: '132 Canal Road', suburb: 'Avondale', cls: 'B', status: 'open',
       start: '7:00am', supervisorId: 'P01', pm: 'Project Manager', branch: 'Auckland',
       crewIds: ['P01', 'P02', 'P03', 'P04'],
-      swms: ['SWMS B-02 Textured ceiling removal', 'SWMS B-07 Vinyl and backing removal'] }
+      swms: [] }
   ]
 };

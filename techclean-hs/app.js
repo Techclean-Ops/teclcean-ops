@@ -99,7 +99,7 @@
     if (!isOnline()) return Promise.resolve();
     var me = localStorage.getItem('tc.token') || '';
     return fetch(CONFIG.API_URL + '?action=today&token=' + encodeURIComponent(me)).then(function (r) { return r.json(); }).then(function (d) {
-      if (d && d.jobs) { localStorage.setItem('tc.data', JSON.stringify(d)); setData(d); }
+      if (d && d.jobs) { var recs = d.records; delete d.records; localStorage.setItem('tc.data', JSON.stringify(d)); setData(d); return mergeRemote(recs); }
     }).catch(function () {});
   }
   function applyDemoOverrides(d) {
@@ -108,7 +108,19 @@
     var cl = localStorage.getItem('tc.demo.cls');
     if (cl) d.jobs.forEach(function (j) { j.cls = cl; });
   }
-  function setData(d) { S.people = d.people || []; S.jobs = d.jobs || []; if (d.me) S.meFromServer = d.me; }
+  function setData(d) { S.people = d.people || []; S.jobs = d.jobs || []; S.library = d.library || LIBRARY_DEMO; if (d.me) S.meFromServer = d.me; }
+  /* Records made on other phones for the same jobs (from the back end): kept here so every phone sees the whole job, even with no signal. */
+  async function mergeRemote(list) {
+    if (!list || !list.length) return;
+    var have = {}, changed = false; RECS.forEach(function (r) { have[r.id] = r; });
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i]; if (have[r.id]) continue;
+      r.status = 'sent'; r.remote = true; await DB.put(r); have[r.id] = r; changed = true;
+    }
+    if (!changed) return;
+    for (var k in have) { var x = have[k]; if (x.supersedes && have[x.supersedes] && !have[x.supersedes].supersededBy) { have[x.supersedes].supersededBy = x.id; await DB.put(have[x.supersedes]); } }
+    await refreshRecs();
+  }
 
   function resolveMe() {
     var id = localStorage.getItem('tc.me');
@@ -121,6 +133,7 @@
       var x = S.jobs[i], keys = [x.jobKey, x.jobNo, x.id].filter(Boolean).map(function (k) { return String(k).toUpperCase(); });
       if (want ? keys.indexOf(want) >= 0 : (S.me && x.crewIds.indexOf(S.me.id) >= 0)) { j = x; if (want) break; }
     }
+    if (j) applyHandover(j);
     S.job = j;
     S.notRostered = !!(j && S.me && j.crewIds.indexOf(S.me.id) < 0 && !MGR_ROLES[S.me.role]);   // scanned / tapped a job they're not crewed on today
   }
@@ -135,13 +148,15 @@
   }
   function statusFor(pid) {
     var ffw = mine('FFW', pid), d13 = mine('D13', pid);
-    var d1 = RECS.filter(function (r) { return !r.supersededBy && r.form === 'D1' && r.personId === pid && S.job && r.jobNo === S.job.jobNo && r.data.rev === arcpRev(); })[0] || null;
+    var d1 = RECS.filter(function (r) { return !r.supersededBy && r.form === 'D1' && r.personId === pid && S.job && r.jobNo === S.job.jobNo && r.data.rev === arcpRev() && sameSwms(r.data.swms); })[0] || null;
     return { ffw: ffw, d13: d13, d1: d1 };
   }
   /* Uploaded job documents (ARCP, survey, WSN …). The latest ARCP upload sets the revision crew must sign. */
   var DOC_TYPES = [['arcp', '📕', 'ARCP / SSSP', 'ARCP'], ['survey', '🔬', 'Asbestos survey / report', 'Survey'], ['wsn', '🏛️', 'WorkSafe notification', 'WSN'],
     ['swms', '📑', 'SWMS', 'H&S/Documents'], ['air', '🌬️', 'Air monitoring results', 'H&S/Documents'], ['clear', '✅', 'Clearance certificate', 'H&S/Documents'],
-    ['sds', '🧪', 'Safety data sheet', 'H&S/Documents'], ['plan', '🗺️', 'Site plan / drawing', 'Drawing'], ['other', '📄', 'Other', 'H&S/Documents']];
+    ['sds', '🧪', 'Safety data sheet', 'H&S/Documents'], ['plan', '🗺️', 'Site plan / drawing', 'Drawing'],
+    ['permit', '🪪', 'Permit — heights, hot work, isolation', 'H&S/Documents'], ['photos', '📸', 'Site photos', 'Photos'], ['variation', '✉️', 'Client instruction / variation', 'Documents'],
+    ['plantcert', '🔧', 'Plant / equipment certificate', 'H&S/Documents'], ['other', '📄', 'Other', 'H&S/Documents']];
   function docType(k) { return DOC_TYPES.filter(function (t) { return t[0] === k; })[0] || DOC_TYPES[DOC_TYPES.length - 1]; }
   function jobDocs() { return RECS.filter(function (r) { return r.form === 'DOC' && S.job && r.jobNo === S.job.jobNo && !r.supersededBy; }).sort(function (x, y) { return DOC_TYPES.indexOf(docType(x.data.type)) - DOC_TYPES.indexOf(docType(y.data.type)) || y.createdAt - x.createdAt; }); }
   function arcpRev() {
@@ -435,6 +450,7 @@
       }
       h += tile('d1', '✍️', 'y', 'Sign ARCP / SWMS', st.d1 ? chip('done', 'Signed') : chip('new', '1 new'));
       h += tile('d12', '⚠️', 'p', 'Report incident / hazard', '');
+      if (!isSup && S.me.role === 'supervisor') h += tile('take', '🤝', 'y', 'Take over as supervisor', '');
       if (isSup) h += tile('forms', '🗂️', 'y', 'Job forms', chip('wait', 'D2–D11'));
       h += tile('file', '📁', 'b', 'Site file', chip('wait', onSiteNow().length + ' on site'));
       if (isSup) h += crewCard();
@@ -489,6 +505,9 @@
     else if (what === 'file') { enter(); renderSiteFile(); }
     else if (what === 'forms') { enter(); renderJobForms(); }
     else if (what === 'aud') { enter(); renderAudit(); }
+    else if (what === 'add') { history.pushState({ v: 1 }, ''); renderAddDoc(function () { renderToday(); }); }
+    else if (what === 'lib') { enter(); renderLibrary(); }
+    else if (what === 'take') { enter(); renderHandover('in'); }
     else if (what === 'acts') { enter(); S.actsFrom = null; renderActions(); }
   }
 
@@ -522,6 +541,8 @@
       h += tile('aud', '🔎', 'r', 'Site audit', aud ? chip('done', 'Last ' + (aud.date === today() ? hm(aud.createdAt) : certDate(aud.date))) : chip('new', 'Start'));
     }
     h += tile('file', '📁', 'b', 'Site file', chip('wait', onSiteNow().length + ' on site'));
+    if (j.status !== 'closed') h += tile('add', '➕', 'g', 'Add to job', '<span class="small">documents, photos, permits</span>');
+    h += tile('lib', '📚', 'y', 'SWMS library', chip('wait', jobSwms().length + ' on job'));
     if (j.status !== 'closed') {
       h += tile('d12', '⚠️', 'p', 'Report incident / hazard', '');
       h += tile('ffw', '🧑‍🔧', 'y', 'Fit for work', '<span class="small">only if entering the work area</span>');
@@ -1080,7 +1101,7 @@
       (ac.total ? tile('acts', '🛠️', 'y', 'Corrective actions', ac.overdue ? chip('todo', ac.overdue + ' overdue') : ac.open ? chip('new', ac.open + ' open') : ac.awaiting ? chip('wait', ac.awaiting + ' to check') : chip('done', 'All closed')) : '') +
       tile('d12', '⚠️', 'p', 'Report incident / hazard', '') +
       '<div class="pics" style="margin-top:0">' +
-      [['D10', '🚛', 'Waste load'], ['D11', '🧰', 'Inventory out / back'], ['D4', '🎓', 'Induct someone new'], ['visitor', '🪪', 'Visitor sign in'], ['file', '📁', 'Site file']]
+      [['add', '➕', 'Add to job'], ['lib', '📚', 'SWMS library'], ['D10', '🚛', 'Waste load'], ['D11', '🧰', 'Inventory out / back'], ['D4', '🎓', 'Induct someone new'], ['visitor', '🪪', 'Visitor sign in'], ['file', '📁', 'Site file'], ['hnd', '🤝', 'Hand over to another supervisor']]
         .map(function (b) { return '<button data-any="' + b[0] + '"><span>' + b[1] + '</span>' + b[2] + '</button>'; }).join('') + '</div>';
     h += footLinks() + '</div>';
     app.innerHTML = h; renderBanner(); bindFootLinks();
@@ -1096,6 +1117,9 @@
     $$('[data-any]').forEach(function (b) { b.onclick = function () {
       var k = b.getAttribute('data-any');
       if (k === 'file') { enter(); renderSiteFile(); }
+      else if (k === 'add') { history.pushState({ v: 1 }, ''); renderAddDoc(function () { renderToday(); }); }
+      else if (k === 'lib') { enter(); renderLibrary(); }
+      else if (k === 'hnd') { enter(); renderHandover('out'); }
       else if (k === 'visitor') { enter(); renderVisitor(); }
       else if (k === 'D11') { enter(); renderInventory(null); }
       else { enter(); startFlow(k); }
@@ -1509,7 +1533,7 @@
     if (S.amend) st.d1 = null;
     var h = top('Sign ARCP / SWMS', W.name + ' · ' + jobSub(), true) + '<div class="body"><div class="card"><div class="lbl" style="margin-top:0">For this job</div>' +
       '<div style="font-weight:700">ARCP / SSSP ' + esc(CONFIG.ARCP_DOC) + ' Rev ' + esc(arcpRev()) + '</div>' +
-      j.swms.map(function (s) { return '<div style="font-weight:700">' + esc(s) + '</div>'; }).join('') +
+      swmsLabels().map(function (s) { return '<div style="font-weight:700">' + esc(s) + '</div>'; }).join('') + (swmsLabels().length ? '' : '<div class="small">No SWMS issued to this job yet — the supervisor or PM issues them from the SWMS library.</div>') +
       jobDocs().filter(function (d) { return d.data.type === 'arcp' || d.data.type === 'swms'; }).map(function (d) { return '<button class="chip wait" style="border:0;padding:10px 14px;margin:6px 6px 0 0" data-doc="' + d.id + '">Read ' + esc(docType(d.data.type)[2]) + (d.data.rev ? ' Rev ' + esc(d.data.rev) : '') + '</button>'; }).join('') +
       '<p class="small">Your supervisor has briefed you on these. Ask if anything isn’t clear.</p></div>' +
       '<div class="card"><p style="margin:0;font-size:18px">' + esc(FORMS.D1.statement) + '</p></div>' +
@@ -1522,8 +1546,8 @@
     go.onclick = async function () {
       go.disabled = true;
       var rec = { form: 'D1', formTitle: 'ARCP and SSSP acknowledgement — ' + W.name, formRef: FORMS.D1.ref, jobNo: j.jobNo, personId: W.id,
-        data: { rev: arcpRev(), swms: j.swms }, statement: FORMS.D1.statement,
-        details: jobDetails([['Worker', W.name], ['ARCP / SSSP', CONFIG.ARCP_DOC + ' Rev ' + arcpRev()], ['SWMS', j.swms.join('; ')]]),
+        data: { rev: arcpRev(), swms: swmsLabels() }, statement: FORMS.D1.statement,
+        details: jobDetails([['Worker', W.name], ['ARCP / SSSP', CONFIG.ARCP_DOC + ' Rev ' + arcpRev()], ['SWMS', swmsLabels().join('; ') || 'None issued']]),
         rows: [], sigs: [{ name: W.name, label: 'Worker — Rev ' + arcpRev() + ' signed', time: Date.now(), img: sig.data() }] };
       rec.fileName = fileName({ date: today() }, 'ARCP SWMS sign', W.name); rec.folder = folderFor(j);
       await saveRecord(rec);
@@ -1748,6 +1772,11 @@
       return '<button class="it" style="width:100%;border:0;background:none;text-align:left" data-cert="' + pid + '"><span><b>' + esc(p.name) + '</b><br><span class="small">' + cl.length + ' on record</span></span>' +
         (bad.some(function (c) { return c.stopWork; }) ? chip('todo', 'Fit test expired') : bad.length ? chip('new', bad.length + ' expired') : soon.length ? chip('new', soon.length + ' due soon') : chip('done', 'All current')) + '</button>';
     }).join('') + '</div></div>';
+    var sw = jobSwms();
+    h += '<div class="card"><div class="lbl" style="margin-top:0">SWMS on this job — register (ARCP C3)</div><div class="list">' + (sw.length ? sw.map(function (x) {
+      var lib = libItem(x.code), newer = lib && lib.rev !== x.rev;
+      return '<button class="it" style="width:100%;border:0;background:none;text-align:left" data-lib="' + esc(x.code) + '"><span><b>' + esc(x.code) + '</b> ' + esc(x.title) + '<br><span class="small">Rev ' + esc(x.rev) + ' · ' + esc(x.kind === 'task' ? 'task' : 'material') + (x.area ? ' · ' + esc(x.area) : '') + ' · issued ' + niceDate(x.date) + '</span></span>' + (newer ? chip('new', 'Rev ' + lib.rev + ' out') : '') + '</button>';
+    }).join('') : '<div class="small">None issued yet.</div>') + '</div><button class="btn sec" id="lib" style="margin-top:12px;font-size:18px;min-height:54px;padding:12px">📚 SWMS library</button></div>';
     var ac = actCounts();
     h += '<button class="card" style="width:100%;text-align:left;border:0" id="acts"><div class="lbl" style="margin-top:0">Corrective actions</div><div class="it" style="border:0;padding:0"><span>' +
       (ac.total ? ac.open + ' open · ' + ac.awaiting + ' awaiting check · ' + ac.closed + ' closed' : 'None raised') + '</span>' + (ac.overdue ? chip('todo', ac.overdue + ' overdue') : ac.open ? chip('new', 'Open') : chip('done', 'Clear')) + '</div></button>';
@@ -1758,7 +1787,7 @@
       h += '<div class="it"><span><b>' + t[1] + ' ' + esc(d.data.title) + '</b><br><span class="small">' + esc(t[2]) + (d.data.rev ? ' · Rev ' + esc(d.data.rev) : '') + ' · added ' + niceDate(d.date) + (d.version > 1 ? ' · v' + d.version : '') + '</span></span>' +
         '<button class="chip wait" style="border:0;padding:10px 14px" data-doc="' + d.id + '">Open</button></div>';
     });
-    h += '</div>' + (canUpload() ? '<button class="btn sec" id="adddoc" style="margin-top:12px;font-size:18px;min-height:54px;padding:12px">＋ Add document</button>' : '') + '</div>';
+    h += '</div>' + (canUpload() ? '<button class="btn sec" id="adddoc" style="margin-top:12px;font-size:18px;min-height:54px;padding:12px">➕ Add to job — document, photos, permit</button>' : '') + '</div>';
     var inv = invSummary().filter(function (x) { return x.kind === 'c' && x.out; });
     if (inv.length) {
       var tot = 0, unp = 0;
@@ -1783,7 +1812,9 @@
     $$('[data-doc]').forEach(function (b) { b.onclick = function () { openDoc(recById(b.getAttribute('data-doc'))); }; });
     var ip = $('#invpdf'); if (ip) ip.onclick = invPdf;
     $$('[data-cert]').forEach(function (b) { b.onclick = function () { history.pushState({ v: 1 }, ''); renderCerts(b.getAttribute('data-cert')); }; });
-    var ad = $('#adddoc'); if (ad) ad.onclick = function () { history.pushState({ v: 1 }, ''); renderAddDoc(); };
+    var ad = $('#adddoc'); if (ad) ad.onclick = function () { history.pushState({ v: 1 }, ''); renderAddDoc(function () { renderSiteFile(); }); };
+    var lb = $('#lib'); if (lb) lb.onclick = function () { enter(function () { renderSiteFile(); }); renderLibrary(); };
+    $$('[data-lib]').forEach(function (b) { b.onclick = function () { enter(function () { renderSiteFile(); }); renderLibItem(b.getAttribute('data-lib')); }; });
     $$('[data-f]').forEach(function (b) { b.onclick = function () { history.pushState({ v: 1 }, ''); renderFormList(PARTD[+b.getAttribute('data-f')]); }; });
     $$('[data-out]').forEach(function (b) { b.onclick = function () { signOutVisitor(b.getAttribute('data-out')).then(renderSiteFile); }; });
     S.onBack = null;
@@ -2045,52 +2076,219 @@
 
   /* ---------- upload a document (ARCP, survey report, WSN, clearance certificate …) ---------- */
   function canUpload() { return (isSup() || isMgr()) && S.job && S.job.status !== 'closed'; }
-  function renderAddDoc() {
-    var D = { type: null, file: null, mime: null, name: null };
-    S.onBack = function () { history.pushState({ v: 1 }, ''); renderSiteFile(); };
-    app.innerHTML = top('Add document', S.job.street, true) + '<div class="body"><div class="lbl" style="margin-top:4px">What is it?</div><div class="pics">' +
+  /* Add to job: any document, a multi-page paper scan, site photos or a permit — saved on the phone and filed to the job folder. */
+  function renderAddDoc(back) {
+    back = back || function () { renderSiteFile(); };
+    var D = { type: null, file: null, mime: null, name: null, pages: [] };
+    S.onBack = function () { history.pushState({ v: 1 }, ''); back(); };
+    app.innerHTML = top('Add to job', S.job.street + ' · ' + S.job.jobNo, true) + '<div class="body"><div class="lbl" style="margin-top:4px">What is it?</div><div class="pics">' +
       DOC_TYPES.map(function (t) { return '<button data-t="' + t[0] + '"><span>' + t[1] + '</span>' + esc(t[2]) + '</button>'; }).join('') + '</div>' +
       '<div id="revbox" class="hidden"><div class="lbl">Revision</div><input type="text" id="rev" placeholder="e.g. 1.3"></div>' +
-      '<div class="lbl">Title</div><input type="text" id="ttl" placeholder="e.g. Asbestos survey — Smith Assessors, Oct 2026">' +
-      '<div class="lbl">File</div><label class="photo" id="pick"><span>📎 Choose a PDF or photo</span><input type="file" accept="application/pdf,image/*" class="hidden"></label>' +
-      '<label class="photo" id="cam" style="margin-top:10px;min-height:70px"><span>📷 Or photograph a paper copy</span><input type="file" accept="image/*" capture="environment" class="hidden"></label>' +
-      '<p class="small">PDFs work best. Save Word files (like the ARCP) as PDF first. A new ARCP, survey or WorkSafe notification replaces the current one — the old one is kept.</p></div>' +
-      '<div class="foot"><button class="btn" id="go" disabled>Upload</button></div>';
+      '<div class="lbl">Title</div><input type="text" id="ttl" placeholder="Filled in when you pick the type — change it if you like">' +
+      '<div class="lbl">Scan a paper copy — one photo per page</div>' + photoBox('scan') +
+      '<div class="lbl">Or choose a file</div><label class="photo" id="pick" style="min-height:70px"><span>📎 PDF, Word, Excel or photo</span><input type="file" accept="application/pdf,.pdf,.doc,.docx,.xls,.xlsx,image/*" class="hidden"></label>' +
+      '<div class="lbl">Note (optional)</div><input type="text" id="note" placeholder="e.g. received from client 14 Nov">' +
+      '<p class="small">Scanned pages become one PDF. A new ARCP, survey or WorkSafe notification replaces the current one — the old one is kept. Everything is filed to the job folder.</p></div>' +
+      '<div class="foot"><button class="btn" id="go" disabled>Add to job</button></div>';
     bindBack(); renderBanner();
     var go = $('#go');
-    function check() { go.disabled = !(D.type && D.file && $('#ttl').value.trim() && (D.type !== 'arcp' || $('#rev').value.trim())); }
+    function check() { go.disabled = !(D.type && (D.file || D.pages.length) && $('#ttl').value.trim() && (D.type !== 'arcp' || $('#rev').value.trim())); }
+    bindPhotos($('#scan'), D.pages, function () { if (D.pages.length) { D.file = null; $('#pick span').textContent = '📎 PDF, Word, Excel or photo'; } check(); });
     $$('[data-t]').forEach(function (b) { b.onclick = function () {
       D.type = b.getAttribute('data-t'); $$('[data-t]').forEach(function (x) { x.classList.toggle('on', x === b); });
       $('#revbox').classList.toggle('hidden', D.type !== 'arcp');
-      if (!$('#ttl').value || $('#ttl').dataset.auto) { $('#ttl').value = D.type === 'arcp' ? CONFIG.ARCP_DOC + ' — ' + S.job.street : docType(D.type)[2] + ' — ' + S.job.street; $('#ttl').dataset.auto = '1'; }
+      if (!$('#ttl').value || $('#ttl').dataset.auto) { $('#ttl').value = (D.type === 'arcp' ? CONFIG.ARCP_DOC : docType(D.type)[2]) + ' — ' + niceDate(today()); $('#ttl').dataset.auto = '1'; }
       check(); }; });
     $('#ttl').oninput = function () { delete $('#ttl').dataset.auto; check(); };
     $('#rev').oninput = check;
-    [['#pick', false], ['#cam', true]].forEach(function (x) {
-      var box = $(x[0]), inp = box.querySelector('input');
-      inp.onchange = function () {
-        var f = inp.files && inp.files[0]; if (!f) return;
-        if (f.size > 25 * 1024 * 1024) { toast('That file is over 25 MB — too big for the phone'); return; }
-        var done = function (url, mime) { D.file = url; D.mime = mime; D.name = f.name; $('#pick span').textContent = '📎 ' + f.name + ' (' + Math.round(f.size / 1024) + ' KB)'; check(); };
-        if (f.type.indexOf('image/') === 0) shrink(f).then(function (u) { done(u, 'image/jpeg'); });
-        else { var fr = new FileReader(); fr.onload = function () { done(fr.result, f.type || 'application/pdf'); }; fr.readAsDataURL(f); }
-      };
-    });
+    var inp = $('#pick input');
+    inp.onchange = function () {
+      var f = inp.files && inp.files[0]; if (!f) return;
+      if (f.size > 25 * 1024 * 1024) { toast('That file is over 25 MB — too big for the phone'); return; }
+      var done = function (url, mime) { D.file = url; D.mime = mime; D.name = f.name; D.pages.length = 0; bindPhotos($('#scan'), D.pages, check); $('#pick span').textContent = '📎 ' + f.name + ' (' + Math.round(f.size / 1024) + ' KB)'; check(); };
+      if (f.type.indexOf('image/') === 0) shrink(f).then(function (u) { done(u, 'image/jpeg'); });
+      else { var fr = new FileReader(); fr.onload = function () { done(fr.result, f.type || 'application/octet-stream'); }; fr.readAsDataURL(f); }
+    };
     go.onclick = async function () {
-      go.disabled = true;
+      go.disabled = true; go.textContent = 'Saving…';
+      if (D.pages.length) { D.file = await imagesToPdf(D.pages); D.mime = 'application/pdf'; D.name = 'scan.pdf'; }
       var t = docType(D.type), old = (D.type === 'arcp' || D.type === 'survey' || D.type === 'wsn') ? jobDocs().filter(function (d) { return d.data.type === D.type; })[0] : null;
-      var ext = D.mime === 'application/pdf' ? '.pdf' : '.jpg', title = $('#ttl').value.trim();
+      var ext = (D.name && D.name.match(/\.[a-z0-9]{2,5}$/i) || [D.mime === 'application/pdf' ? '.pdf' : '.jpg'])[0].toLowerCase(), title = $('#ttl').value.trim();
       var rec = { form: 'DOC', formTitle: t[2], formRef: 'Job document', jobNo: S.job.jobNo, personId: S.me.id,
-        data: { type: D.type, title: title, rev: D.type === 'arcp' ? $('#rev').value.trim() : '', origName: D.name, mime: D.mime },
+        data: { type: D.type, title: title, rev: D.type === 'arcp' ? $('#rev').value.trim() : '', origName: D.name, mime: D.mime, note: $('#note').value.trim(), pages: D.pages.length || null },
         file: D.file, fileName: today() + ' ' + title.replace(/[\\/:*?"<>|]/g, '') + (D.type === 'arcp' ? ' Rev ' + $('#rev').value.trim() : '') + ext,
         folder: folderFor(S.job).replace(/H&S\/$/, t[3] + '/') };
       if (old) { rec.version = (old.version || 1) + 1; rec.supersedes = old.id; rec.rootId = old.rootId || old.id; rec.reason = 'Replaced by upload'; }
       await saveRecord(rec);
       if (old) { old.supersededBy = rec.id; old.supersededAt = Date.now(); await DB.put(old); await refreshRecs(); }
-      toast(t[2] + ' added' + (D.type === 'arcp' && old && old.data.rev !== rec.data.rev ? ' — crew must re-sign Rev ' + rec.data.rev : ''));
-      history.replaceState({ v: 1 }, ''); renderSiteFile();
+      toast(t[2] + ' added to the job' + (D.type === 'arcp' && old && old.data.rev !== rec.data.rev ? ' — crew must re-sign Rev ' + rec.data.rev : ''));
+      history.replaceState({ v: 1 }, ''); back();
     };
   }
+  async function imagesToPdf(pages) {
+    var doc = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' }), W = 210, H = 297, m = 8;
+    for (var i = 0; i < pages.length; i++) {
+      var im = await new Promise(function (res) { var x = new Image(); x.onload = function () { res(x); }; x.src = pages[i].img; });
+      var r = Math.min((W - 2 * m) / im.width, (H - 2 * m) / im.height), w = im.width * r, h = im.height * r;
+      if (i) doc.addPage();
+      doc.addImage(pages[i].img, 'JPEG', (W - w) / 2, (H - h) / 2, w, h);
+    }
+    return doc.output('datauristring');
+  }
+
+  /* ---------- SWMS library (TC-METH-LIB-001) and the job's SWMS register ---------- */
+  function libItem(code) { return (S.library || []).filter(function (x) { return x.code === code; })[0]; }
+  function jobSwms() {
+    return jobRecs(['SWM']).filter(function (r) { return !r.supersededBy && !r.data.removed; })
+      .map(function (r) { return { id: r.id, code: r.data.code, title: r.data.title, rev: r.data.rev, kind: r.data.kind, area: r.data.area, date: r.date }; })
+      .sort(function (a, b) { return a.code > b.code ? 1 : -1; });
+  }
+  function swmsLabels() { return jobSwms().map(function (x) { return x.code + ' ' + x.title + ' Rev ' + x.rev; }); }
+  function sameSwms(signed) { var a = (signed || []).slice().sort().join('|'), b = swmsLabels().slice().sort().join('|'); return a === b; }
+  function renderLibrary() {
+    var f = S.libFilter || 'all', q = (S.libQ || '').toLowerCase(), on = {}; jobSwms().forEach(function (x) { on[x.code] = x; });
+    var list = (S.library || []).filter(function (x) {
+      if (f === 'material' || f === 'task') { if (x.kind !== f) return false; }
+      if (f === 'job') { if (!on[x.code]) return false; }
+      if (f === 'A' || f === 'B') { if (x.cls.indexOf(f) < 0) return false; }
+      return !q || (x.code + ' ' + x.title).toLowerCase().indexOf(q) >= 0;
+    });
+    var demo = (S.library || []).some(function (x) { return /^DEMO/.test(x.code); });
+    var h = top('SWMS library', 'TC-METH-LIB-001 · ' + S.job.jobNo, true) + '<div class="body">' + (demo ? '<div class="banner" style="margin:-14px -14px 12px">Demo entries — the real Method Library loads once connected</div>' : '') +
+      '<input type="text" id="q" placeholder="Search — e.g. vinyl, roof, heights" value="' + esc(S.libQ || '') + '">' +
+      '<div class="chips" style="margin:10px 0">' + [['all', 'All'], ['job', 'On this job (' + jobSwms().length + ')'], ['material', 'Materials'], ['task', 'Tasks'], ['A', 'Class A'], ['B', 'Class B']].map(function (c) { return '<button data-f="' + c[0] + '" class="' + (f === c[0] ? 'on' : '') + '">' + c[1] + '</button>'; }).join('') + '</div>';
+    if (!list.length) h += '<div class="card"><div class="small">Nothing matches.</div></div>';
+    list.forEach(function (x) {
+      var j = on[x.code];
+      h += '<button class="card" style="width:100%;text-align:left" data-lib="' + esc(x.code) + '"><div class="it" style="border:0;padding:0"><span class="small"><b>' + esc(x.code) + '</b> · ' + (x.kind === 'task' ? 'Task' : 'Material') + ' · Class ' + esc(x.cls) + ' · Rev ' + esc(x.rev) + '</span>' +
+        (j ? (j.rev !== x.rev ? chip('new', 'Job has Rev ' + j.rev) : chip('done', 'On job')) : '') + '</div><div style="font-weight:700;margin-top:4px">' + esc(x.title) + '</div></button>';
+    });
+    app.innerHTML = h + '</div>'; bindBack(); renderBanner();
+    var qi = $('#q'); qi.oninput = function () { S.libQ = qi.value; var p = qi.selectionStart; renderLibrary(); var n = $('#q'); n.focus(); n.setSelectionRange(p, p); };
+    $$('[data-f]').forEach(function (b) { b.onclick = function () { S.libFilter = b.getAttribute('data-f'); renderLibrary(); }; });
+    $$('[data-lib]').forEach(function (b) { b.onclick = function () { enter(function () { renderLibrary(); }); renderLibItem(b.getAttribute('data-lib')); }; });
+  }
+  function renderLibItem(code) {
+    var x = libItem(code), onj = jobSwms().filter(function (s) { return s.code === code; })[0];
+    if (!x) x = { code: code, title: onj ? onj.title : code, kind: onj ? onj.kind : 'material', cls: '', rev: onj ? onj.rev : '', summary: 'No longer in the library.' };
+    var canIssue = canUpload(), newer = onj && x.rev && onj.rev !== x.rev;
+    var h = top(x.code, x.kind === 'task' ? 'Task SWMS' : 'Material method and SWMS', true) + '<div class="body"><div class="card"><h2 style="margin:0 0 6px">' + esc(x.title) + '</h2><div class="small">' +
+      (x.cls ? 'Class ' + esc(x.cls) + ' · ' : '') + 'Library Rev ' + esc(x.rev || '—') + (x.rpe ? ' · RPE: ' + esc(x.rpe) : '') + '</div>' + (x.summary ? '<p>' + esc(x.summary) + '</p>' : '') +
+      (x.url ? '<button class="btn sec" id="open" style="margin-top:8px">Open the document</button>' : '<div class="small" style="margin-top:8px">' + (CONFIG.API_URL ? 'No document attached in the library.' : 'Demo: the library document opens here once connected.') + '</div>') + '</div>';
+    if (onj) h += '<div class="card"><div class="lbl" style="margin-top:0">On this job</div><div>Rev ' + esc(onj.rev) + ' issued ' + niceDate(onj.date) + (onj.area ? ' · ' + esc(onj.area) : '') + '</div>' +
+      (newer ? '<div class="warn">Library is now Rev ' + esc(x.rev) + ' — reissue it and the crew re-sign.</div>' : '') + '</div>';
+    if (canIssue && S.job.status !== 'closed' && (!onj || newer)) h += '<div class="lbl">Area or stage it applies to</div><input type="text" id="area" placeholder="e.g. Lounge ceiling, stage 1" value="' + esc(onj ? onj.area || '' : '') + '">';
+    h += '<p class="small">Material SWMS name the method they cover (ARCP Section B13). Issuing or reissuing a SWMS means everyone signs the ARCP / SWMS again before they start.</p></div>';
+    var btns = '';
+    if (canIssue && S.job.status !== 'closed') {
+      if (!onj) btns = '<button class="btn" id="iss">Issue to this job</button>';
+      else if (newer) btns = '<button class="btn" id="iss">Reissue as Rev ' + esc(x.rev) + '</button>';
+      if (onj) btns += '<button class="btn sec" id="rm">Remove from this job</button>';
+    }
+    app.innerHTML = h + (btns ? '<div class="foot">' + btns + '</div>' : ''); bindBack(); renderBanner();
+    var op = $('#open'); if (op) op.onclick = function () { window.open(x.url, '_blank'); };
+    var iss = $('#iss'); if (iss) iss.onclick = async function () { iss.disabled = true; await issueSwms(x, ($('#area') || {}).value || '', onj); history.back(); toast(x.code + ' issued — crew re-sign the ARCP / SWMS'); };
+    var rm = $('#rm'); if (rm) rm.onclick = async function () { rm.disabled = true; await issueSwms(x, onj.area, onj, true); history.back(); toast(x.code + ' removed from the job'); };
+  }
+  async function issueSwms(x, area, old, remove) {
+    var rec = { form: 'SWM', formTitle: (remove ? 'SWMS removed — ' : 'SWMS issued — ') + x.code + ' ' + x.title, formRef: FORMS.SWM.ref, jobNo: S.job.jobNo, personId: S.me.id,
+      data: { code: x.code, title: x.title, rev: x.rev, kind: x.kind, cls: x.cls, area: area, removed: !!remove },
+      details: jobDetails([[remove ? 'Removed by' : 'Issued by', S.me.name + ', ' + roleName(S.me)]]),
+      rows: [{ section: 'SWMS register — ARCP Section C3', label: 'SWMS number and title', value: x.code + ' ' + x.title, flag: '' },
+        { section: 'SWMS register — ARCP Section C3', label: 'Type', value: x.kind === 'task' ? 'Task' : 'Material', flag: '' },
+        { section: 'SWMS register — ARCP Section C3', label: 'Area or stage', value: area || '—', flag: '' },
+        { section: 'SWMS register — ARCP Section C3', label: 'Method reference', value: 'TC-METH-LIB-001 ' + x.code, flag: '' },
+        { section: 'SWMS register — ARCP Section C3', label: 'Revision', value: x.rev, flag: '' },
+        { section: 'SWMS register — ARCP Section C3', label: remove ? 'Removed' : 'Issued', value: new Date().toLocaleString('en-NZ'), flag: '' }],
+      sigs: [{ name: S.me.name, label: roleName(S.me), time: Date.now() }] };
+    if (old) { rec.version = 2; rec.supersedes = old.id; rec.rootId = old.id; rec.reason = remove ? 'Removed from the job' : 'Reissued at Rev ' + x.rev; }
+    rec.fileName = fileName({ date: today() }, (remove ? 'SWMS removed ' : 'SWMS issued ') + x.code, S.me.name); rec.folder = folderFor(S.job);
+    await saveRecord(rec);
+    if (old) { var o = recById(old.id); if (o) { o.supersededBy = rec.id; o.supersededAt = Date.now(); await DB.put(o); await refreshRecs(); } }
+  }
+
+  /* ---------- Supervisor handover: a different supervisor takes over the job ---------- */
+  function applyHandover(j) {
+    if (j.feedSupervisorId === undefined) { j.feedSupervisorId = j.supervisorId; j.feedCrewIds = j.crewIds.slice(); }
+    j.supervisorId = j.feedSupervisorId; j.crewIds = j.feedCrewIds.slice();
+    var h = RECS.filter(function (r) { return r.form === 'HND' && !r.supersededBy && r.jobNo === j.jobNo; }).sort(function (a, b) { return b.createdAt - a.createdAt; })[0];
+    if (!h) return;
+    var schedLater = j.updatedAt && new Date(j.updatedAt).getTime() > h.createdAt && j.feedSupervisorId && j.feedSupervisorId !== h.data.fromId;
+    if (schedLater) return;   // the schedule has named a supervisor since the handover — the schedule wins
+    j.supervisorId = h.data.toId;
+    if (j.crewIds.indexOf(h.data.toId) < 0) j.crewIds.unshift(h.data.toId);
+  }
+  function renderHandover(mode) {
+    getGps();
+    var j = S.job, from = mode === 'in' ? person(j.supervisorId) : S.me, H = { to: mode === 'in' ? S.me.id : null, how: null, ok: {} };
+    var cands = j.crewIds.filter(function (pid) { var p = person(pid); return p && pid !== j.supervisorId; });
+    var ac = actCounts(), d5 = live('D5').sort(function (a, b) { return b.createdAt - a.createdAt; })[0], plan = seqPlan(), done = plan.items.filter(function (x) { return x.st.done; }).length;
+    var hz = d5 ? ((d5.data.answers || {}).hazsel || {}).v : null;
+    var h = top('Supervisor handover', j.street + ' · ' + j.jobNo, true) + '<div class="body">' +
+      '<div class="card"><div class="lbl" style="margin-top:0">Where the job is at</div><div class="list">' +
+      [['Supervisor now', from ? from.name : '—'], ['Class', 'Class ' + j.cls + (j.status !== 'open' ? ' · ' + j.status : '')], ['Job steps done', done + ' of ' + plan.items.length],
+        ['ARCP', 'Rev ' + arcpRev() + ' · ' + jobSwms().length + ' SWMS issued'], ['Last pre-start', d5 ? niceDate(d5.date) + ' ' + hm(d5.createdAt) + (hz && hz.length ? ' · ' + hz.length + ' hazards' : '') : 'None'],
+        ['Corrective actions', ac.open + ' open' + (ac.overdue ? ', ' + ac.overdue + ' overdue' : '')], ['On site now', onSiteNow().map(regName).join(', ') || 'Nobody signed in']]
+        .map(function (r) { return '<div class="it"><span>' + r[0] + '</span><b style="text-align:right">' + esc(r[1]) + '</b></div>'; }).join('') + '</div></div>';
+    if (mode === 'out') h += '<div class="lbl">Who is taking over?</div>' + (cands.length ? '<div class="pics">' + cands.map(function (pid) { return '<button data-to="' + pid + '"><span>🦺</span>' + esc(person(pid).name) + '</button>'; }).join('') + '</div>' : '') +
+      '<p class="small">Not on this crew? They take over from their own phone — scan the job QR code and tap “Take over as supervisor”.</p>';
+    h += '<div id="incert"></div>' +
+      '<div class="lbl">How is the handover done?</div><div class="chips"><button data-how="person">In person on site</button><button data-how="phone">By phone — ' + (mode === 'in' ? 'outgoing' : 'incoming') + ' not here</button></div>' +
+      '<div class="lbl">Work stage and what’s next (required)</div>' + voiceBox('stage', 'e.g. lounge ceiling done, hall tomorrow, clearance booked Thursday') +
+      '<div class="lbl">Hazards, changes or anything outstanding (required)</div>' + voiceBox('issues', 'e.g. power isolated at the board, neighbour asked about noise') +
+      '<div class="lbl">Checks</div><div class="chips" style="flex-direction:column">' +
+      [['read', 'Incoming has read the ARCP, the method and SWMS, and the site file'], ['wsn', 'WorkSafe notification checked — PM told if it needs updating for the new supervisor'], ['pm', 'Project Manager told about the change']]
+        .concat(j.cls === 'A' ? [['a', 'Class A: outgoing stays in the removal area until the incoming supervisor has signed on']] : [])
+        .map(function (c) { return '<button data-ok="' + c[0] + '" style="text-align:left">☐ ' + c[1] + '</button>'; }).join('') + '</div>' +
+      '<div class="lbl">Incoming supervisor signs</div><div id="s1">' + sigBox() + '</div>' +
+      '<div id="s2w" class="hidden"><div class="lbl">Outgoing supervisor signs</div><div id="s2">' + sigBox() + '</div></div>' +
+      '</div><div class="foot"><button class="btn" id="go" disabled>Hand over</button></div>';
+    app.innerHTML = h; bindBack(); renderBanner(); bindVoice();
+    var go = $('#go'), s1 = bindSig($('#s1 .sigwrap'), chk), s2 = null, need = ['read', 'wsn', 'pm'].concat(j.cls === 'A' ? ['a'] : []);
+    function inc() { return H.to ? person(H.to) : null; }
+    function certCheck() {
+      var p = inc(), box = $('#incert'); if (!p) { box.innerHTML = ''; return; }
+      var cl = certList(p), sup = cl.filter(function (c) { return c.id === 'supervise' && !c.expired; })[0], ft = cl.filter(function (c) { return (c.id === 'ffhalf' || c.id === 'fffull') && !c.expired; })[0];
+      box.innerHTML = '<div class="card"><div class="lbl" style="margin-top:0">' + esc(p.name) + ' — from certificates</div><div class="list">' +
+        '<div class="it"><span>Supervise removal</span>' + (sup ? chip('done', 'Yes') : chip('todo', j.cls === 'A' ? 'Not on record — can’t supervise Class A' : 'Not on record')) + '</div>' +
+        '<div class="it"><span>Face fit test</span>' + (ft ? chip('done', 'Current') : chip('todo', 'None current — stop')) + '</div></div></div>';
+    }
+    function chk() {
+      var p = inc(), cl = p ? certList(p) : [], ft = cl.some(function (c) { return (c.id === 'ffhalf' || c.id === 'fffull') && !c.expired; }), sup = cl.some(function (c) { return c.id === 'supervise' && !c.expired; });
+      go.disabled = !(p && H.how && ($('#stage').value || '').trim() && ($('#issues').value || '').trim() && need.every(function (k) { return H.ok[k]; }) && !s1.isEmpty() && (H.how !== 'person' || (s2 && !s2.isEmpty())) && ft && (j.cls !== 'A' || sup));
+    }
+    $$('[data-to]').forEach(function (b) { b.onclick = function () { H.to = b.getAttribute('data-to'); $$('[data-to]').forEach(function (x) { x.classList.toggle('on', x === b); }); certCheck(); chk(); }; });
+    $$('[data-how]').forEach(function (b) { b.onclick = function () { H.how = b.getAttribute('data-how'); $$('[data-how]').forEach(function (x) { x.classList.toggle('on', x === b); }); $('#s2w').classList.toggle('hidden', H.how !== 'person'); if (H.how === 'person' && !s2) s2 = bindSig($('#s2 .sigwrap'), chk); chk(); }; });
+    $$('[data-ok]').forEach(function (b) { b.onclick = function () { var k = b.getAttribute('data-ok'); H.ok[k] = !H.ok[k]; b.classList.toggle('on', H.ok[k]); b.textContent = (H.ok[k] ? '☑ ' : '☐ ') + b.textContent.slice(2); chk(); }; });
+    $('#stage').oninput = chk; $('#issues').oninput = chk;
+    certCheck();
+    go.onclick = async function () {
+      go.disabled = true;
+      var to = inc(), fromP = from || { name: '—', id: '' };
+      var rows = [{ section: 'Handover', label: 'Outgoing supervisor', value: fromP.name, flag: '' }, { section: 'Handover', label: 'Incoming supervisor', value: to.name, flag: '' },
+        { section: 'Handover', label: 'How', value: H.how === 'person' ? 'In person on site' : 'By phone', flag: '' },
+        { section: 'Handover', label: 'Work stage and what’s next', value: $('#stage').value, flag: '' },
+        { section: 'Handover', label: 'Hazards, changes or anything outstanding', value: $('#issues').value, flag: '' },
+        { section: 'Where the job was at', label: 'Job steps done', value: done + ' of ' + plan.items.length, flag: '' },
+        { section: 'Where the job was at', label: 'Corrective actions', value: ac.open + ' open, ' + ac.overdue + ' overdue', flag: ac.overdue ? 'bad' : '' },
+        { section: 'Where the job was at', label: 'ARCP and SWMS', value: 'Rev ' + arcpRev() + '; ' + (swmsLabels().join('; ') || 'no SWMS issued'), flag: '' }];
+      need.forEach(function (k) { rows.push({ section: 'Checks', label: { read: 'Incoming has read the ARCP, method, SWMS and site file', wsn: 'WorkSafe notification checked — PM told if it needs updating', pm: 'Project Manager told', a: 'Class A: outgoing stayed in the removal area until the incoming signed on' }[k], value: 'Yes', flag: 'good' }); });
+      var sigs = [{ name: to.name, label: 'Incoming supervisor', time: Date.now(), img: s1.data() }];
+      if (H.how === 'person') sigs.push({ name: fromP.name, label: 'Outgoing supervisor', time: Date.now(), img: s2.data() });
+      var rec = { form: 'HND', formTitle: 'Supervisor handover — ' + fromP.name + ' to ' + to.name, formRef: FORMS.HND.ref, jobNo: j.jobNo, personId: S.me.id,
+        data: { fromId: fromP.id, toId: to.id, how: H.how, stage: $('#stage').value, issues: $('#issues').value },
+        details: jobDetails([['Recorded by', S.me.name]]), rows: rows, photos: [], sigs: sigs, alert: true };
+      rec.fileName = fileName({ date: today() }, 'Supervisor handover to ' + to.name, S.me.name); rec.folder = folderFor(j);
+      await saveRecord(rec); applyHandover(j);
+      history.replaceState({ v: 1 }, ''); S.onBack = null;
+      var need2 = !statusFor(to.id).d1;
+      app.innerHTML = top('Handed over', j.street) + '<div class="body"><div class="card center"><div class="big">🤝</div><h2 style="margin:0">' + esc(to.name) + ' is now the supervisor</h2>' +
+        '<p class="small">PM and Branch Manager are told so the schedule can be updated.' + (need2 ? ' ' + esc(first(to.name)) + ' signs the ARCP / SWMS next, and is inducted if new to this site.' : '') + '</p></div></div>' +
+        '<div class="foot"><button class="btn" id="home">Back to today</button></div>';
+      $('#home').onclick = function () { renderToday(); };
+    };
+  }
+
   async function openDoc(r) {
     if (!r) return;
     var blob = await (await fetch(r.file)).blob(), file = null;
