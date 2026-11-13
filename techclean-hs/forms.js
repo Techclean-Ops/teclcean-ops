@@ -275,3 +275,27 @@ FORMS.D11 = {
 
 /* Supervisor's "Job forms" menu, in Part D order. D7 is Class A only. */
 var JOB_FORMS = ['D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11'];
+
+/* ---------- The job sequence (supervisor's phone) ----------
+   Steps unlock in order: a step can only be started when every step before it is done.
+   group: start = once per job · day = every day · week = weekly inspection · finish = close-out (in order, after start).
+   perPerson: done for every crew member on site today (handed round on the supervisor's phone).
+   preset: answers filled in for that step (e.g. which D6 stage).  Re-order or edit steps here. */
+var SEQUENCE = [
+  { key: 'D2', group: 'start', form: 'D2', title: 'Job start checklist' },
+  { key: 'D4', group: 'start', form: 'D4', perPerson: true, title: 'Induct everyone on site' },
+  { key: 'D3', group: 'start', form: 'D3', title: 'Site personnel register' },
+  { key: 'D1', group: 'start', form: 'D1', perPerson: true, title: 'Everyone signs the ARCP / SWMS' },
+  { key: 'D7', group: 'start', form: 'D7', classA: true, title: 'Smoke test with the assessor' },
+  { key: 'D6S', group: 'start', form: 'D6', preset: { stage: 'setup' }, title: 'Quality control — set-up' },
+  { key: 'FFW', group: 'day', form: 'FFW', perPerson: true, title: 'Fit for work — everyone' },
+  { key: 'IN', group: 'day', form: 'D13', perPerson: true, title: 'Sign everyone in' },
+  { key: 'D5', group: 'day', form: 'D5', title: 'Pre-start and toolbox' },
+  { key: 'D6R', group: 'day', form: 'D6', preset: { stage: 'during' }, title: 'Quality control — during removal' },
+  { key: 'D9', group: 'day', form: 'D9', title: 'End of shift — decon and RPE' },
+  { key: 'OUT', group: 'day', form: 'D13', perPerson: true, out: true, title: 'Sign everyone out' },
+  { key: 'D8', group: 'week', form: 'D8', title: 'Weekly site inspection' },
+  { key: 'D6C', group: 'finish', form: 'D6', preset: { stage: 'clear' }, title: 'Completion and clearance' },
+  { key: 'D11B', group: 'finish', form: 'D11', preset: { dir: 'back' }, title: 'Equipment back to the yard' }
+];
+var GROUPS = { start: 'Start of job — once', day: 'Every day', week: 'Every week', finish: 'Close-out — when removal is finished' };

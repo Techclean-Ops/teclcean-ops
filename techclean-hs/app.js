@@ -47,6 +47,7 @@
   function hhmm() { var d = new Date(); return pad(d.getHours()) + pad(d.getMinutes()); }
   function longDate() { return new Date().toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'short' }); }
   function uid() { return Date.now().toString(36).toUpperCase() + Math.random().toString(36).slice(2, 6).toUpperCase(); }
+  function worker() { return S.actAs ? person(S.actAs) : S.me; }
   function person(id) { for (var i = 0; i < S.people.length; i++) if (S.people[i].id === id) return S.people[i]; return null; }
   function first(n) { return String(n || '').split(' ')[0]; }
   function isOnline() { return navigator.onLine && !S.fakeOffline; }
@@ -321,7 +322,7 @@
   }
   function stampLines() {
     var g = gpsNow(), d = new Date();
-    return [(S.me ? S.me.name : 'Visitor') + ' · ' + (S.job ? S.job.jobNo + ' ' + S.job.street : ''),
+    return [(worker() ? worker().name : 'Visitor') + ' · ' + (S.job ? S.job.jobNo + ' ' + S.job.street : ''),
       d.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' }) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()) +
       ' · ' + (g ? g.lat.toFixed(5) + ', ' + g.lng.toFixed(5) : 'GPS not available') + ' · live camera'];
   }
@@ -383,6 +384,8 @@
       renderBanner(); bindFootLinks(); return;
     }
     var j = S.job, sup = person(j.supervisorId), st = statusFor(S.me.id), isSup = S.me.id === j.supervisorId;
+    S.seq = null; S.actAs = null;
+    if (isSup && j.status === 'open') return renderSupToday();
     var h = top('Kia ora ' + first(S.me.name), longDate() + ' · start ' + j.start) + '<div class="body">';
     h += '<div class="card job"><h2>' + esc(j.street) + ', ' + esc(j.suburb) + '</h2><div class="meta"><span class="chip cls">Class ' + esc(j.cls) + '</span>' +
       esc(j.jobNo) + ' · Supervisor ' + esc(sup ? sup.name : '') + '</div></div>';
@@ -458,6 +461,164 @@
     else if (what === 'forms') { enter(); renderJobForms(); }
   }
 
+  /* ---------- the supervisor's numbered job sequence ---------- */
+  function absentKey() { return 'tc.absent.' + S.job.jobNo + '.' + today(); }
+  function absentList() { try { return JSON.parse(localStorage.getItem(absentKey()) || '[]'); } catch (e) { return []; } }
+  function setAbsent(pid, on) { var l = absentList().filter(function (x) { return x !== pid; }); if (on) l.push(pid); localStorage.setItem(absentKey(), JSON.stringify(l)); }
+  function present() { var ab = absentList(); return S.job.crewIds.filter(function (pid) { return ab.indexOf(pid) < 0; }); }
+  function live(form) { return RECS.filter(function (r) { return r.form === form && S.job && r.jobNo === S.job.jobNo && !r.supersededBy; }); }
+  function todays(form) { return live(form).filter(function (r) { return r.date === today(); }); }
+  function stageRec(stage, onlyToday) { return (onlyToday ? todays('D6') : live('D6')).filter(function (r) { return ((r.data.answers || {}).stage || {}).v === stage; })[0]; }
+  function ffwToday(pid) { return todays('FFW').filter(function (r) { return r.personId === pid; }).sort(function (x, y) { return y.createdAt - x.createdAt; })[0]; }
+  function d13Today(pid) { return todays('D13').filter(function (r) { return r.personId === pid; })[0]; }
+  function seqSteps() { return SEQUENCE.filter(function (s) { return !(s.classA && S.job.cls.indexOf('A') < 0); }); }
+
+  /* Who a per-person step still needs, and whether a step is done */
+  function personState(step, pid) {
+    var f = ffwToday(pid), d = d13Today(pid);
+    if (step.key === 'D4') return live('D4').some(function (r) { return ((r.data.answers || {}).who || {}).v === pid; }) ? 'done' : 'todo';
+    if (step.key === 'D1') return live('D1').some(function (r) { return r.personId === pid && r.data.rev === arcpRev(); }) ? 'done' : 'todo';
+    if (step.key === 'FFW') return f ? (f.data.result === 'pass' ? 'done' : 'notfit') : 'todo';
+    if (step.key === 'IN') return f && f.data.result !== 'pass' ? 'notfit' : d && d.data.in ? 'done' : !f ? 'blocked' : 'todo';
+    if (step.key === 'OUT') return !(d && d.data.in) ? 'skip' : d.data.out ? 'done' : 'todo';
+    return 'todo';
+  }
+  function stepState(step) {
+    var at = null, rec;
+    if (step.perPerson) {
+      var ppl = present(), n = 0, of = 0;
+      ppl.forEach(function (pid) { var s = personState(step, pid); if (s === 'skip' || (s === 'notfit' && step.key !== 'FFW')) return; of++; if (s === 'done' || s === 'notfit') n++; });
+      return { done: of > 0 ? n === of : step.key === 'OUT', n: n, of: of };
+    }
+    if (step.key === 'D2') rec = live('D2')[0];
+    else if (step.key === 'D3') { rec = live('D3').sort(function (x, y) { return y.createdAt - x.createdAt; })[0]; if (rec && !present().every(function (pid) { return (rec.data.answers || {})['lic_' + pid]; })) return { done: false, note: 'Crew changed — update it' }; }
+    else if (step.key === 'D7') { rec = live('D7').filter(function (r) { var a = r.data.answers || {}; return ((a.retest || {}).v || (a.sres || {}).v) === 'pass'; })[0]; }
+    else if (step.key === 'D6S') rec = stageRec('setup');
+    else if (step.key === 'D6R') rec = stageRec('during', true);
+    else if (step.key === 'D6C') rec = stageRec('clear');
+    else if (step.key === 'D5') rec = todays('D5')[0];
+    else if (step.key === 'D9') rec = todays('D9')[0];
+    else if (step.key === 'D8') { rec = live('D8').filter(function (r) { return (Date.now() - r.createdAt) < 7 * 864e5; })[0]; }
+    else if (step.key === 'D11B') rec = live('D11').filter(function (r) { return ((r.data.answers || {}).dir || {}).v === 'back'; })[0];
+    return { done: !!rec, at: rec ? rec.createdAt : null, rec: rec };
+  }
+  /* Which steps are open: start + day steps strictly in order; weekly and close-out once the start of job is done */
+  function seqPlan() {
+    var steps = seqSteps(), out = [], blocked = false, startDone = true, num = 0;
+    steps.forEach(function (s) {
+      var st = stepState(s); num++;
+      var item = { step: s, st: st, num: num };
+      if (s.group === 'start' || s.group === 'day') {
+        item.open = !blocked; if (!st.done) blocked = true;
+        if (s.group === 'start' && !st.done) startDone = false;
+      } else item.open = startDone;
+      out.push(item);
+    });
+    var fin = out.filter(function (x) { return x.step.group === 'finish'; }), prev = true;
+    fin.forEach(function (x) { x.open = x.open && prev; prev = x.st.done; });
+    var wk = out.filter(function (x) { return x.step.group === 'week'; })[0];
+    if (wk) wk.open = startDone && !!stepState({ key: 'D5' }).done;
+    return { items: out, startDone: startDone };
+  }
+
+  function renderSupToday() {
+    stopCam(); S.seq = null; S.actAs = null; S.onBack = null;
+    var j = S.job, plan = seqPlan(), dayItems = plan.items.filter(function (x) { return x.step.group === 'start' || x.step.group === 'day'; });
+    var next = dayItems.filter(function (x) { return !x.st.done; })[0];
+    var h = top('Kia ora ' + first(S.me.name), longDate() + ' · start ' + j.start) + '<div class="body">';
+    h += '<div class="card job"><h2>' + esc(j.street) + ', ' + esc(j.suburb) + '</h2><div class="meta"><span class="chip cls">Class ' + esc(j.cls) + '</span>' +
+      esc(j.jobNo) + ' · ' + present().length + ' crew today</div></div>';
+    h += next ? '<button class="btn" id="nextstep" style="margin-bottom:12px">Next: ' + next.num + '. ' + esc(next.step.title) + ' →</button>'
+      : '<div class="card center" style="border:2px solid var(--green)"><b>✅ All of today’s steps are done</b></div>';
+    var showStart = !plan.startDone || S.showStart;
+    Object.keys(GROUPS).forEach(function (g) {
+      var items = plan.items.filter(function (x) { return x.step.group === g; }); if (!items.length) return;
+      if (g === 'start' && !showStart) {
+        h += '<button class="tile" id="showstart"><span class="ic g">✅</span><span class="tx">Start of job done<br><span class="small" style="font-weight:600">Steps 1–' + items.length + ' · tap to see</span></span></button>';
+        return;
+      }
+      if (g === 'finish' && !plan.startDone) return;
+      h += '<div class="lbl">' + esc(GROUPS[g]) + '</div><div class="card" style="padding:4px 12px">';
+      items.forEach(function (x) { h += stepRow(x); });
+      h += '</div>';
+    });
+    h += '<div class="lbl">Any time</div>' +
+      tile('d12', '⚠️', 'p', 'Report incident / hazard', '') +
+      '<div class="pics" style="margin-top:0">' +
+      [['D10', '🚛', 'Waste load'], ['D11', '🧰', 'Equipment out / back'], ['D4', '🎓', 'Induct someone new'], ['visitor', '🪪', 'Visitor sign in'], ['file', '📁', 'Site file']]
+        .map(function (b) { return '<button data-any="' + b[0] + '"><span>' + b[1] + '</span>' + b[2] + '</button>'; }).join('') + '</div>';
+    h += footLinks() + '</div>';
+    app.innerHTML = h; renderBanner(); bindFootLinks();
+    var ns = $('#nextstep'); if (ns) ns.onclick = function () { runStep(next.step); };
+    var ss = $('#showstart'); if (ss) ss.onclick = function () { S.showStart = true; renderSupToday(); };
+    $$('[data-step]').forEach(function (b) { b.onclick = function () {
+      var it = plan.items.filter(function (x) { return x.step.key === b.getAttribute('data-step'); })[0];
+      if (!it.open) { toast('Do step ' + firstOpenNum(plan) + ' first'); return; }
+      runStep(it.step);
+    }; });
+    $('[data-go=d12]').onclick = function () { enter(); renderReport(); };
+    $$('[data-any]').forEach(function (b) { b.onclick = function () {
+      var k = b.getAttribute('data-any');
+      if (k === 'file') { enter(); renderSiteFile(); }
+      else if (k === 'visitor') { enter(); renderVisitor(); }
+      else { enter(); startFlow(k); }
+    }; });
+  }
+  function firstOpenNum(plan) { var x = plan.items.filter(function (i) { return (i.step.group === 'start' || i.step.group === 'day') && !i.st.done; })[0]; return x ? x.num : ''; }
+  function stepRow(x) {
+    var s = x.st, cls, sub;
+    if (s.done) { cls = 'background:var(--green);color:#fff'; sub = s.at ? 'Done ' + (s.rec && s.rec.date !== today() ? niceDate(s.rec.date) : hm(s.at)) : (s.of !== undefined ? 'All ' + s.of + ' done' : 'Done'); }
+    else if (x.open) { cls = 'background:var(--red);color:#fff'; sub = s.note || (s.of ? s.n + ' of ' + s.of + ' done' : 'To do'); }
+    else { cls = 'background:#ddd;color:#777'; sub = '🔒 Locked — finish the step before'; }
+    if (x.step.key === 'D8' && !s.done) sub = x.open ? 'Due this week' : '🔒 After today’s pre-start';
+    if (x.step.group === 'finish' && !s.done && x.open) sub = 'When removal is finished';
+    return '<button class="it" style="width:100%;border:0;background:none;text-align:left;padding:12px 0;gap:12px;justify-content:flex-start' + (x.open || s.done ? '' : ';opacity:.6') + '" data-step="' + x.step.key + '">' +
+      '<span style="flex:none;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;' + cls + '">' + (s.done ? '✓' : x.num) + '</span>' +
+      '<span style="flex:1"><b style="font-size:18px">' + esc(x.step.title) + '</b><br><span class="small">' + esc(sub) + '</span></span></button>';
+  }
+  function runStep(step) {
+    S.seq = step.key; S.seqStep = step; S.actAs = null;
+    enter(function () { renderSupToday(); });
+    if (step.perPerson) return renderPersonStep(step);
+    startFlow(step.form, step.preset);
+  }
+  function seqReturn(msg) {
+    if (msg) toast(msg);
+    var step = S.seqStep; S.actAs = null; stopCam();
+    history.replaceState({ v: 1 }, '');
+    if (step && step.perPerson && !stepState(step).done) { S.seq = step.key; return renderPersonStep(step); }
+    renderSupToday();
+  }
+  function renderPersonStep(step) {
+    S.seq = step.key; S.seqStep = step; S.actAs = null; S.onBack = function () { renderSupToday(); };
+    var num = seqSteps().indexOf(step) + 1, ab = absentList(), canAbsent = step.key === 'FFW' || step.key === 'D4' || step.key === 'D1';
+    var hint = { D4: 'Induct each person. Tap their name, go through the topics, then they sign.', D1: 'Hand the phone to each person to read and sign.',
+      FFW: 'Hand the phone to each person: they answer and take a face photo.', IN: 'Tap each person as they arrive on site.', OUT: 'Tap each person as they leave.' }[step.key];
+    var h = top(num + '. ' + step.title, jobSub(), true) + '<div class="body"><p class="help">' + esc(hint) + '</p>';
+    S.job.crewIds.forEach(function (pid) {
+      var p = person(pid), away = ab.indexOf(pid) >= 0, s = away ? 'away' : personState(step, pid), chipH;
+      chipH = s === 'done' ? chip('done', step.key === 'IN' ? 'In ' + hm(d13Today(pid).data.in) : step.key === 'OUT' ? 'Out ' + hm(d13Today(pid).data.out) : 'Done ✓')
+        : s === 'notfit' ? chip('todo', 'Not fit — no entry') : s === 'away' ? chip('lock', 'Not on site today') : s === 'blocked' ? chip('lock', 'Fit check first') : s === 'skip' ? chip('lock', 'Not signed in') : chip('new', step.key === 'IN' ? 'Tap to sign in' : step.key === 'OUT' ? 'Tap to sign out' : 'To do');
+      h += '<div class="crew' + (s === 'done' ? ' signed' : '') + '" style="flex-wrap:wrap"><button style="flex:1;border:0;background:none;text-align:left;padding:0" data-p="' + pid + '"' + (s === 'todo' ? '' : ' disabled') + '><span class="nm">' + esc(p.name) + '</span></button>' + chipH +
+        (canAbsent && (s === 'todo' || s === 'away') ? '<button class="link" style="width:100%;text-align:left;padding:6px 0 0" data-ab="' + pid + '">' + (away ? 'Back on site today' : 'Not on site today') + '</button>' : '') + '</div>';
+    });
+    var todo = S.job.crewIds.filter(function (pid) { return ab.indexOf(pid) < 0 && personState(step, pid) === 'todo'; });
+    h += '</div><div class="foot">' + ((step.key === 'IN' || step.key === 'OUT') && todo.length > 1 ? '<button class="btn" id="all">' + (step.key === 'IN' ? 'Sign all ' + todo.length + ' in now' : 'Sign all ' + todo.length + ' out now') + '</button>' : '') +
+      '<button class="btn sec" id="back">Back to steps</button></div>';
+    app.innerHTML = h; bindBack(); renderBanner();
+    $('#back').onclick = function () { renderSupToday(); };
+    $$('[data-ab]').forEach(function (b) { b.onclick = function () { var pid = b.getAttribute('data-ab'); setAbsent(pid, absentList().indexOf(pid) < 0); renderPersonStep(step); }; });
+    var all = $('#all'); if (all) all.onclick = async function () { all.disabled = true; for (var i = 0; i < todo.length; i++) await saveD13(todo[i], step.key === 'OUT'); toast(step.key === 'IN' ? 'All signed in' : 'All signed out'); renderPersonStep(step); };
+    $$('[data-p]').forEach(function (b) { b.onclick = async function () {
+      var pid = b.getAttribute('data-p');
+      if (step.key === 'IN' || step.key === 'OUT') { b.disabled = true; await saveD13(pid, step.key === 'OUT'); toast(person(pid).name + (step.key === 'IN' ? ' signed in ' : ' signed out ') + hm(Date.now())); return renderPersonStep(step); }
+      S.actAs = pid; history.pushState({ v: 1 }, '');
+      if (step.key === 'FFW') startFlow('FFW');
+      else if (step.key === 'D1') { renderD1(); S.onBack = function () { S.actAs = null; renderPersonStep(step); }; }
+      else if (step.key === 'D4') { S.actAs = null; startFlow('D4', { who: pid }); }
+    }; });
+  }
+
   /* First-time setup (demo). The real app sets the person from their one-time link. */
   function renderSetup() {
     var h = top('Set up this phone', 'TechClean H&S') + '<div class="body"><div class="card"><p style="margin-top:0"><b>Who is this phone for?</b></p>' +
@@ -494,8 +655,8 @@
   }
 
   /* ---------- one-question-at-a-time flow (fit for work, pre-start) ---------- */
-  function draftKey(code) { return 'tc.draft.' + code + '.' + (S.job ? S.job.jobNo : '') + '.' + today() + '.' + (S.me ? S.me.id : ''); }
-  function startFlow(code) {
+  function draftKey(code) { return 'tc.draft.' + code + '.' + (S.job ? S.job.jobNo : '') + '.' + today() + '.' + (worker() ? worker().id : ''); }
+  function startFlow(code, preset) {
     getGps();
     var f = FORMS[code], saved = null;
     try { saved = JSON.parse(localStorage.getItem(draftKey(code)) || 'null'); } catch (e) {}
@@ -506,6 +667,10 @@
       F = { code: code, i: 0, a: JSON.parse(JSON.stringify(od.answers || {})), crew: crew, amend: true };
     }
     F.def = f;
+    if (preset && !S.amend) {
+      F.preset = preset; for (var k in preset) F.a[k] = { v: preset[k] };
+      var ql = qList(f, F.a); F.i = 0; while (F.i < ql.length && preset[ql[F.i].id] !== undefined) F.i++;
+    }
     showQ(F);
   }
   function saveDraft(F) { var o = { code: F.code, i: F.i, a: F.a, crew: F.crew }; try { localStorage.setItem(draftKey(F.code) + (F.amend ? '.amend' : ''), JSON.stringify(o)); } catch (e) {} }
@@ -528,7 +693,7 @@
     var qs = qList(F.def, F.a);
     if (F.i >= qs.length) { if (F.code === 'FFW') return finishFfw(F, 'pass'); if (F.code === 'D5') return renderCrewSign(F); return finishGeneric(F); }
     var q = qs[F.i], a = F.a[q.id] || {}, pct = Math.round(F.i / qs.length * 100);
-    S.onBack = function () { if (F.i > 0) { F.i--; saveDraft(F); history.pushState({ v: 1 }, ''); showQ(F); } else renderToday(); };
+    S.onBack = function () { if (F.i > 0 && !(F.preset && F.i <= Object.keys(F.preset).length)) { F.i--; saveDraft(F); history.pushState({ v: 1 }, ''); showQ(F); } else if (S.seq) seqReturn(); else renderToday(); };
     var h = top(F.def.title, jobSub(), true) + '<div class="body"><div class="progress"><i style="width:' + pct + '%"></i></div>' +
       (q.section ? '<div class="sect">' + esc(q.section) + '</div>' : '') +
       '<div class="q">' + esc(q.q) + '</div>' + (q.help ? '<p class="help">' + esc(q.help) + '</p>' : '');
@@ -660,14 +825,16 @@
   }
 
   async function finishFfw(F, result, stopQ) {
+    var W = worker();
     var rf = rowsFrom(F);
-    var rec = { form: 'FFW', formTitle: 'Fit for work — ' + S.me.name, formRef: FORMS.FFW.ref, jobNo: S.job.jobNo, personId: S.me.id,
+    var rec = { form: 'FFW', formTitle: 'Fit for work — ' + W.name, formRef: FORMS.FFW.ref, jobNo: S.job.jobNo, personId: W.id,
       data: { result: result, answers: F.a, stoppedAt: stopQ ? stopQ.id : null },
-      details: jobDetails([['Worker', S.me.name], ['Result', result === 'pass' ? 'PASS — fit for work' : 'NOT FIT — cannot sign on']]),
-      rows: rf.rows, photos: rf.photos, sigs: [{ name: S.me.name, label: 'Worker', time: Date.now() }] };
-    rec.fileName = fileName({ date: today() }, 'Fit for work', S.me.name); rec.folder = folderFor(S.job);
+      details: jobDetails([['Worker', W.name], ['Result', result === 'pass' ? 'PASS — fit for work' : 'NOT FIT — cannot sign on']]),
+      rows: rf.rows, photos: rf.photos, sigs: [{ name: W.name, label: 'Worker', time: Date.now() }].concat(W.id !== S.me.id ? [{ name: S.me.name, label: 'Entered on the supervisor\u2019s phone', time: Date.now() }] : []) };
+    rec.fileName = fileName({ date: today() }, 'Fit for work', W.name); rec.folder = folderFor(S.job);
     await saveRecord(rec); clearDraft('FFW');
     history.replaceState({ v: 1 }, '');
+    if (S.seq) return seqReturn(result === 'pass' ? first(W.name) + ' is fit for work' : first(W.name) + ' NOT fit — no entry');
     if (result === 'pass') {
       S.onBack = null;
       app.innerHTML = top('Fit for work', jobSub()) + '<div class="body"><div class="card center"><div class="big">✅</div><h2 style="margin:0">You’re fit for work</h2><p class="small">Saved ' + hm(Date.now()) + '</p></div></div>' +
@@ -710,6 +877,7 @@
     rec.fileName = fileName({ date: today() }, name.replace(/[\\/:*?"<>|]/g, ''), S.me.name); rec.folder = folderFor(j);
     await saveRecord(rec); localStorage.removeItem(draftKey(F.code)); localStorage.removeItem(draftKey(F.code) + '.amend');
     history.replaceState({ v: 1 }, ''); S.onBack = null;
+    if (S.seq) return seqReturn(recLabel(rec) + ' saved');
     var flagged = rf.rows.filter(function (r) { return r.flag === 'bad'; }).length;
     app.innerHTML = top(F.def.title, jobSub()) + '<div class="body"><div class="card center"><div class="big">' + F.def.icon + '</div><h2 style="margin:0">' + esc(recLabel(rec)) + ' saved</h2><p class="small">' +
       (flagged ? flagged + ' item' + (flagged > 1 ? 's' : '') + ' flagged to the PM' : 'Nothing flagged') + '</p></div></div>' +
@@ -745,28 +913,34 @@
     bindBack(); renderBanner();
     $('#go').onclick = async function () {
       this.disabled = true;
-      var rec = st.d13 || { form: 'D13', jobNo: S.job.jobNo, personId: S.me.id, data: {} };
-      if (on) rec.data.out = Date.now(); else rec.data.in = Date.now();
-      rec.formTitle = 'Site sign in / out — ' + S.me.name; rec.formRef = FORMS.D13.ref;
-      rec.details = jobDetails([['Name', S.me.name], ['Company', 'TechClean']]);
-      rec.rows = [{ section: 'Site sign in / out register', label: 'Time in', value: rec.data.in ? hm(rec.data.in) : '—', flag: '' },
-        { section: 'Site sign in / out register', label: 'Time out', value: rec.data.out ? hm(rec.data.out) : 'Still on site', flag: '' }];
-      rec.sigs = [{ name: S.me.name, label: 'Signed on own phone', time: Date.now() }];
-      rec.fileName = fileName({ date: today() }, 'Sign in-out', S.me.name); rec.folder = folderFor(S.job);
-      if (on) rec.gpsOut = gpsNow();
-      await saveRecord(rec);
+      await saveD13(S.me.id, on);
       history.replaceState({ v: 1 }, '');
       toast(on ? 'Signed off ' + hm(Date.now()) + ' — see you next time' : 'Signed on ' + hm(Date.now()));
       renderToday();
     };
   }
 
+  async function saveD13(pid, out) {
+    var p = person(pid), st = statusFor(pid);
+    var rec = st.d13 || { form: 'D13', jobNo: S.job.jobNo, personId: pid, data: {} };
+    if (out) rec.data.out = Date.now(); else rec.data.in = Date.now();
+    rec.formTitle = 'Site sign in / out — ' + p.name; rec.formRef = FORMS.D13.ref;
+    rec.details = jobDetails([['Name', p.name], ['Company', 'TechClean']]);
+    rec.rows = [{ section: 'Site sign in / out register', label: 'Time in', value: rec.data.in ? hm(rec.data.in) : '—', flag: '' },
+      { section: 'Site sign in / out register', label: 'Time out', value: rec.data.out ? hm(rec.data.out) : 'Still on site', flag: '' }];
+    rec.sigs = [{ name: p.name, label: pid === S.me.id ? 'Signed on own phone' : 'Signed in / out by ' + S.me.name, time: Date.now() }];
+    rec.fileName = fileName({ date: today() }, 'Sign in-out', p.name); rec.folder = folderFor(S.job);
+    if (out) rec.gpsOut = gpsNow();
+    if (st.d13) await saveRecordInPlace(rec); else await saveRecord(rec);
+    return rec;
+  }
+
   /* ---------- D1 ARCP / SWMS ---------- */
   function renderD1() {
     getGps();
-    var j = S.job, st = statusFor(S.me.id);
+    var j = S.job, W = worker(), st = statusFor(W.id);
     if (S.amend) st.d1 = null;
-    var h = top('Sign ARCP / SWMS', jobSub(), true) + '<div class="body"><div class="card"><div class="lbl" style="margin-top:0">For this job</div>' +
+    var h = top('Sign ARCP / SWMS', W.name + ' · ' + jobSub(), true) + '<div class="body"><div class="card"><div class="lbl" style="margin-top:0">For this job</div>' +
       '<div style="font-weight:700">ARCP / SSSP ' + esc(CONFIG.ARCP_DOC) + ' Rev ' + esc(arcpRev()) + '</div>' +
       j.swms.map(function (s) { return '<div style="font-weight:700">' + esc(s) + '</div>'; }).join('') +
       jobDocs().filter(function (d) { return d.data.type === 'arcp' || d.data.type === 'swms'; }).map(function (d) { return '<button class="chip wait" style="border:0;padding:10px 14px;margin:6px 6px 0 0" data-doc="' + d.id + '">Read ' + esc(docType(d.data.type)[2]) + (d.data.rev ? ' Rev ' + esc(d.data.rev) : '') + '</button>'; }).join('') +
@@ -780,13 +954,13 @@
     var go = $('#go'), sig = bindSig($('.sigwrap'), function () { go.disabled = sig.isEmpty(); });
     go.onclick = async function () {
       go.disabled = true;
-      var rec = { form: 'D1', formTitle: 'ARCP and SSSP acknowledgement — ' + S.me.name, formRef: FORMS.D1.ref, jobNo: j.jobNo, personId: S.me.id,
+      var rec = { form: 'D1', formTitle: 'ARCP and SSSP acknowledgement — ' + W.name, formRef: FORMS.D1.ref, jobNo: j.jobNo, personId: W.id,
         data: { rev: arcpRev(), swms: j.swms }, statement: FORMS.D1.statement,
-        details: jobDetails([['Worker', S.me.name], ['ARCP / SSSP', CONFIG.ARCP_DOC + ' Rev ' + arcpRev()], ['SWMS', j.swms.join('; ')]]),
-        rows: [], sigs: [{ name: S.me.name, label: 'Worker — Rev ' + arcpRev() + ' signed', time: Date.now(), img: sig.data() }] };
-      rec.fileName = fileName({ date: today() }, 'ARCP SWMS sign', S.me.name); rec.folder = folderFor(j);
+        details: jobDetails([['Worker', W.name], ['ARCP / SSSP', CONFIG.ARCP_DOC + ' Rev ' + arcpRev()], ['SWMS', j.swms.join('; ')]]),
+        rows: [], sigs: [{ name: W.name, label: 'Worker — Rev ' + arcpRev() + ' signed', time: Date.now(), img: sig.data() }] };
+      rec.fileName = fileName({ date: today() }, 'ARCP SWMS sign', W.name); rec.folder = folderFor(j);
       await saveRecord(rec);
-      history.replaceState({ v: 1 }, ''); toast('Signed — thanks ' + first(S.me.name)); renderToday();
+      history.replaceState({ v: 1 }, ''); if (S.seq) return seqReturn(first(W.name) + ' signed Rev ' + arcpRev()); toast('Signed — thanks ' + first(W.name)); renderToday();
     };
   }
 
@@ -794,6 +968,7 @@
   function renderCrewSign(F) {
     var j = S.job;
     F.crew = F.crew || {};
+    if (S.job && S.me && S.me.id === S.job.supervisorId) absentList().forEach(function (pid) { if (!F.crew[pid]) F.crew[pid] = { absent: true }; });
     S.onBack = function () { F.i = F.def.questions.length - 1; saveDraft(F); history.pushState({ v: 1 }, ''); showQ(F); };
     var h = top('Pre-start — crew sign', jobSub(), true) + '<div class="body"><div class="progress"><i style="width:95%"></i></div>' +
       '<div class="q">Hand the phone round — tap your name to sign</div>';
@@ -845,6 +1020,7 @@
     rec.fileName = fileName({ date: today() }, 'Pre-start', S.me.name); rec.folder = folderFor(j);
     await saveRecord(rec); clearDraft('D5');
     history.replaceState({ v: 1 }, ''); S.onBack = null;
+    if (S.seq) return seqReturn('Pre-start saved');
     var faults = rf.rows.filter(function (r) { return r.flag === 'bad' && r.section !== 'RPE and mask check — every person on site today'; }).length;
     app.innerHTML = top('Pre-start', jobSub()) + '<div class="body"><div class="card center"><div class="big">📋</div><h2 style="margin:0">Pre-start done</h2><p class="small">' +
       sigs.length + ' signed · ' + (faults ? faults + ' item' + (faults > 1 ? 's' : '') + ' flagged to the PM' : 'nothing flagged') + '</p></div></div>' +
@@ -946,7 +1122,9 @@
       localStorage.setItem('tc.visitor', rec.id);
       history.replaceState({ v: 1 }, ''); S.onBack = null;
       app.innerHTML = top('Signed in', j.street) + '<div class="body"><div class="card center"><div class="big">🪪</div><h2 style="margin:0">Thanks ' + esc(first(name)) + '</h2>' +
-        '<p class="small">Signed in ' + hm(Date.now()) + '. Scan the QR again when you leave to sign out.</p></div></div>';
+        '<p class="small">Signed in ' + hm(Date.now()) + '. Scan the QR again when you leave to sign out.</p></div></div>' +
+        (S.me ? '<div class="foot"><button class="btn sec" id="home">Back</button></div>' : '');
+      var hb = $('#home'); if (hb) hb.onclick = function () { renderToday(); };
     };
   }
 
