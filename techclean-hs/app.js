@@ -51,8 +51,9 @@
   function certList(p) {
     var cs = (p && p.certs) || {};
     return CERT_TYPES.filter(function (t) { return cs[t.id]; }).map(function (t) {
-      var days = Math.floor((new Date(cs[t.id] + 'T23:59') - new Date()) / 864e5);
-      return { id: t.id, name: t.name, date: cs[t.id], days: days, expired: days < 0, soon: days >= 0 && days <= CERT_WARN_DAYS, stopWork: !!t.stopWork };
+      var e = typeof cs[t.id] === 'string' ? { date: cs[t.id] } : cs[t.id];   // { date, file, url } from the back end
+      var days = Math.floor((new Date(e.date + 'T23:59') - new Date()) / 864e5);
+      return { id: t.id, name: t.name, date: e.date, file: e.file || null, url: e.url || null, days: days, expired: days < 0, soon: days >= 0 && days <= CERT_WARN_DAYS, stopWork: !!t.stopWork };
     });
   }
   function certWarnings(p) { return certList(p).filter(function (c) { return c.expired; }); }
@@ -1291,12 +1292,18 @@
     S.onBack = function () { history.pushState({ v: 1 }, ''); renderSiteFile(); };
     var h = top(p.name, 'Tickets and certificates', true) + '<div class="body"><div class="card list">';
     if (!cl.length) h += '<div class="small">No certificates on record.</div>';
-    cl.forEach(function (c) {
-      h += '<div class="it"><span><b>' + esc(c.name) + '</b><br><span class="small">' + (c.expired ? 'Expired ' : 'Expires ') + certDate(c.date) + '</span></span>' +
-        (c.expired ? chip('todo', c.stopWork ? 'Expired — stop work' : 'Expired') : c.soon ? chip('new', c.days + ' days left') : chip('done', 'Current')) + '</div>';
+    cl.forEach(function (c, i) {
+      h += '<button class="it" style="width:100%;border:0;background:none;text-align:left" data-c="' + i + '"><span><b>' + esc(c.name) + '</b><br><span class="small">' + (c.expired ? 'Expired ' : 'Expires ') + certDate(c.date) +
+        (c.url ? ' · 📄 tap to view' : c.file ? ' · copy on file' : ' · no copy on file') + '</span></span>' +
+        (c.expired ? chip('todo', c.stopWork ? 'Expired — stop work' : 'Expired') : c.soon ? chip('new', c.days + ' days left') : chip('done', 'Current')) + '</button>';
     });
-    h += '</div><p class="small">From the Training & Medical Register. Copies of each certificate will open here once the back end is connected.</p></div>';
+    h += '</div><p class="small">From the Training & Medical Register. Tap a certificate to see the actual copy from the person\u2019s training folder. Copies for today\u2019s crew are kept on the phone for use with no signal.</p></div>';
     app.innerHTML = h; bindBack(); renderBanner();
+    $$('[data-c]').forEach(function (b) { b.onclick = function () {
+      var c = cl[+b.getAttribute('data-c')];
+      if (c.url) return openDoc({ file: c.url, fileName: c.file || (c.name + '.pdf'), data: { mime: /\.(png|jpe?g)$/i.test(c.file || '') ? 'image/jpeg' : 'application/pdf', title: p.name + ' — ' + c.name } });
+      toast(CONFIG.API_URL ? 'No copy on file for this certificate' : 'Demo: the real certificate opens here once the back end is connected');
+    }; });
   }
   function regRows(list) {
     return list.map(function (r) {
