@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en-NZ">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TechClean H&amp;S — Management dashboard</title>
+<link rel="icon" href="icon-192.png">
+<style>
+:root{--red:#E8192C;--ink:#111;--grey:#595959;--bg:#f3f4f6;--line:#e3e5e8;--green:#2e7d32;--amber:#b7791f}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;font-size:14px;color:var(--ink);background:var(--bg)}
+header{background:var(--ink);color:#fff;border-bottom:4px solid var(--red);display:flex;align-items:center;gap:18px;padding:10px 22px;position:sticky;top:0;z-index:5}
+header img{height:26px}
+header h1{font-size:18px;margin:0;font-weight:800}
+header .sp{flex:1}
+header select,header button{font:inherit;border-radius:8px;border:1px solid #444;background:#222;color:#fff;padding:7px 10px}
+.demo{background:#fff3c4;color:#6b4f00;font-weight:700;padding:4px 10px;border-radius:999px;font-size:12px}
+nav{display:flex;gap:4px;padding:0 22px;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:50px;z-index:4}
+nav button{border:0;background:none;padding:14px 14px;font:inherit;font-weight:700;color:var(--grey);border-bottom:3px solid transparent;cursor:pointer}
+nav button.on{color:var(--ink);border-bottom-color:var(--red)}
+main{padding:20px 22px 60px;max-width:1500px;margin:0 auto}
+.kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:#fff;border-radius:12px;padding:14px 16px;border-left:5px solid #ccc;cursor:pointer}
+.kpi b{display:block;font-size:30px;line-height:1.1}
+.kpi span{color:var(--grey);font-size:13px;font-weight:600}
+.kpi.bad{border-left-color:var(--red)} .kpi.warn{border-left-color:#f5c518} .kpi.ok{border-left-color:var(--green)}
+.grid{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+@media(max-width:1100px){.grid{grid-template-columns:1fr}}
+.card{background:#fff;border-radius:12px;padding:16px 18px;margin-bottom:16px}
+.card h2{font-size:16px;margin:0 0 12px;display:flex;align-items:center;gap:10px}
+.card h2 .sp{flex:1}
+table{width:100%;border-collapse:collapse}
+th{text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--grey);border-bottom:2px solid var(--line);padding:8px 8px}
+td{border-bottom:1px solid var(--line);padding:9px 8px;vertical-align:middle}
+tr.click{cursor:pointer} tr.click:hover td{background:#fafafa}
+.chip{display:inline-block;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:700;white-space:nowrap;margin:1px 2px 1px 0}
+.c-red{background:#fde3e5;color:#9a0f1d}.c-amber{background:#fff1bf;color:#7a5b00}.c-green{background:#e3f3e4;color:var(--green)}.c-grey{background:#eceff1;color:#555}.c-blue{background:#e8eefc;color:#2346a0}
+.bar{height:8px;background:#e9ecef;border-radius:6px;overflow:hidden;min-width:120px}
+.bar i{display:block;height:100%;background:var(--green)}
+.bar.mid i{background:#f5c518}.bar.low i{background:var(--red)}
+.list .row{display:flex;gap:10px;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--line)}
+.list .row:last-child{border:0}
+.dot{width:10px;height:10px;border-radius:50%;margin-top:5px;flex:none}
+.small{color:var(--grey);font-size:12px}
+.btn{border:0;border-radius:8px;background:var(--red);color:#fff;font:inherit;font-weight:700;padding:9px 14px;cursor:pointer}
+.btn.sec{background:#fff;color:var(--ink);border:1px solid #ccc}
+input,select,textarea{font:inherit;border:1px solid #ccc;border-radius:8px;padding:8px 10px;width:100%}
+label{font-weight:700;font-size:12px;color:var(--grey);text-transform:uppercase;letter-spacing:.04em;display:block;margin:10px 0 4px}
+.form{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.toast{position:fixed;right:24px;bottom:24px;background:#111;color:#fff;padding:12px 18px;border-radius:10px;font-weight:700;z-index:9;max-width:420px}
+.filter{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.filter button{border:1px solid #ccc;background:#fff;border-radius:999px;padding:6px 12px;font:inherit;cursor:pointer}
+.filter button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.locked{background:#f8f8f8;border:1px dashed #bbb;border-radius:10px;padding:14px;color:var(--grey)}
+.back{border:0;background:none;font:inherit;color:var(--grey);cursor:pointer;padding:0 0 10px}
+</style>
+</head>
+<body>
+<header>
+  <img src="logo-white.png" alt="TechClean">
+  <h1>H&amp;S Dashboard</h1>
+  <span class="demo">DEMO DATA</span>
+  <span class="sp"></span>
+  <select id="branch"><option value="">All branches</option><option>Auckland</option><option>Wellington</option><option>Canterbury</option><option>Nelson</option></select>
+  <select id="role" title="Demo: who is signed in"><option value="admin">Signed in: Admin (HSC / GM Ops)</option><option value="bm">Signed in: Branch Manager</option><option value="pm">Signed in: Project Manager</option></select>
+</header>
+<nav id="tabs"></nav>
+<main id="main"></main>
+<script>
+(function () {
+  'use strict';
+  /* ---------------- demo data (made up — the live dashboard reads the back end) ---------------- */
+  var TODAY = new Date(); TODAY.setHours(0, 0, 0, 0);
+  function dAdd(n) { var d = new Date(TODAY); d.setDate(d.getDate() + n); return d; }
+  function iso(d) { return d.toISOString().slice(0, 10); }
+  var BR = ['Auckland', 'Wellington', 'Canterbury', 'Nelson'];
+  var FIRST = ['Jack', 'Ivan', 'Mere', 'Sione', 'Aroha', 'Tom', 'Lena', 'Rawiri', 'Ben', 'Hemi', 'Kate', 'Leon', 'Moana', 'Sam', 'Tia', 'Will', 'Nikau', 'Rose', 'Amir', 'Grace', 'Paul', 'Ruby', 'Joe', 'Ana'];
+  var LAST = ['Reid', 'Popov', 'Tane', 'Fifita', 'Ngata', 'Brooks', 'Chen', 'Walker', 'Smith', 'Parata', 'Wilson', 'Grant', 'Tuala', 'Hill', 'Karaka', 'Young', 'Hughes', 'Martin', 'Patel', 'Cole', 'Green', 'Fox', 'Lee', 'Ward'];
+  var CT = [['ffhalf', 'Face fit — half', 1], ['fffull', 'Face fit — full', 1], ['medical', 'Asbestos medical', 0], ['sitesafe', 'Site Safe', 0], ['firstaid', 'First aid', 0], ['wah', 'Working at heights', 0]];
+  var seed = 7; function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }
+  var people = FIRST.map(function (f, i) {
+    var certs = {};
+    CT.forEach(function (c) { if (rnd() > 0.12) certs[c[0]] = dAdd(Math.round(rnd() * 900 - 160)); });
+    return { id: 'S' + (100 + i), name: f + ' ' + LAST[i], branch: BR[i % 4], role: i % 6 === 0 ? 'Supervisor' : 'Crew', certs: certs, copies: Math.round(rnd() * 2) };
+  });
+  var STREETS = ['132 Canal Road, Avondale', '14 Hutt Road, Petone', '8 Riccarton Ave, Christchurch', '22 Trafalgar St, Nelson', '5 Queen St, Auckland CBD', '61 Cuba St, Wellington', '3 Papanui Rd, Merivale', '19 Tasman St, Richmond'];
+  var STEPS = ['Fit for work', 'Sign in', 'Pre-start', 'QC — during removal', 'End of shift', 'Sign out'];
+  var jobs = STREETS.map(function (s, i) {
+    var br = BR[i % 4], crew = people.filter(function (p) { return p.branch === br; }).slice(0, 4 + (i % 2));
+    var done = [6, 4, 2, 6, 3, 0, 5, 1][i], cls = i % 3 === 0 ? 'A' : 'B';
+    return { no: 'J0' + (15670 + i * 7), street: s, branch: br, cls: cls, sup: crew[0].name, crew: crew.map(function (p) { return p.id; }),
+      onSite: done >= 2 ? crew.length - (i === 2 ? 1 : 0) : 0, stepsDone: done, status: i === 7 ? 'On hold' : 'In progress',
+      gaps: [i === 2 && 'Pre-start not done by 7:30am', i === 5 && 'No one signed in yet', cls === 'A' && i === 3 && 'Smoke test failed — retest passed 08:10', i === 6 && 'No weekly inspection in 8 days', i === 1 && 'Mask fit test expired — Sione Fifita stopped'].filter(Boolean),
+      cost: Math.round(400 + rnd() * 2600), records: 12 + Math.round(rnd() * 60), unbriefed: i === 4 ? 1 : 0 };
+  });
+  var equipment = [];
+  BR.slice(0, 3).forEach(function (b, k) {
+    var pre = ['AKL', 'WLG', 'CHC'][k];
+    for (var n = 1; n <= 6; n++) equipment.push({ id: pre + '-NPU' + n, branch: b, type: 'NPU', make: n % 2 ? 'Beacon' : 'AMS', dop: n === 2 ? null : dAdd(Math.round(rnd() * 500 - 120)), tag: dAdd(Math.round(rnd() * 200 - 30)), loc: rnd() > .5 ? jobs[k].no : 'Yard' });
+    for (var v = 1; v <= 5; v++) equipment.push({ id: pre + '-VAC' + v, branch: b, type: 'Vacuum', make: 'Kerstar', dop: dAdd(Math.round(rnd() * 500 - 160)), tag: dAdd(Math.round(rnd() * 200 - 30)), loc: rnd() > .6 ? jobs[k + 4] ? jobs[k + 4].no : 'Yard' : 'Yard' });
+  });
+  var incidents = [
+    { id: 'INC-041', date: dAdd(-1), job: jobs[0].no, branch: 'Auckland', type: 'Near miss', what: 'Bag split moving to skip, dust outside enclosure', action: 'Double-bag before moving; reinduct crew', owner: 'Jack Reid', due: dAdd(2), status: 'Open' },
+    { id: 'INC-040', date: dAdd(-4), job: jobs[1].no, branch: 'Wellington', type: 'Hazard', what: 'Live cable found in ceiling void', action: 'Isolation confirmed in writing before re-entry', owner: 'Ivan Popov', due: dAdd(-1), status: 'Overdue' },
+    { id: 'INC-039', date: dAdd(-9), job: jobs[2].no, branch: 'Canterbury', type: 'Injury', what: 'Cut hand — craft knife', action: 'Cut-resistant gloves for scraping', owner: 'Mere Tane', due: dAdd(-3), status: 'Closed' },
+    { id: 'INC-038', date: dAdd(-12), job: jobs[3].no, branch: 'Nelson', type: 'Enclosure breach', what: 'Tear at bag lock seam, smoke test fail', action: 'Re-taped; retest passed', owner: 'Sione Fifita', due: dAdd(-10), status: 'Closed' }
+  ];
+  /* ---------------- helpers ---------------- */
+  var main = document.getElementById('main'), S = { tab: 'overview', branch: '', role: 'admin', filter: 'all', sub: null };
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function days(d) { return d ? Math.round((d - TODAY) / 864e5) : null; }
+  function fmt(d) { return d ? d.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'; }
+  function chip(c, t) { return '<span class="chip c-' + c + '">' + esc(t) + '</span>'; }
+  function certChip(d, stop) { var n = days(d); if (n === null) return chip('grey', 'None'); if (n < 0) return chip('red', stop ? 'Expired — stop work' : 'Expired'); if (n <= 60) return chip('amber', n + ' days'); return chip('green', fmt(d)); }
+  function inBr(x) { return !S.branch || x.branch === S.branch; }
+  function toast(m) { var t = document.createElement('div'); t.className = 'toast'; t.textContent = m; document.body.appendChild(t); setTimeout(function () { t.remove(); }, 3500); }
+  function peopleIssues(p) { var bad = 0, stop = 0, due = 0; CT.forEach(function (c) { var d = p.certs[c[0]], n = days(d); if (n !== null && n < 0) { bad++; if (c[2]) stop++; } else if (n !== null && n <= 60) due++; }); return { bad: bad, stop: stop, due: due }; }
+  function equipState(e) { var a = [days(e.dop), days(e.tag)]; if (e.dop === null) return 'No DOP date'; if (a.some(function (n) { return n !== null && n < 0; })) return 'Overdue'; if (a.some(function (n) { return n !== null && n <= 30; })) return 'Due'; return 'Current'; }
+  /* ---------------- tabs ---------------- */
+  var TABS = [['overview', 'Overview'], ['jobs', 'Jobs'], ['people', 'People & certificates'], ['equipment', 'Equipment'], ['incidents', 'Incidents & actions'], ['records', 'Records'], ['admin', 'Admin']];
+  function drawTabs() {
+    document.getElementById('tabs').innerHTML = TABS.map(function (t) { return '<button data-t="' + t[0] + '" class="' + (S.tab === t[0] ? 'on' : '') + '">' + t[1] + (t[0] === 'admin' && S.role !== 'admin' ? ' 🔒' : '') + '</button>'; }).join('');
+    document.querySelectorAll('#tabs button').forEach(function (b) { b.onclick = function () { S.tab = b.dataset.t; S.sub = null; S.filter = 'all'; render(); }; });
+  }
+  function render() { drawTabs(); window.scrollTo(0, 0); ({ overview: overview, jobs: jobsTab, people: peopleTab, equipment: equipTab, incidents: incTab, records: recTab, admin: adminTab })[S.tab](); }
+
+  function overview() {
+    var J = jobs.filter(inBr), P = people.filter(inBr), E = equipment.filter(inBr), I = incidents.filter(inBr);
+    var active = J.filter(function (j) { return j.status === 'In progress'; });
+    var onSite = active.reduce(function (s, j) { return s + j.onSite; }, 0);
+    var preDone = active.filter(function (j) { return j.stepsDone >= 3; }).length;
+    var stop = P.filter(function (p) { return peopleIssues(p).stop; }).length;
+    var certBad = P.reduce(function (s, p) { return s + peopleIssues(p).bad; }, 0);
+    var eqOver = E.filter(function (e) { return equipState(e) === 'Overdue'; }).length;
+    var openInc = I.filter(function (i) { return i.status !== 'Closed'; }).length, overdue = I.filter(function (i) { return i.status === 'Overdue'; }).length;
+    var gaps = []; J.forEach(function (j) { j.gaps.forEach(function (g) { gaps.push({ j: j, g: g }); }); if (j.unbriefed) gaps.push({ j: j, g: j.unbriefed + ' person signed in without the pre-start briefing' }); });
+    var h = '<div class="kpis">' +
+      kpi(active.length, 'Jobs in progress today', '', 'jobs') + kpi(onSite, 'People on site now', '', 'jobs') +
+      kpi(preDone + ' / ' + active.length, 'Pre-starts done', preDone < active.length ? 'warn' : 'ok', 'jobs') +
+      kpi(stop, 'Stopped — fit test expired', stop ? 'bad' : 'ok', 'people') + kpi(certBad, 'Certificates expired', certBad ? 'bad' : 'ok', 'people') +
+      kpi(openInc, 'Open incidents', openInc ? 'warn' : 'ok', 'incidents') + kpi(overdue, 'Actions overdue', overdue ? 'bad' : 'ok', 'incidents') +
+      kpi(eqOver, 'Plant overdue for test', eqOver ? 'bad' : 'ok', 'equipment') + '</div>';
+    h += '<div class="grid"><div class="card"><h2>Today across jobs<span class="sp"></span><span class="small">' + TODAY.toLocaleDateString('en-NZ', { weekday: 'long', day: 'numeric', month: 'long' }) + '</span></h2>' + jobTable(J) + '</div>';
+    h += '<div><div class="card"><h2>Needs attention</h2><div class="list">' + (gaps.length ? gaps.map(function (x) { return '<div class="row"><span class="dot" style="background:var(--red)"></span><div><b>' + esc(x.g) + '</b><div class="small">' + esc(x.j.no + ' · ' + x.j.street) + '</div></div></div>'; }).join('') : '<div class="small">Nothing flagged.</div>') + '</div></div>';
+    h += '<div class="card"><h2>Expiring in the next 30 days</h2><div class="list">' + expList(P, 30) + '</div></div></div></div>';
+    main.innerHTML = h; bindKpis(); bindJobRows();
+  }
+  function kpi(v, l, cls, go) { return '<div class="kpi ' + cls + '" data-go="' + go + '"><b>' + v + '</b><span>' + esc(l) + '</span></div>'; }
+  function bindKpis() { document.querySelectorAll('.kpi').forEach(function (k) { k.onclick = function () { S.tab = k.dataset.go; render(); }; }); }
+  function jobTable(J) {
+    return '<table><tr><th>Job</th><th>Branch</th><th>Supervisor</th><th>On site</th><th>Today’s steps</th><th>Flags</th></tr>' + J.map(function (j) {
+      var pct = Math.round(j.stepsDone / STEPS.length * 100), cls = pct >= 80 ? '' : pct >= 40 ? 'mid' : 'low';
+      return '<tr class="click" data-j="' + j.no + '"><td><b>' + esc(j.no) + '</b><div class="small">' + esc(j.street) + ' · Class ' + j.cls + '</div></td><td>' + esc(j.branch) + '</td><td>' + esc(j.sup) + '</td><td>' + j.onSite + '</td>' +
+        '<td>' + (j.status === 'On hold' ? chip('grey', 'On hold') : '<div class="bar ' + cls + '"><i style="width:' + pct + '%"></i></div><div class="small">' + j.stepsDone + ' of ' + STEPS.length + (j.stepsDone < STEPS.length ? ' · next: ' + STEPS[j.stepsDone] : ' · done') + '</div>') + '</td>' +
+        '<td>' + (j.gaps.length + j.unbriefed ? chip('red', (j.gaps.length + j.unbriefed) + ' flag' + (j.gaps.length + j.unbriefed > 1 ? 's' : '')) : chip('green', 'OK')) + '</td></tr>';
+    }).join('') + '</table>';
+  }
+  function bindJobRows() { document.querySelectorAll('[data-j]').forEach(function (r) { r.onclick = function () { S.tab = 'jobs'; S.sub = r.dataset.j; render(); }; }); }
+  function expList(P, within) {
+    var out = [];
+    P.forEach(function (p) { CT.forEach(function (c) { var d = p.certs[c[0]], n = days(d); if (n !== null && n >= 0 && n <= within) out.push({ p: p, c: c, d: d, n: n }); }); });
+    out.sort(function (a, b) { return a.n - b.n; });
+    return out.length ? out.map(function (x) { return '<div class="row"><span class="dot" style="background:#f5c518"></span><div style="flex:1"><b>' + esc(x.p.name) + '</b> — ' + esc(x.c[1]) + '<div class="small">' + esc(x.p.branch) + ' · ' + fmt(x.d) + '</div></div>' + chip('amber', x.n + ' days') + '</div>'; }).join('') : '<div class="small">Nothing due.</div>';
+  }
+
+  function jobsTab() {
+    var J = jobs.filter(inBr);
+    if (S.sub) return jobDetail(jobs.filter(function (j) { return j.no === S.sub; })[0]);
+    main.innerHTML = '<div class="card"><h2>Jobs</h2>' + jobTable(J) + '</div>'; bindJobRows();
+  }
+  function jobDetail(j) {
+    var crew = j.crew.map(function (id) { return people.filter(function (p) { return p.id === id; })[0]; });
+    var h = '<button class="back" id="bk">← All jobs</button><div class="card"><h2>' + esc(j.no + ' · ' + j.street) + '<span class="sp"></span>' + chip('blue', 'Class ' + j.cls) + chip(j.status === 'On hold' ? 'grey' : 'green', j.status) + '</h2>' +
+      '<div class="small">Branch ' + esc(j.branch) + ' · Supervisor ' + esc(j.sup) + ' · Files to: Operations Hub › ' + esc(j.branch) + ' › 1. Jobs › 1. 2026 Jobs › ' + esc(j.no) + ' › H&amp;S</div></div>';
+    h += '<div class="grid"><div class="card"><h2>Today’s steps</h2><table>' + STEPS.map(function (s, i) { return '<tr><td>' + (i + 1) + '. ' + s + '</td><td>' + (i < j.stepsDone ? chip('green', 'Done') : i === j.stepsDone ? chip('amber', 'Next') : chip('grey', 'Locked')) + '</td></tr>'; }).join('') + '</table></div>';
+    h += '<div><div class="card"><h2>Crew</h2><table>' + crew.map(function (p) { var is = peopleIssues(p); return '<tr><td>' + esc(p.name) + '</td><td>' + (is.stop ? chip('red', 'Fit test expired') : is.bad ? chip('amber', is.bad + ' expired') : chip('green', 'Certs current')) + '</td></tr>'; }).join('') + '</table></div>';
+    h += '<div class="card"><h2>Job totals</h2><table><tr><td>Records filed</td><td><b>' + j.records + '</b></td></tr><tr><td>Consumables used (priced)</td><td><b>$' + j.cost.toLocaleString() + '</b></td></tr>' +
+      '<tr><td>Flags</td><td>' + (j.gaps.length ? j.gaps.map(function (g) { return chip('red', g); }).join('<br>') : chip('green', 'None')) + '</td></tr></table>' +
+      '<div style="margin-top:12px;display:flex;gap:8px"><button class="btn" id="pack">Job H&amp;S pack (PDF)</button><button class="btn sec" id="inv">Inventory &amp; cost PDF</button></div></div></div></div>';
+    main.innerHTML = h;
+    document.getElementById('bk').onclick = function () { S.sub = null; render(); };
+    document.getElementById('pack').onclick = function () { toast('Demo: builds one PDF of every record for ' + j.no + ' from the job folder'); };
+    document.getElementById('inv').onclick = function () { toast('Demo: inventory out / back and consumables cost for ' + j.no); };
+  }
+
+  function peopleTab() {
+    var P = people.filter(inBr);
+    if (S.filter === 'issues') P = P.filter(function (p) { var i = peopleIssues(p); return i.bad || i.due; });
+    if (S.sub) return personDetail(people.filter(function (p) { return p.id === S.sub; })[0]);
+    var h = '<div class="card"><h2>People &amp; certificates<span class="sp"></span>' + (S.role === 'admin' ? '<button class="btn" id="up">＋ Upload certificate</button>' : '') + '</h2>' +
+      '<div class="filter"><button data-f="all" class="' + (S.filter === 'all' ? 'on' : '') + '">Everyone</button><button data-f="issues" class="' + (S.filter === 'issues' ? 'on' : '') + '">Expired or due</button></div>' +
+      '<table><tr><th>Name</th><th>Branch</th><th>Role</th>' + CT.map(function (c) { return '<th>' + c[1] + '</th>'; }).join('') + '</tr>' +
+      P.map(function (p) { return '<tr class="click" data-p="' + p.id + '"><td><b>' + esc(p.name) + '</b></td><td>' + esc(p.branch) + '</td><td>' + esc(p.role) + '</td>' + CT.map(function (c) { return '<td>' + certChip(p.certs[c[0]], c[2]) + '</td>'; }).join('') + '</tr>'; }).join('') + '</table></div>';
+    main.innerHTML = h;
+    document.querySelectorAll('[data-f]').forEach(function (b) { b.onclick = function () { S.filter = b.dataset.f; render(); }; });
+    document.querySelectorAll('[data-p]').forEach(function (r) { r.onclick = function () { S.sub = r.dataset.p; render(); }; });
+    var up = document.getElementById('up'); if (up) up.onclick = function () { S.tab = 'admin'; render(); };
+  }
+  function personDetail(p) {
+    var h = '<button class="back" id="bk">← Everyone</button><div class="card"><h2>' + esc(p.name) + '<span class="sp"></span>' + chip('blue', p.branch) + chip('grey', p.role) + '</h2><table><tr><th>Certificate</th><th>Expiry</th><th>Status</th><th>Copy</th></tr>' +
+      CT.map(function (c) { var d = p.certs[c[0]]; return '<tr><td>' + c[1] + (c[2] ? ' <span class="small">(stop work if expired)</span>' : '') + '</td><td>' + fmt(d) + '</td><td>' + certChip(d, c[2]) + '</td><td>' + (d ? '<button class="btn sec" data-v="' + c[1] + '">View</button>' : '—') + '</td></tr>'; }).join('') + '</table></div>';
+    main.innerHTML = h;
+    document.getElementById('bk').onclick = function () { S.sub = null; render(); };
+    document.querySelectorAll('[data-v]').forEach(function (b) { b.onclick = function () { toast('Demo: opens ' + p.name + ' – ' + b.dataset.v + ' from their training folder'); }; });
+  }
+
+  function equipTab() {
+    var E = equipment.filter(inBr);
+    if (S.filter === 'issues') E = E.filter(function (e) { return equipState(e) !== 'Current'; });
+    main.innerHTML = '<div class="card"><h2>Plant &amp; equipment</h2><div class="filter"><button data-f="all" class="' + (S.filter === 'all' ? 'on' : '') + '">All</button><button data-f="issues" class="' + (S.filter === 'issues' ? 'on' : '') + '">Overdue, due or no date</button></div>' +
+      '<table><tr><th>Asset</th><th>Branch</th><th>Type</th><th>Make</th><th>DOP test due</th><th>Test &amp; tag due</th><th>Where</th><th>Status</th></tr>' + E.map(function (e) {
+        var st = equipState(e);
+        return '<tr><td><b>' + esc(e.id) + '</b></td><td>' + esc(e.branch) + '</td><td>' + e.type + '</td><td>' + e.make + '</td><td>' + fmt(e.dop) + '</td><td>' + fmt(e.tag) + '</td><td>' + esc(e.loc) + '</td><td>' +
+          chip(st === 'Current' ? 'green' : st === 'Due' ? 'amber' : 'red', st) + '</td></tr>';
+      }).join('') + '</table></div>';
+    document.querySelectorAll('[data-f]').forEach(function (b) { b.onclick = function () { S.filter = b.dataset.f; render(); }; });
+  }
+
+  function incTab() {
+    var I = incidents.filter(inBr);
+    main.innerHTML = '<div class="card"><h2>Incidents, hazards &amp; corrective actions</h2><table><tr><th>Ref</th><th>Date</th><th>Job</th><th>Type</th><th>What happened</th><th>Corrective action</th><th>Owner</th><th>Due</th><th>Status</th></tr>' +
+      I.map(function (i) { return '<tr><td>' + i.id + '</td><td>' + fmt(i.date) + '</td><td>' + esc(i.job) + '<div class="small">' + esc(i.branch) + '</div></td><td>' + esc(i.type) + '</td><td>' + esc(i.what) + '</td><td>' + esc(i.action) + '</td><td>' + esc(i.owner) + '</td><td>' + fmt(i.due) + '</td><td>' +
+        chip(i.status === 'Closed' ? 'green' : i.status === 'Overdue' ? 'red' : 'amber', i.status) + '</td></tr>'; }).join('') + '</table></div>';
+  }
+
+  function recTab() {
+    var forms = ['Fit for work', 'Sign in-out', 'Pre-start', 'Smoke test', 'Quality control', 'Waste load', 'Inventory', 'Incident', 'Induction', 'ARCP SWMS sign'];
+    var recs = []; jobs.filter(inBr).forEach(function (j, a) { for (var k = 0; k < 6; k++) { var f = forms[(a + k * 3) % forms.length], who = people.filter(function (p) { return p.id === j.crew[k % j.crew.length]; })[0]; recs.push({ date: dAdd(-(k % 4)), job: j, form: f, who: who.name }); } });
+    var q = S.q || '';
+    var list = recs.filter(function (r) { return !q || (r.job.no + r.job.street + r.form + r.who).toLowerCase().indexOf(q.toLowerCase()) >= 0; });
+    main.innerHTML = '<div class="card"><h2>Records<span class="sp"></span><input id="q" placeholder="Search job, address, form or person" style="max-width:340px" value="' + esc(q) + '"></h2><table><tr><th>Date</th><th>Job</th><th>Form</th><th>Person</th><th>Filed to</th><th></th></tr>' +
+      list.map(function (r) { return '<tr><td>' + fmt(r.date) + '</td><td>' + esc(r.job.no) + '<div class="small">' + esc(r.job.street) + '</div></td><td>' + esc(r.form) + '</td><td>' + esc(r.who) + '</td><td class="small">' + esc(r.job.branch) + ' › ' + esc(r.job.no) + ' › H&amp;S</td><td><button class="btn sec" data-r>PDF</button></td></tr>'; }).join('') + '</table></div>';
+    var qi = document.getElementById('q'); qi.oninput = function () { S.q = qi.value; recTab(); var n = document.getElementById('q'); n.focus(); n.setSelectionRange(n.value.length, n.value.length); };
+    document.querySelectorAll('[data-r]').forEach(function (b) { b.onclick = function () { toast('Demo: opens the PDF from the job folder'); }; });
+  }
+
+  function adminTab() {
+    if (S.role !== 'admin') { main.innerHTML = '<div class="card"><h2>Admin</h2><div class="locked">🔒 Only admins (HSC / GM Operations) can change the master registers, upload certificates, set prices or manage users. You can view everything on the other tabs.</div></div>'; return; }
+    var h = '<div class="grid"><div class="card"><h2>Upload a certificate</h2><div class="form">' +
+      '<div><label>Person</label><select id="u-p">' + people.map(function (p) { return '<option value="' + p.id + '">' + esc(p.name + ' — ' + p.branch) + '</option>'; }).join('') + '</select></div>' +
+      '<div><label>Certificate</label><select id="u-c">' + CT.map(function (c) { return '<option>' + c[1] + '</option>'; }).join('') + '<option>B Class removal</option><option>A Class removal</option><option>Supervise removal</option><option>First aid</option><option>MEWP</option><option>Driver licence</option></select></div>' +
+      '<div><label>Expiry date</label><input type="date" id="u-d"></div><div><label>Certificate number (optional)</label><input id="u-n"></div>' +
+      '<div style="grid-column:1/3"><label>File (PDF or photo)</label><input type="file" id="u-f" accept="application/pdf,image/*"></div></div>' +
+      '<p class="small" id="u-path"></p><button class="btn" id="u-go">Save certificate</button></div>';
+    h += '<div><div class="card"><h2>Master data</h2><div class="list">' +
+      '<div class="row"><div style="flex:1"><b>Staff &amp; app roles</b><div class="small">Who can sign in, their branch and role (Crew, Supervisor, PM, Branch Manager, HSC, Admin)</div></div><button class="btn sec" data-m>Open</button></div>' +
+      '<div class="row"><div style="flex:1"><b>Certificate types &amp; rules</b><div class="small">Which expire, warn days, which stop work (face fit tests)</div></div><button class="btn sec" data-m>Open</button></div>' +
+      '<div class="row"><div style="flex:1"><b>Equipment register</b><div class="small">DOP, test &amp; tag and service due dates</div></div><button class="btn sec" data-m>Open</button></div>' +
+      '<div class="row"><div style="flex:1"><b>Consumables price list</b><div class="small">Unit prices for job cost tracking</div></div><button class="btn sec" data-m>Open</button></div>' +
+      '<div class="row"><div style="flex:1"><b>Approvals</b><div class="small">Tickets photographed on site by supervisors, waiting for an admin to check</div></div>' + chip('amber', '2 waiting') + '</div></div></div>' +
+      '<div class="card"><h2>How changes flow</h2><div class="small">Master data is edited here or in the Master Data workbook by admins only. Crew and supervisors only read it through the app. Completed forms are pushed to each job’s H&amp;S folder in its branch; registers are pulled nightly and whenever they change.</div></div></div></div>';
+    main.innerHTML = h;
+    function path() { var p = people.filter(function (x) { return x.id === document.getElementById('u-p').value; })[0], c = document.getElementById('u-c').value, d = document.getElementById('u-d').value;
+      document.getElementById('u-path').textContent = 'Saves as: 300 – Health, Safety & Compliance Hub › 1. Training Records › ' + p.branch + ' › ' + p.name + ' › ' + p.name + ' - ' + c + (d ? ' (Exp ' + d.split('-').reverse().join('.') + ')' : '') + '.pdf — the old copy moves to ARCHIVE RECORDS and the register updates.'; }
+    ['u-p', 'u-c', 'u-d'].forEach(function (id) { document.getElementById(id).onchange = path; }); path();
+    document.getElementById('u-go').onclick = function () { if (!document.getElementById('u-f').files.length) return toast('Choose the certificate file first'); toast('Demo: certificate saved and register updated (not connected to Microsoft 365 yet)'); };
+    document.querySelectorAll('[data-m]').forEach(function (b) { b.onclick = function () { toast('Demo: opens that sheet of the Master Data workbook'); }; });
+  }
+
+  document.getElementById('branch').onchange = function (e) { S.branch = e.target.value; render(); };
+  document.getElementById('role').onchange = function (e) { S.role = e.target.value; render(); };
+  render();
+})();
+</script>
+</body>
+</html>
