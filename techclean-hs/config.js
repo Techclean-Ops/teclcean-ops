@@ -92,7 +92,8 @@ var CERT_TYPES = [
 ];
 var CERT_WARN_DAYS = 60;
 
-/* Demo data — replaced by today's jobs and crew from the schedule (read-only) once API_URL is set. */
+/* Demo data — replaced by today's jobs and crew from the schedule's hsFeed (read-only, via the H&S back end) once API_URL is set.
+   Jobs are found by jobKey (= Job No, or the schedule ID when there's no Job No): <app URL>?job=<JOBKEY> */
 var DEMO = {
   people: [
     { id: 'P01', name: 'Jack Reid', role: 'supervisor', branch: 'Auckland',
@@ -102,10 +103,12 @@ var DEMO = {
     { id: 'P03', name: 'Mere Tane', role: 'crew', branch: 'Auckland',
       certs: { ffhalf: '2026-12-01', fffull: '2026-12-01', medical: '2027-11-14', sitesafe: '2028-08-21', firstaid: '2027-09-01' } },
     { id: 'P04', name: 'Sione Fifita', role: 'crew', branch: 'Auckland',
-      certs: { ffhalf: '2027-03-03', fffull: '2024-09-24', medical: '2027-04-04', sitesafe: '2025-02-16' } }
+      certs: { ffhalf: '2027-03-03', fffull: '2024-09-24', medical: '2027-04-04', sitesafe: '2025-02-16' } },
+    { id: 'P05', name: 'Tama Wiremu', role: 'crew', branch: 'Auckland',   /* not on today's crew — to try the "not rostered" sign-on */
+      certs: { ffhalf: '2027-08-11', fffull: '2027-08-11', medical: '2027-09-30', sitesafe: '2028-03-14' } }
   ],
   jobs: [
-    { jobNo: 'J0104551', folderNo: '3365', street: '132 Canal Road', suburb: 'Avondale', cls: 'B', status: 'open',
+    { jobKey: 'J0104551', id: 'j_demo_0001', jobNo: 'J0104551', folderNo: '3365', street: '132 Canal Road', suburb: 'Avondale', cls: 'B', status: 'open',
       start: '7:00am', supervisorId: 'P01', pm: 'Project Manager', branch: 'Auckland',
       crewIds: ['P01', 'P02', 'P03', 'P04'],
       swms: ['SWMS B-02 Textured ceiling removal', 'SWMS B-07 Vinyl and backing removal'] }

@@ -79,7 +79,7 @@
     var t = document.createElement('div'); t.className = 'toast'; t.textContent = msg; document.body.appendChild(t);
     setTimeout(function () { t.remove(); }, 2600);
   }
-  function enter(onBack) { S.onBack = onBack || null; history.pushState({ v: 1 }, ''); window.scrollTo(0, 0); }
+  function enter(onBack) { S.atHome = false; S.onBack = onBack || null; history.pushState({ v: 1 }, ''); window.scrollTo(0, 0); }
   window.addEventListener('popstate', function () { var b = S.onBack; S.onBack = null; if (b) b(); else renderToday(); });
 
   function getGps() {
@@ -116,9 +116,13 @@
     S.me = id ? person(id) : null;
   }
   function resolveJob() {
-    var want = S.qrJob || null, j = null, i;
-    for (i = 0; i < S.jobs.length; i++) if (want ? S.jobs[i].jobNo === want : (S.me && S.jobs[i].crewIds.indexOf(S.me.id) >= 0)) j = S.jobs[i];
+    var want = S.qrJob ? String(S.qrJob).trim().toUpperCase() : null, j = null, i;
+    for (i = 0; i < S.jobs.length; i++) {
+      var x = S.jobs[i], keys = [x.jobKey, x.jobNo, x.id].filter(Boolean).map(function (k) { return String(k).toUpperCase(); });
+      if (want ? keys.indexOf(want) >= 0 : (S.me && x.crewIds.indexOf(S.me.id) >= 0)) { j = x; if (want) break; }
+    }
     S.job = j;
+    S.notRostered = !!(j && S.me && j.crewIds.indexOf(S.me.id) < 0);   // scanned / tapped a job they're not crewed on today
   }
 
   /* ---------- records and status ---------- */
@@ -165,6 +169,7 @@
     if (S.amend && S.amend.old.form === rec.form && !rec.id) { old = S.amend.old; applyAmend(rec, old, S.amend.reason); }
     rec.id = rec.id || uid();
     rec.createdAt = rec.createdAt || Date.now();
+    if (S.job && rec.jobNo === S.job.jobNo && S.job.id) rec.scheduleId = S.job.id;   // still matches if the Job No is added to the schedule later
     rec.updatedAt = Date.now();
     rec.date = rec.date || today();
     rec.gps = rec.gps || gpsNow();
@@ -398,7 +403,7 @@
 
   /* ---------- screens ---------- */
   function renderToday() {
-    stopCam(); S.onBack = null; S.amend = null;
+    stopCam(); S.onBack = null; S.amend = null; S.atHome = true;
     if (!S.me) return S.qrJob ? renderQrNoPerson() : renderSetup();
     if (!S.job) {
       app.innerHTML = top('Kia ora ' + first(S.me.name), longDate()) +
@@ -412,6 +417,7 @@
     h += '<div class="card job"><h2>' + esc(j.street) + ', ' + esc(j.suburb) + '</h2><div class="meta"><span class="chip cls">Class ' + esc(j.cls) + '</span>' +
       esc(j.jobNo) + ' · Supervisor ' + esc(sup ? sup.name : '') + '</div></div>';
 
+    if (S.notRostered && j.status === 'open') h += '<div class="banner warn">You’re not on today’s crew for this job. You can still sign on — it’s marked “not rostered” and ' + esc(first(sup ? sup.name : 'the supervisor')) + ' is told.</div>';
     if (j.status === 'hold') {
       h += '<div class="card"><div class="big">⏸️</div><h2 class="center" style="margin:0">On hold — start TBC</h2><p class="center small">Nothing to do on this job today.</p></div>' + tile('file', '📁', 'b', 'Site file', '');
     } else if (j.status === 'closed') {
@@ -569,7 +575,7 @@
   }
 
   function renderSupToday() {
-    stopCam(); S.seq = null; S.actAs = null; S.onBack = null;
+    stopCam(); S.seq = null; S.actAs = null; S.onBack = null; S.atHome = true;
     var j = S.job, plan = seqPlan(), dayItems = plan.items.filter(function (x) { return x.step.group === 'start' || x.step.group === 'day'; });
     var next = dayItems.filter(function (x) { return !x.st.done; })[0];
     var h = top('Kia ora ' + first(S.me.name), longDate() + ' · start ' + j.start) + '<div class="body">';
@@ -1001,6 +1007,7 @@
     rec.details = jobDetails([['Name', p.name], ['Company', 'TechClean']]);
     rec.rows = [{ section: 'Site sign in / out register', label: 'Time in', value: rec.data.in ? hm(rec.data.in) : '—', flag: '' },
       { section: 'Site sign in / out register', label: 'Time out', value: rec.data.out ? hm(rec.data.out) : 'Still on site', flag: '' }];
+    if (S.job.crewIds.indexOf(pid) < 0) { rec.data.notRostered = true; rec.alert = true; rec.rows.push({ section: 'Site sign in / out register', label: 'Rostered on this job today?', value: 'No — not on today’s crew in the schedule', flag: 'bad' }); }
     rec.sigs = [{ name: p.name, label: pid === S.me.id ? 'Signed on own phone' : 'Signed in / out by ' + S.me.name, time: Date.now() }];
     rec.fileName = fileName({ date: today() }, 'Sign in-out', p.name); rec.folder = folderFor(S.job);
     if (out) rec.gpsOut = gpsNow();
@@ -1680,11 +1687,23 @@
     resolveMe();
     if (S.visitorMode) S.me = null;
     resolveJob();
-    if (S.qrJob && S.me && S.job && S.job.crewIds.indexOf(S.me.id) < 0) { /* crew scanning another job's QR */ }
     getGps();
     renderToday();
     if (S.qrJob && S.me && S.job && S.job.status === 'open' && S.job.crewIds.indexOf(S.me.id) >= 0) go('d13');
     sendOutbox();
+    setInterval(refreshFromSchedule, 15 * 60 * 1000);
+    document.addEventListener('visibilitychange', function () { if (!document.hidden && Date.now() - (S.lastPull || 0) > 60 * 1000) refreshFromSchedule(); });
+  }
+  /* Jobs and crew come from the schedule's hsFeed via the H&S back end (it holds the key). Cached on the phone for no-signal days. */
+  function refreshFromSchedule() {
+    if (!CONFIG.API_URL || !isOnline()) return;
+    S.lastPull = Date.now();
+    var before = S.job ? S.job.jobKey + '|' + S.job.status + '|' + S.job.crewIds.join(',') : '';
+    loadData().then(function () {
+      resolveMe(); resolveJob();
+      var after = S.job ? S.job.jobKey + '|' + S.job.status + '|' + S.job.crewIds.join(',') : '';
+      if (after !== before && S.atHome) renderToday();   // never interrupt someone mid-form
+    });
   }
   start();
 })();
