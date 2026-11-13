@@ -793,6 +793,7 @@ body.sb-hidden #sidebar{display:none}
 .xbi{color:#8AB4F8}
 .rs-br{font-family:var(--font-mono);font-size:8px;font-weight:700;background:rgba(0,0,0,.4);border-radius:3px;padding:0 3px;margin-right:4px}
 .rs-grid tr.borrow .nm{color:#8AB4F8}
+.rs-sec{background:rgba(138,180,248,.16);color:#8AB4F8;cursor:default;border:1px dashed rgba(138,180,248,.5)}
 .rs-grid tr.sep td{background:#16171a;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#8E9093;padding:6px 12px;height:auto;position:sticky;left:0}
 /* ── WORKFLOWMAX ───────────────────────────────────────────── */
 .wfm-b{flex-shrink:0;display:inline-block;font-family:var(--font-head);font-size:9px;font-weight:700;border-radius:4px;padding:0 5px;line-height:16px;white-space:nowrap}
@@ -1137,6 +1138,7 @@ body.tv #version-tag{display:none}
         <button class="bd-arrow" onclick="boardShift(1)">›</button>
         <div class="bd-range" id="rs-range"></div>
         <button class="bd-pill" onclick="openLeaveRange('', '')" style="margin-left:8px">🏖 Book leave</button>
+        <button class="bd-pill" onclick="openSecondment('', '')">⇄ Allocate to branch</button>
         <div class="bd-spacer"></div>
         <div class="bd-legend"><span><i style="background:rgba(192,132,252,.6)"></i>Leave</span><span><i style="background:rgba(252,211,77,.6)"></i>Training</span><span><i style="background:transparent;box-shadow:0 0 0 2px #F59E0B"></i>Double-booked</span><span><i style="background:transparent;outline:2px dashed #EF4444"></i>Schedule error</span><span><em class="rs-h" style="position:static">4h</em> Split hours</span><span style="color:#4CAF50">● Free</span></div>
       </div>
@@ -1403,6 +1405,7 @@ body.tv #version-tag{display:none}
 <div id="sb-backdrop" onclick="closeDrawer()"></div>
 <div id="hovercard"></div>
 <div id="rs-menu"></div>
+<div id="sec-overlay" class="dup-ov2" onclick="if(event.target===this)this.classList.remove('open')"><div id="sec-body" class="dup-panel"></div></div>
 <div id="lv-overlay" class="dup-ov2" onclick="if(event.target===this)this.classList.remove('open')"><div id="lv-body" class="dup-panel"></div></div>
 <div id="dup-overlay" onclick="if(event.target===this)closeDupModal()"><div id="dup-body"></div></div>
 <div class="toast" id="toast"></div>
@@ -1480,15 +1483,18 @@ function openDayModal(jobId, dateStr) {
   _dayEdit = { jobId, dateStr, sat, sun, hol };
   document.getElementById('day-modal-title').textContent = job.jobno + ' — ' + dayName;
 
-  const branchStaff = S.staff[job.branch] || [];
+  const branchStaff = rosterOn(job.branch, dateStr);
   const currentNames = currentRes.split(',').map(s=>s.trim().toLowerCase()).filter(s=>s);
   const currentOrig  = currentRes.split(',').map(s=>s.trim()).filter(s=>s);
   // who else is busy that day (for the other-branch list)
   const _busyNote = function(name){
     const js=jobsForPersonOnDay(name,dateStr).filter(x=>x.id!==job.id);
     const b=homeBranch(name);
-    if(((S.leave[b]||{})[dateStr]||[]).some(n=>_nm(n)===_nm(name))) return '<span class="dsx lv">leave</span>';
-    if(((S.training[b]||{})[dateStr]||[]).some(n=>_nm(n)===_nm(name))) return '<span class="dsx tr">training</span>';
+    const ab=absenceOf(name,dateStr);
+    if(ab==='leave') return '<span class="dsx lv">leave</span>';
+    if(ab==='training') return '<span class="dsx tr">training</span>';
+    const sx=secondedOn(name,dateStr);
+    if(sx&&sx.to!==job.branch&&!js.length) return '<span class="dsx busy">⇄ '+(BR_CODE[sx.to]||sx.to)+'</span>';
     return js.length?'<span class="dsx busy">on '+_esc((js[0].site||js[0].jobno||'').split(',')[0])+'</span>':'<span class="dsx free">free</span>';
   };
 
@@ -1521,7 +1527,7 @@ function openDayModal(jobId, dateStr) {
   const otherBr = ['Auckland','Wellington','Christchurch'].filter(b=>b!==job.branch && (S.staff[b]||[]).length);
   const anyOtherTicked = otherBr.some(b=>(S.staff[b]||[]).some(n=>currentNames.indexOf(n.toLowerCase())!==-1));
   const otherRows = otherBr.map(function(b){
-    return '<div class="dsx-br" style="color:'+BRANCH_COLORS[b]+'">'+b+'</div>' + (S.staff[b]||[]).map(function(name){
+    return '<div class="dsx-br" style="color:'+BRANCH_COLORS[b]+'">'+b+'</div>' + (S.staff[b]||[]).filter(function(name){ return !branchStaff.some(function(x){return _nm(x)===_nm(name);}); }).map(function(name){
       const isChecked = currentNames.indexOf(name.toLowerCase()) !== -1;
       const key = 'x_'+name.replace(/[^a-zA-Z0-9]/g, '_');
       return '<div class="day-staff-item' + (isChecked ? ' checked' : '') + '" id="dsi-' + key + '">' +
@@ -1934,7 +1940,7 @@ document.addEventListener('keydown', e => {
 const PRELOAD_JOBS = [];
 const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
-const APP_VERSION = 'v50-202611132230';
+const APP_VERSION = 'v50-202611132300';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 
 const BLANK_BRANCH_MAP = () => ({ Auckland: {}, Wellington: {}, Christchurch: {} });
@@ -3707,6 +3713,10 @@ function renderRes(){
   document.getElementById('rs-title').textContent=br+' Resources';
   document.getElementById('rs-range').textContent=`${start.getDate()} ${_MON3[start.getMonth()]} – ${end.getDate()} ${_MON3[end.getMonth()]} ${end.getFullYear()}`;
 
+  // people allocated into this branch at some point in the range join the roster rows
+  const _secIn=getSecondments().filter(x=>x.to===br&&x.end>=days[0]&&x.start<=days[days.length-1]);
+  _secIn.forEach(x=>{ if(!roster.some(n=>_nm(n)===_nm(x.name))) roster.push(x.name); });
+  const secInfo={}; _secIn.forEach(x=>{ secInfo[_nm(x.name)]=x; });
   // assignments: name → day → [jobs]
   const A={}, display={};
   roster.forEach(n=>{ A[_nm(n)]={}; display[_nm(n)]=n; });
@@ -3757,14 +3767,18 @@ function renderRes(){
   const row=(k,isExtra)=>{
     const nm=display[k]; let worked=0;
     const hb=isExtra?homeBranch(nm):'';
-    let r=`<tr class="${isExtra?(hb?'borrow':'extra'):''}"><td class="nm">${_esc(nm)}${isExtra?(hb?`<small style="color:${BRANCH_COLORS[hb]}">borrowed from ${hb}</small>`:'<small>not on any roster</small>'):''}</td>`;
+    const si=!isExtra&&secInfo[k]&&homeBranch(nm)!==br?secInfo[k]:null;
+    let r=`<tr class="${isExtra?(hb?'borrow':'extra'):''}"><td class="nm">${_esc(nm)}${si?`<small style="color:${BRANCH_COLORS[homeBranch(nm)]||'#8AB4F8'}">⇄ from ${homeBranch(nm)} · ${_fmtD(si.start)}–${_fmtD(si.end)}</small>`:''}${isExtra?(hb?`<small style="color:${BRANCH_COLORS[hb]}">borrowed from ${hb}</small>`:'<small>not on any roster</small>'):''}</td>`;
     days.forEach(d=>{
       const js=(A[k]&&A[k][d])||[];
-      const onLv=(leaveData[d]||[]).some(n=>_nm(n)===k), onTr=(trainData[d]||[]).some(n=>_nm(n)===k);
+      const _ab=absenceOf(nm,d), onLv=_ab==='leave', onTr=_ab==='training';
+      const _sec=secondedOn(nm,d), _secAway=_sec&&_sec.to!==br, _notYet=!isExtra&&secInfo[k]&&homeBranch(nm)!==br&&!(_sec&&_sec.to===br);
       const clash=(js.length+(onLv?1:0)+(onTr?1:0))>1;
       let c='';
       if(onLv) c+=`<span class="rs-chip rs-leave ${clash?'rs-clash':''}">🏖 Leave</span>`;
       if(onTr) c+=`<span class="rs-chip rs-train ${clash?'rs-clash':''}">📋 Training</span>`;
+      if(_secAway&&!js.length) c+=`<span class="rs-chip rs-sec" title="Allocated to ${_sec.to} ${_fmtD(_sec.start)} – ${_fmtD(_sec.end)}">⇄ ${BR_CODE[_sec.to]||_sec.to}</span>`;
+      if(_notYet&&!js.length) c+=`<span class="rs-free" style="color:#5A5D61" title="Not allocated to ${br} this day">· ${BR_CODE[homeBranch(nm)]||''}</span>`;
       const jc=rcl[d+'|'+k];
       js.forEach(j=>{
         const col=jobColor(j,false), hrs=personHours(j,d,nm);
@@ -3829,6 +3843,11 @@ function renderRes(){
     const dt=toD(d), n=freeByDay[d];
     side+=`<div class="rs-item" style="cursor:default"><span class="sw" style="background:#4CAF50;height:22px"></span><div class="tx"><b>${_DOW3[dt.getDay()].slice(0,3)} ${dt.getDate()} ${_MON3[dt.getMonth()]} — ${n.length} free</b><small>${_esc(n.join(', '))}</small></div></div>`;
   });
+  // branch allocations involving this branch (current & upcoming)
+  const _secs=getSecondments().filter(x=>(x.to===br||homeBranch(x.name)===br)&&x.end>=dsOf(addD(new Date(),-1))).sort((a,b)=>a.start.localeCompare(b.start));
+  side+=`</div><div class="rs-card"><h4>Allocated between branches <span>${_secs.length}</span></h4>`;
+  if(!_secs.length) side+=`<div style="font-size:11px;color:#A8AAAD">No one allocated in or out. Use ⇄ Allocate to branch.</div>`;
+  _secs.forEach(x=>{ const inn=x.to===br; side+=`<div class="rs-item" style="cursor:default"><span class="sw" style="background:${BRANCH_COLORS[inn?homeBranch(x.name):x.to]||'#8AB4F8'}"></span><div class="tx"><b>${_esc(x.name)} ${inn?'← from '+(homeBranch(x.name)||'?'):'→ to '+x.to}</b><small>${_fmtD(x.start)} – ${_fmtD(x.end)}</small></div><button class="btn btn-ghost btn-sm" onclick="removeSecondment('${x.to}','${x.id}')" title="Remove allocation">✕</button></div>`; });
   // crew free in the other branches — candidates to borrow
   const oth=['Auckland','Wellington','Christchurch'].filter(b=>b!==br&&(S.staff[b]||[]).length);
   if(oth.length){
@@ -3836,8 +3855,7 @@ function renderRes(){
     let any=false;
     days.filter(d=>!isSat(d)&&!isSun(d)).slice(0,10).forEach(d=>{
       const parts=oth.map(b=>{
-        const lv=new Set([...(((S.leave[b]||{})[d])||[]),...(((S.training[b]||{})[d])||[])].map(_nm));
-        const fr=(S.staff[b]||[]).filter(n=>!lv.has(_nm(n))&&!jobsForPersonOnDay(n,d).length);
+        const fr=rosterOn(b,d).filter(n=>!absenceOf(n,d)&&!jobsForPersonOnDay(n,d).length);
         return fr.length?`<span style="color:${BRANCH_COLORS[b]}">${BR_CODE[b]}</span> ${_esc(fr.join(', '))}`:'';
       }).filter(Boolean);
       if(!parts.length) return; any=true;
@@ -4139,7 +4157,9 @@ function rsCellMenu(ev, ds, key){
   m.innerHTML=`<div class="rm-h">${_esc(name)} · ${_fmtD(ds)}</div>${addHtml}<div class="rm-sec">Leave / training</div>
     <button onclick="rsQuick('leave','${ds}','${key.replace(/'/g,"\\'")}',${!onLv})">${onLv?'✕ Remove leave':'🏖 On leave'}</button>
     <button onclick="rsQuick('training','${ds}','${key.replace(/'/g,"\\'")}',${!onTr})">${onTr?'✕ Remove training':'📋 Training / compliance'}</button>
-    <button onclick="openLeaveRange('${key.replace(/'/g,"\\'")}','${ds}')">📅 Book a date range…</button>`;
+    <button onclick="openLeaveRange('${key.replace(/'/g,"\\'")}','${ds}')">📅 Book a date range…</button>
+    <div class="rm-sec">Branch</div>
+    <button onclick="openSecondment('${key.replace(/'/g,"\\'")}','${ds}')">⇄ Allocate to another branch from this day…</button>`;
   m.style.display='block';
   const r=ev.currentTarget.getBoundingClientRect();
   m.style.left=Math.min(r.left, window.innerWidth-300)+'px';
@@ -4163,6 +4183,59 @@ function rsAddToJob(jobId, ds, key, rest){
   toast(`${name.split(' ')[0]} added to ${(j.site||j.jobno||'job').split(',')[0]} — ${days.length} day${days.length!==1?'s':''} ✓`);
   // flag any clash / leave on those days
   setTimeout(()=>{ const cl=findClashes(days[0],days[days.length-1]).filter(c=>c.key===_nm(name)&&c.status==='open'); if(cl.length) showDupModal(cl.slice(0,1)); },300);
+}
+
+// ── Allocate a person to another branch for a date range
+function openSecondment(key, ds){
+  const m=document.getElementById('rs-menu'); if(m) m.style.display='none';
+  const all=[]; ['Auckland','Wellington','Christchurch'].forEach(b=>(S.staff[b]||[]).forEach(n=>all.push([n,b])));
+  const sel=key?((all.find(([n])=>_nm(n)===key)||[''])[0]):'';
+  const d0=ds||dsOf(new Date());
+  const home=sel?homeBranch(sel):'';
+  const toDefault=home&&home!==S.branch?S.branch:(['Auckland','Wellington','Christchurch'].find(b=>b!==(home||S.branch))||'');
+  document.getElementById('sec-body').innerHTML=`
+    <h3>⇄ Allocate to another branch</h3>
+    <p class="dup-q">The person counts as the other branch's crew for these dates — they show in its Resources, capacity and crew lists, and as "⇄ allocated" (not free) in their home branch. Jobs already booked stay as they are.</p>
+    <div class="lv-row"><label>Staff</label><select id="sec-who" onchange="secHomeNote()">${['Auckland','Wellington','Christchurch'].map(b=>`<optgroup label="${b}">`+(S.staff[b]||[]).map(n=>`<option value="${_esc(n)}" ${n===sel?'selected':''}>${_esc(n)}</option>`).join('')+'</optgroup>').join('')}</select></div>
+    <div class="lv-row"><label>To branch</label><select id="sec-to">${['Auckland','Wellington','Christchurch'].map(b=>`<option ${b===toDefault?'selected':''}>${b}</option>`).join('')}</select></div>
+    <div class="lv-row"><label>From</label><input type="date" id="sec-from" value="${d0}"></div>
+    <div class="lv-row"><label>To</label><input type="date" id="sec-end" value="${dsOf(addD(toD(d0),4))}"></div>
+    <div id="sec-note" class="dup-note" style="display:none"></div>
+    <div class="dup-btns">
+      <button class="btn btn-primary" onclick="saveSecondment()">✓ Allocate</button>
+      <span style="flex:1"></span>
+      <button class="btn btn-ghost" onclick="document.getElementById('sec-overlay').classList.remove('open')">Cancel</button>
+    </div>`;
+  document.getElementById('sec-overlay').classList.add('open');
+  secHomeNote();
+}
+function secHomeNote(){
+  const n=document.getElementById('sec-who').value, hb=homeBranch(n), el=document.getElementById('sec-note');
+  el.style.display=''; el.className='dup-note ok'; el.textContent=`${n} is on the ${hb||'?'} roster.`;
+}
+function saveSecondment(){
+  const name=document.getElementById('sec-who').value, to=document.getElementById('sec-to').value;
+  const start=document.getElementById('sec-from').value, end=document.getElementById('sec-end').value;
+  const from=homeBranch(name), el=document.getElementById('sec-note');
+  if(!name||!start||!end||end<start){ el.className='dup-note flag'; el.textContent='Pick a person and a valid date range.'; return; }
+  if(from===to){ el.className='dup-note flag'; el.textContent=`${name} is already on the ${to} roster — pick a different branch.`; return; }
+  const clash=getSecondments().find(x=>_nm(x.name)===_nm(name)&&x.start<=end&&x.end>=start);
+  if(clash){ el.className='dup-note flag'; el.textContent=`${name} is already allocated to ${clash.to} ${_fmtD(clash.start)} – ${_fmtD(clash.end)}. Remove that first.`; return; }
+  if(!S.training[to]) S.training[to]={};
+  const list=Array.isArray(S.training[to].__secondments)?S.training[to].__secondments:[];
+  list.push({name, from, start, end, id:'s'+Date.now().toString(36)});
+  S.training[to].__secondments=list;
+  document.getElementById('sec-overlay').classList.remove('open');
+  save(); if(S.gsUrl) autoSync(); renderAll();
+  // heads-up if they're already on home-branch jobs in that window
+  const busy=new Set(); let c=toD(start); while(c<=toD(end)){ const d=dsOf(c); jobsForPersonOnDay(name,d).filter(j=>j.branch!==to).forEach(j=>busy.add((j.site||j.jobno||'').split(',')[0])); c=addD(c,1); }
+  toast(`${name.split(' ')[0]} allocated to ${to} ${_fmtD(start)} – ${_fmtD(end)} ✓`);
+  if(busy.size) setTimeout(()=>toast(`⚠ ${name.split(' ')[0]} is still on ${[...busy].slice(0,2).join(', ')} in those dates — check the crew`,'err'),3100);
+}
+function removeSecondment(to,id){
+  const list=(S.training[to]&&S.training[to].__secondments)||[];
+  S.training[to].__secondments=list.filter(x=>x.id!==id);
+  save(); if(S.gsUrl) autoSync(); renderAll(); toast('Allocation removed');
 }
 
 function rsQuick(type, ds, key, on){
@@ -4369,12 +4442,31 @@ function migrateInvoicedBeforeNov2026(){
 // SHARED CREW ACROSS BRANCHES
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const BR_CODE={Auckland:'AKL',Wellington:'WLG',Christchurch:'CHC'};
+// Branch allocations (secondments): a person works for another branch for a date range.
+// Stored per receiving branch in S.training[to].__secondments = [{name, from, start, end}] so it rides the Absences sync.
+function getSecondments(){ const out=[]; ['Auckland','Wellington','Christchurch'].forEach(b=>{ const v=S.training&&S.training[b]&&S.training[b].__secondments; if(Array.isArray(v)) v.forEach(x=>{ if(x&&x.name) out.push(Object.assign({},x,{to:b})); }); }); return out; }
+function secondedOn(name,d){ const k=_nm(name); return getSecondments().find(x=>_nm(x.name)===k&&d>=x.start&&d<=x.end)||null; }
+// Who counts as this branch's crew on a given day
+function rosterOn(br,d){
+  const own=(S.staff[br]||[]).filter(n=>{ const x=secondedOn(n,d); return !x||x.to===br; });
+  const inn=getSecondments().filter(x=>x.to===br&&d>=x.start&&d<=x.end).map(x=>x.name).filter(n=>!own.some(o=>_nm(o)===_nm(n)));
+  return own.concat(inn);
+}
+// Leave / training for a person, wherever it was booked
+function absenceOf(name,d){
+  const k=_nm(name);
+  for(const b of ['Auckland','Wellington','Christchurch']){
+    if(((S.leave[b]||{})[d]||[]).some(n=>_nm(n)===k)) return 'leave';
+    if(((S.training[b]||{})[d]||[]).some(n=>_nm(n)===k)) return 'training';
+  }
+  return '';
+}
 function homeBranch(name){ const k=_nm(name); for(const b of ['Auckland','Wellington','Christchurch']) if((S.staff[b]||[]).some(n=>_nm(n)===k)) return b; return ''; }
 function jobsForPersonOnDay(name,d){ const k=_nm(name); return S.jobs.filter(j=>!j._del&&!j.done&&jobActiveOnDay(j,d)&&getStaffForDay(j,d).split(',').some(x=>_nm(x)===k)); }
 // Per-branch day picture: own crew busy anywhere, crew lent out, crew borrowed in, free
 function branchDayStats(br,d){
-  const roster=(S.staff[br]||[]).map(_nm), rosterSet=new Set(roster);
-  const lv=new Set(((S.leave[br]||{})[d]||[]).map(_nm)), tr=new Set(((S.training[br]||{})[d]||[]).map(_nm));
+  const roster=rosterOn(br,d).map(_nm), rosterSet=new Set(roster);
+  const lv=new Set(roster.filter(k=>absenceOf(k,d)==='leave')), tr=new Set(roster.filter(k=>absenceOf(k,d)==='training'));
   const busy=new Set(), lent=new Set(), borrowed=new Set();
   S.jobs.forEach(j=>{
     if(j._del) return;
@@ -4385,7 +4477,7 @@ function branchDayStats(br,d){
       else if(j.branch===br) borrowed.add(k);
     });
   });
-  const away=new Set([...lv,...tr].filter(k=>rosterSet.has(k)&&!busy.has(k)));
+  const away=new Set([...lv,...tr].filter(k=>!busy.has(k)));
   return {cap:roster.length, busy:busy.size, lent:lent.size, borrowed:borrowed.size, leave:lv.size, train:tr.size,
           free:Math.max(0,roster.length-busy.size-away.size), over:busy.size+away.size>roster.length};
 }
