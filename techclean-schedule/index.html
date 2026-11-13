@@ -987,6 +987,14 @@ body.tv #version-tag{display:none}
 .mg-score tbody tr:hover{background:rgba(255,255,255,.04)}
 .mg-heat td{text-align:center!important;border:1px solid var(--c-bg,#1A1B1D);min-width:62px}
 .mg-heat th{text-align:center!important}
+.hc-hs-tag{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:#FDD835;color:#111;border-radius:3px;padding:1px 4px;margin-left:4px;vertical-align:1px}
+.hc-hs-sum{font-size:12px;font-weight:600;color:#fff;margin:2px 0 4px}
+.hc-hs-none{font-size:11px;color:#A8AAAD;margin-top:3px}
+.mg-views{display:inline-flex;border:1px solid var(--c-border);border-radius:8px;overflow:hidden;margin-bottom:14px}
+.mg-views button{background:none;border:none;color:var(--c-muted);font-size:12px;padding:7px 14px;cursor:pointer;font-family:inherit}
+.mg-views button.on{background:rgba(255,255,255,.1);color:var(--c-white)}
+.mg-hs-tog{font-size:12px;color:var(--c-text);display:flex;align-items:center;gap:6px;margin-right:auto;margin-left:12px}
+.mg-hs-frame{width:100%;height:calc(100vh - 260px);min-height:520px;border:1px solid var(--c-border);border-radius:8px;background:#fff;margin-top:8px}
 </style>
 </head>
 <body>
@@ -1472,7 +1480,7 @@ body.tv #version-tag{display:none}
         </div>
       </div>
     <div class="modal-foot">
-      <div class="left"><button class="btn btn-danger btn-sm" id="del-btn" onclick="delJob()" style="display:none">Delete</button></div>
+      <div class="left"><button class="btn btn-danger btn-sm" id="del-btn" onclick="delJob()" style="display:none">Delete</button><button class="btn btn-sm" id="hs-btn" onclick="hsOpen(document.getElementById('f-id').value)" style="display:none;margin-left:6px">🦺 Open in H&amp;S <span class="hc-hs-tag">testing</span></button></div>
       <button class="btn btn-ghost btn-sm" onclick="closeForm()">Cancel</button>
       <button class="btn btn-primary" onclick="saveJob()">Save Job</button>
     </div>
@@ -2035,7 +2043,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v55-202611131730';
+const APP_VERSION = 'v56-202611132230';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 
 const BLANK_BRANCH_MAP = () => ({ Auckland: {}, Wellington: {}, Christchurch: {} });
@@ -2089,6 +2097,7 @@ function load(){
   }
   try{ S.wfmMonthly=JSON.parse(localStorage.getItem('aops_wfm_monthly')||'null'); }catch(e){ S.wfmMonthly=null; }
   try{ S.wfmUnmatched=JSON.parse(localStorage.getItem('aops_wfm_unmatched')||'[]'); }catch(e){ S.wfmUnmatched=[]; }
+  try{ S.hsStatus=JSON.parse(localStorage.getItem('aops_hs_status')||'{}'); }catch(e){ S.hsStatus={}; }
   applyClientMap();   // restore client field that GAS doesn't store
   applyProjectMap();  // restore intentionally-cleared project values
 }
@@ -2673,11 +2682,91 @@ function saveMgrEmails(){
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// H&S APP LINK — feed for the H&S back end + H&S status in hover cards (testing, behind Senior Management)
+// Contract: Schedule_to_HS_Integration_Brief + H&S answers (13 Nov 2026)
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const HS_APP_URL='https://techclean-ops.github.io/teclcean-ops/techclean-hs/';
+const HS_DASH_URL=HS_APP_URL+'dashboard.html';
+function hsJobKey(j){ return String(j.jobno||'').trim()||j.id; }
+function hsLink(j){ return HS_APP_URL+'?job='+encodeURIComponent(hsJobKey(j)); }
+function hsTestOn(){ try{ return localStorage.getItem('aops_hs_test')==='1'; }catch(e){ return false; } }
+function hsStatusOf(j){
+  const m=S.hsStatus||{}, k=hsJobKey(j);
+  return m[k]||m[String(k).toUpperCase()]||m[j.id]||null;
+}
+function hsJobStatus(j,today){
+  if(j._del) return 'deleted';
+  const co=closeoutOf(j);
+  if(co==='hold') return 'on_hold';
+  if(co==='invoiced') return 'invoiced';
+  if(co==='finished'||j.done) return 'finished';
+  return j.start&&j.start<=today?'in_progress':'scheduled';
+}
+// What the H&S app needs, worked out here so it never re-calculates crew itself
+function buildHsFeed(){
+  const now=new Date(), today=dsOf(now), from=dsOf(addD(now,-14)), to=dsOf(addD(now,60)), keep=dsOf(addD(now,-45));
+  const mgrs=new Set(); MG_BR.forEach(b=>getJobList(b,'managers').forEach(n=>mgrs.add(_nm(n))));
+  const em={}; mgrEmailList().forEach(x=>{ if(x&&x.name) em[_nm(x.name)]=x.email; });
+  const jobs=[];
+  S.jobs.forEach(j=>{
+    if(!j||!j.id) return;
+    const fin=j.finish||j.start||'', st=j.start||'';
+    if(!j._del && fin && fin<keep) return;                       // long-finished jobs drop out of the feed
+    const ck=j.checklist||{};
+    const days=[];
+    if(!j._del && st && fin && !isHold(j)){
+      for(let d=toD(st>from?st:from); dsOf(d)<=(fin<to?fin:to); d=addD(d,1)){
+        const ds=dsOf(d); if(!jobActiveOnDay(j,ds)) continue;
+        const crew=getStaffForDay(j,ds).split(',').map(x=>x.trim()).filter(Boolean).map(n=>{ const h=personHours(j,ds,n); return h!=null?{name:n,hours:h}:{name:n}; });
+        days.push({date:ds,startTime:null,crew});
+      }
+    }
+    jobs.push({jobKey:hsJobKey(j), id:j.id, jobNo:String(j.jobno||'').trim(), branch:j.branch, class:classKey(j), site:j.site||'',
+      scope:ck.scope||'', client:j.client||'', projectManager:ck.manager||'', branchManager:null, siteSupervisor:null,
+      clearanceAssessor:ck.assessor||'', siteContact:ck.contact||ck.contract||'', folderNo:null, worksafeNotification:null,
+      start:st, finish:j.finish||'', status:hsJobStatus(j,today), statusChangedAt:ck.closedAt||null, updatedAt:j.ts||null,
+      link:hsLink(j), days});
+  });
+  const staff=[]; MG_BR.forEach(b=>(S.staff[b]||[]).forEach(n=>staff.push({name:n,branch:b,role:mgrs.has(_nm(n))?'pm':'staff',email:em[_nm(n)]||'',mobile:''})));
+  return {generated:now.toISOString(), from, to, jobs, staff};
+}
+function hsHoverHTML(j,d){
+  if(!hsTestOn()) return '';
+  const st=hsStatusOf(j), today=dsOf(new Date());
+  let body;
+  if(!st) body=`<div class="hc-hs-none">${d&&d!==today?'H&S status is shown for today only.':'No H&S records synced for today yet.'}</div>`;
+  else {
+    const on=(st.signedOn||[]).length, off=(st.notSignedOn||[]).length, fail=(st.fitForWorkFailed||[]);
+    body=`<div class="hc-hs-sum">${_esc(st.summary||'')}</div><div class="hc-grid">
+      <span>Signed on</span><b class="${off?'hc-short':''}">${on}${on+off?' of '+(on+off):''}</b>
+      <span>Pre-start</span><b class="${st.preStartDone?'':'hc-short'}">${st.preStartDone?'✓ done':'✗ not done'}</b>
+      ${fail.length?`<span>Fit for work</span><b class="hc-short">✗ ${_esc(fail.join(', '))}</b>`:''}
+      <span>Open incidents</span><b class="${st.openIncidents?'hc-short':''}">${st.openIncidents||0}</b>
+      ${st.lastRecordAt?`<span>Last record</span><b>${new Date(st.lastRecordAt).toLocaleTimeString('en-NZ',{hour:'numeric',minute:'2-digit'})}</b>`:''}
+    </div>${off?`<div class="hc-hs-none">Not signed on: ${_esc((st.notSignedOn||[]).join(', '))}</div>`:''}`;
+  }
+  return `<div class="hc-lbl">H&amp;S today <span class="hc-hs-tag">testing</span></div>${body}<div class="hc-hs-none" style="opacity:.75">${_esc(hsJobKey(j))} · open in H&amp;S app from the job</div>`;
+}
+function hsOpen(jid){ const j=S.jobs.find(x=>x.id===jid); if(j) window.open(hsLink(j),'_blank','noopener'); }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // MANAGEMENT OVERVIEW (admin) — all branches: pipeline by month, labour cost, resource allocation
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const MG_BR=['Auckland','Wellington','Christchurch'];
-let MG={off:-2, br:'All'};          // first month shown = this month + off; 12 months
-function mgSet(k,v){ if(k==='off') MG.off+=v; else MG.br=v; renderMgmt(); }
+let MG={off:-2, br:'All', view:'overview'};          // first month shown = this month + off; 12 months
+function mgSet(k,v){ if(k==='off') MG.off+=v; else if(k==='view') MG.view=v; else MG.br=v; renderMgmt(); }
+function hsTestToggle(on){ try{ localStorage.setItem('aops_hs_test',on?'1':'0'); }catch(e){} renderMgmt(); toast(on?'H&S link switched on for this device (testing)':'H&S link switched off'); }
+function mgViewBar(){
+  return `<div class="mg-views"><button class="${MG.view==='overview'?'on':''}" onclick="mgSet('view','overview')">📈 Overview</button><button class="${MG.view==='hs'?'on':''}" onclick="mgSet('view','hs')">🦺 H&amp;S <span class="hc-hs-tag">testing</span></button></div>`;
+}
+function renderMgmtHS(el){
+  const on=hsTestOn(), n=Object.keys(S.hsStatus||{}).length;
+  el.innerHTML=mgViewBar()+`<div class="tr-card"><div class="tr-head"><h3>H&amp;S link — testing</h3>
+      <label class="mg-hs-tog"><input type="checkbox" ${on?'checked':''} onchange="hsTestToggle(this.checked)"> Show H&amp;S status in job hover cards (this device only)</label>
+      <a class="bd-pill" href="${HS_DASH_URL}" target="_blank" rel="noopener">Open dashboard in new tab ↗</a></div>
+    <div class="tr-key"><span>Feed to the H&amp;S app: sent with every sync (crew by day, status, managers)</span><span>H&amp;S status for today: ${n?n+' job'+(n!==1?'s':'')+' synced':'none yet — needs the H&amp;S back end URL and key in the schedule\'s Apps Script'}</span></div>
+    <iframe class="mg-hs-frame" src="${HS_DASH_URL}" title="H&amp;S dashboard" loading="lazy"></iframe></div>`;
+}
 const _mgCache={};
 // extra monthly figures on top of the trend: open pipeline, under (crew-days short), over (double-booked person-days), free
 function _mgMonth(brs,y,m){
@@ -2698,6 +2787,7 @@ function _mgMonth(brs,y,m){
 }
 function renderMgmt(){
   const el=document.getElementById('mgmt-body'); if(!el) return;
+  if(MG.view==='hs'){ renderMgmtHS(el); return; }
   const now=new Date(), today=dsOf(now), br=MG.br, brs=br==='All'?MG_BR:[br];
   const rate=Number(S.cfg.rate)||0, hpd=Number(S.cfg.hpd)||8, pmin=Number(S.cfg.pmin)||30, pmax=Number(S.cfg.pmax)||35;
   const months=[...Array(12)].map((_,i)=>{ const d=new Date(now.getFullYear(),now.getMonth()+MG.off+i,1); return [d.getFullYear(),d.getMonth()]; });
@@ -2717,7 +2807,7 @@ function renderMgmt(){
   const clashes=brs.reduce((a,b)=>a+findClashes(today,dsOf(addD(now,30)),b).filter(c=>c.status==='open'||c.status==='over').length,0);
   const holdN=open.filter(isHold).length;
   const tile=(l,v,sub,cls)=>`<div class="mg-tile ${cls||''}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${sub||''}</div></div>`;
-  let h=`<div class="mg-head"><h2>Senior Management overview</h2><span class="mg-sub">${br==='All'?'All branches':br} · ${_fmtD(today)}</span>
+  let h=mgViewBar()+`<div class="mg-head"><h2>Senior Management overview</h2><span class="mg-sub">${br==='All'?'All branches':br} · ${_fmtD(today)}</span>
     <div class="tr-seg" style="margin-left:auto">${['All'].concat(MG_BR).map(b=>`<button class="${b===br?'on':''}" onclick="mgSet('br','${b}')">${b==='All'?'All':BR_CODE[b]}</button>`).join('')}</div></div>`;
   h+=`<div class="mg-tiles">
     ${tile('Open pipeline',_fmtK(pipeTot),`${open.length} jobs${undated.length?` · ${undated.length} undated (${_fmtK(undated.reduce((a,j)=>a+(Number(j.val)||0),0))})`:''}${holdN?` · ${holdN} on hold`:''}`)}
@@ -3080,6 +3170,7 @@ function updateSidebar(){
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 function openForm(br){
   document.getElementById('modal-title').textContent='New Job';
+  {const hb=document.getElementById('hs-btn'); if(hb) hb.style.display='none';}
   document.getElementById('f-id').value='';
   ['f-jobno','f-site','f-client','f-val','f-wfm','f-staff','f-dur','f-start','f-finish','f-res','f-project'].forEach(id=>document.getElementById(id).value='');
   ['chk_quote','chk_folder','chk_arcp','chk_notified','chk_waste','chk_siteapp','chk_clearance'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
@@ -3109,6 +3200,7 @@ function editJob(id){
   document.getElementById('modal-title').textContent='Edit Job';
   document.getElementById('f-id').value=id;
   document.getElementById('f-jobno').value=j.jobno||'';
+  {const hb=document.getElementById('hs-btn'); if(hb) hb.style.display=hsTestOn()?'':'none';}
   document.getElementById('f-class').value=classKey(j);
   {const w=document.getElementById('f-wknd'); if(w) w.value=j.workSat&&j.workSun?'both':j.workSat?'sat':j.workSun?'sun':'none';}
   {const w=wfmOf(j), el=document.getElementById('f-wfm-note');
@@ -3481,6 +3573,7 @@ async function doSync(silent=false){
     // Deleted jobs ARE sent (flagged _del) so the Sheet removes them — previously they were held back,
     // so a delete only hid the job on this device and it came back everywhere else.
     const _payload={action:'sync',jobs:S.jobs,leave:S.leave||{},training:S.training||{},ts:_syncStart};
+    try{ _payload.hsFeed=buildHsFeed(); }catch(e){ console.error('hsFeed',e); }
     if(_staffDirty){ _payload.staff=S.staff; _payload.staffEdit=true; }   // roster is sent AND flagged as a real edit ONLY on add/remove; backend ignores staff on every other sync
     const body=JSON.stringify(_payload);
     const res=await fetch(S.gsUrl,{method:'POST',body});
@@ -3584,6 +3677,7 @@ async function doSync(silent=false){
             }
           });
         }
+        if(data.hsStatus && typeof data.hsStatus==='object'){ S.hsStatus=data.hsStatus; try{ localStorage.setItem('aops_hs_status',JSON.stringify(data.hsStatus)); }catch(e){} }
         if(Array.isArray(data.wfmUnmatched)){ S.wfmUnmatched=data.wfmUnmatched; try{ localStorage.setItem('aops_wfm_unmatched',JSON.stringify(data.wfmUnmatched)); }catch(e){} }
         // WorkflowMax monthly actuals (invoiced / timesheet hours) — read-only, server copy wins
         if(data.wfmMonthly && typeof data.wfmMonthly==='object'){
@@ -3631,6 +3725,7 @@ function doGet(e) {
   // WorkflowMax connection (only active once the wfm script file is added)
   if (typeof wfmHandleGet === 'function' && (e.parameter.code || e.parameter.action === 'wfmAuth')) return wfmHandleGet(e);
   if (e.parameter.action === 'getJobs') return handleGetJobs();
+  if (e.parameter.action === 'hsFeed') return handleHsFeed(e.parameter);   // H&S back end only — needs HS_KEY
   return json({ok:false, error:'Unknown action'});
 }
 
@@ -3788,6 +3883,9 @@ function handleSync(data) {
   if (!log) log = ss.insertSheet('Log');
   log.appendRow([new Date(), 'Sync', incomingJobs.length+' jobs', data.ts||'']);
 
+  // H&S app feed: crew by day etc., worked out by the schedule app (never stops a sync if it fails)
+  try { if (data.hsFeed) hsStoreFeed_(ss, data.hsFeed); } catch (err) { console.error('hsFeed store: ' + err.message); }
+
   return handleGetJobs();
 }
 
@@ -3892,7 +3990,18 @@ function handleGetJobs() {
     if (r[0]) wfmUnmatched.push({name: String(r[0]), job: String(r[1] || ''), date: r[2] instanceof Date ? Utilities.formatDate(r[2], 'Pacific/Auckland', 'yyyy-MM-dd') : String(r[2] || '')});
   });
 
-  return json({ok:true, jobs:allJobs, staff:staff, leave:leave, training:training, wfmMonthly:wfmMonthly, wfmUnmatched:wfmUnmatched, count:allJobs.length});
+  // H&S status for today (cached every 15 min from the H&S back end by hsStatusRefresh)
+  const hsStatus = {};
+  const hsSh = ss.getSheetByName('HS_Status');
+  if (hsSh && hsSh.getLastRow() > 1) {
+    const today = Utilities.formatDate(new Date(), 'Pacific/Auckland', 'yyyy-MM-dd');
+    hsSh.getRange(2, 1, hsSh.getLastRow() - 1, 4).getValues().forEach(function(r) {
+      const d = r[1] instanceof Date ? Utilities.formatDate(r[1], 'Pacific/Auckland', 'yyyy-MM-dd') : String(r[1] || '');
+      if (r[0] && d === today) { try { hsStatus[String(r[0])] = JSON.parse(r[2]); } catch (e) {} }
+    });
+  }
+
+  return json({ok:true, jobs:allJobs, staff:staff, leave:leave, training:training, wfmMonthly:wfmMonthly, wfmUnmatched:wfmUnmatched, hsStatus:hsStatus, count:allJobs.length});
 }
 
 function json(obj) {
@@ -3987,6 +4096,108 @@ function noCrewRun_(dryRun) {
   send(props.getProperty('ALERT_EMAILS'), all);
   all.forEach(function(br){ send(props.getProperty('ALERT_EMAILS_' + br.toUpperCase()), [br]); });
   return result;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// H&S APP LINK
+//   Schedule → H&S:  GET ?action=hsFeed&key=HS_KEY&from=yyyy-MM-dd&to=yyyy-MM-dd
+//                    (crew by day, status, managers — published by the schedule app on every sync)
+//   H&S → schedule:  hsStatusRefresh (every 15 min) calls the H&S back end's jobHsStatus for
+//                    today's jobs and caches it; the app shows it in job hover cards (testing).
+// Setup (Project Settings → Script Properties):
+//   HS_KEY = a long random secret, the same value in the H&S back end's Script Properties
+//   HS_URL = the H&S back end web app URL (…/exec)  — needed for hsStatusRefresh only
+//   then run installHsStatusTrigger once.
+// ─────────────────────────────────────────────────────────────────────────────
+const HS_FEED_HEADERS = ['ID', 'JobKey', 'Branch', 'Start', 'Finish', 'UpdatedAt', 'JSON', 'StoredAt'];
+
+function hsStoreFeed_(ss, feed) {
+  if (!feed || !Array.isArray(feed.jobs)) return;
+  const sh = ss.getSheetByName('HS_Feed') || ss.insertSheet('HS_Feed');
+  const rows = sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, HS_FEED_HEADERS.length).getValues() : [];
+  const byId = {}; rows.forEach(function(r, i) { if (r[0]) byId[String(r[0])] = i; });
+  const now = new Date().toISOString();
+  feed.jobs.forEach(function(j) {
+    if (!j || !j.id) return;
+    const row = [j.id, j.jobKey || j.id, j.branch || '', j.start || '', j.finish || '', j.updatedAt || '', JSON.stringify(j), now];
+    const i = byId[j.id];
+    if (i == null) { byId[j.id] = rows.length; rows.push(row); return; }
+    // keep the newer job version; same version → take the latest crew (leave / allocation changes don't touch the job timestamp)
+    if (String(j.updatedAt || '') >= String(rows[i][5] || '')) rows[i] = row;
+  });
+  // staff list in one row
+  if (Array.isArray(feed.staff)) {
+    const st = ['__staff', '', '', '', '', now, JSON.stringify(feed.staff), now];
+    if (byId['__staff'] != null) rows[byId['__staff']] = st; else rows.push(st);
+  }
+  // drop jobs not touched for 120 days
+  const cutoff = new Date(Date.now() - 120 * 86400000).toISOString();
+  const keep = rows.filter(function(r) { return r[0] === '__staff' || String(r[7] || '') >= cutoff; });
+  sh.clearContents();
+  sh.getRange(1, 1, 1, HS_FEED_HEADERS.length).setValues([HS_FEED_HEADERS]).setFontWeight('bold');
+  if (keep.length) {
+    sh.getRange(2, 1, keep.length, HS_FEED_HEADERS.length).setNumberFormat('@');
+    sh.getRange(2, 1, keep.length, HS_FEED_HEADERS.length).setValues(keep);
+  }
+}
+
+function handleHsFeed(p) {
+  const key = PropertiesService.getScriptProperties().getProperty('HS_KEY');
+  if (!key) return json({ok: false, error: 'HS_KEY not set in the schedule script'});
+  if (String(p.key || '') !== key) return json({ok: false, error: 'Not authorised'});
+  const tz = 'Pacific/Auckland', now = new Date();
+  const from = p.from || Utilities.formatDate(new Date(now.getTime() - 14 * 86400000), tz, 'yyyy-MM-dd');
+  const to = p.to || Utilities.formatDate(new Date(now.getTime() + 60 * 86400000), tz, 'yyyy-MM-dd');
+  const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName('HS_Feed');
+  const jobs = []; let staff = []; let generated = '';
+  if (sh && sh.getLastRow() > 1) sh.getRange(2, 1, sh.getLastRow() - 1, HS_FEED_HEADERS.length).getValues().forEach(function(r) {
+    if (r[0] === '__staff') { try { staff = JSON.parse(r[6]); } catch (e) {} return; }
+    let j; try { j = JSON.parse(r[6]); } catch (e) { return; }
+    if (String(r[7] || '') > generated) generated = String(r[7]);
+    const open = j.status === 'scheduled' || j.status === 'in_progress' || j.status === 'on_hold';
+    const overlaps = !j.start || !j.finish || (j.start <= to && j.finish >= from);
+    // closed / deleted jobs stay in the feed for 45 days after their status changed, so the H&S app can close them out
+    const recentClose = !open && String(j.statusChangedAt || j.updatedAt || r[7] || '').slice(0, 10) >= Utilities.formatDate(new Date(now.getTime() - 45 * 86400000), tz, 'yyyy-MM-dd');
+    if (!(overlaps || recentClose)) return;
+    j.days = (j.days || []).filter(function(d) { return d.date >= from && d.date <= to; });
+    jobs.push(j);
+  });
+  return json({ok: true, generated: generated, from: from, to: to, jobs: jobs, staff: staff});
+}
+
+function installHsStatusTrigger() {
+  ScriptApp.getProjectTriggers().filter(function(t) { return t.getHandlerFunction() === 'hsStatusRefresh'; }).forEach(function(t) { ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('hsStatusRefresh').timeBased().everyMinutes(15).create();
+}
+
+function hsStatusRefresh() {
+  const props = PropertiesService.getScriptProperties();
+  const url = props.getProperty('HS_URL'), key = props.getProperty('HS_KEY');
+  if (!url || !key) return {skipped: 'HS_URL / HS_KEY not set'};
+  const tz = 'Pacific/Auckland', today = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd');
+  const ss = SpreadsheetApp.openById(SHEET_ID), fsh = ss.getSheetByName('HS_Feed');
+  if (!fsh || fsh.getLastRow() < 2) return {skipped: 'no feed yet'};
+  // jobs with crew today
+  const keys = [];
+  fsh.getRange(2, 1, fsh.getLastRow() - 1, HS_FEED_HEADERS.length).getValues().forEach(function(r) {
+    if (r[0] === '__staff') return;
+    let j; try { j = JSON.parse(r[6]); } catch (e) { return; }
+    if (j.status !== 'in_progress' && j.status !== 'scheduled') return;
+    if ((j.days || []).some(function(d) { return d.date === today && d.crew && d.crew.length; })) keys.push(j.jobKey);
+  });
+  const reqs = keys.map(function(k) { return {url: url + (url.indexOf('?') < 0 ? '?' : '&') + 'action=jobHsStatus&key=' + encodeURIComponent(key) + '&jobKey=' + encodeURIComponent(k) + '&date=' + today, muteHttpExceptions: true}; });
+  const out = [];
+  for (let i = 0; i < reqs.length; i += 20) {
+    UrlFetchApp.fetchAll(reqs.slice(i, i + 20)).forEach(function(res, n) {
+      try { const d = JSON.parse(res.getContentText()); if (d && d.ok !== false) out.push([keys[i + n], today, JSON.stringify(d), new Date()]); } catch (e) {}
+    });
+  }
+  const sh = ss.getSheetByName('HS_Status') || ss.insertSheet('HS_Status');
+  sh.clearContents();
+  sh.getRange(1, 1, 1, 4).setValues([['JobKey', 'Date', 'JSON', 'Fetched']]).setFontWeight('bold');
+  if (out.length) { sh.getRange(2, 1, out.length, 2).setNumberFormat('@'); sh.getRange(2, 1, out.length, 4).setValues(out); }
+  return {jobs: keys.length, cached: out.length};
 }
 `;
   navigator.clipboard.writeText(s).then(()=>toast('Apps Script copied to clipboard ✓'));
@@ -4656,6 +4867,7 @@ function hoverCardHTML(j, day){
     ${chk.scope?`<div class="hc-lbl">Scope</div><div class="hc-scope">${_esc(chk.scope)}</div>`:''}
     <div class="hc-lbl">Crew ${d?'on '+_fmtD(d):''}</div>
     <div class="hc-names">${nameHtml}</div>
+    ${hsHoverHTML(j,d)}
     <div class="hc-foot">${day&&document.querySelector('.panel.active')&&document.querySelector('.panel.active').id==='panel-res'?'Click to change / move · double-click to open job':'Click to open job'}${clashes.some(c=>c.status!=='split')?' · ⚠ double-booked':''}</div>`;
 }
 let _hcT=null;
