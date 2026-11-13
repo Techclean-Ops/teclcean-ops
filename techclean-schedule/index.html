@@ -6,6 +6,13 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#111111">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-title" content="TC Schedule">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>TechClean — Branch Operations Schedule</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Familjen+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -934,6 +941,7 @@ body.tv #version-tag{display:none}
   #version-tag{display:none}
 }
 @media (hover:none){ #hovercard{display:none!important} }
+.wk-ico{width:1.15em;height:1.15em;vertical-align:-0.2em;display:inline-block;margin-right:1px}
 </style>
 </head>
 <body>
@@ -1959,7 +1967,9 @@ document.addEventListener('keydown', e => {
 const PRELOAD_JOBS = [];
 const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
-const APP_VERSION = 'v50-202611140000';
+// Asbestos worker icon: hard hat + half-face respirator with twin filters
+const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4.6 9.6A7.4 7.4 0 0 1 19.4 9.6H21.2V11.6H2.8V9.6z"/><ellipse cx="12" cy="16.2" rx="5.9" ry="5.5" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="9.7" cy="14.2" r="1" fill="currentColor"/><circle cx="14.3" cy="14.2" r="1" fill="currentColor"/><path fill="currentColor" d="M7.8 16.9Q12 15.2 16.2 16.9V18.9Q12 23 7.8 18.9z"/><circle cx="5.9" cy="19.3" r="2.3" fill="currentColor"/><circle cx="18.1" cy="19.3" r="2.3" fill="currentColor"/></svg>';
+const APP_VERSION = 'v51-202611131600';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 
 const BLANK_BRANCH_MAP = () => ({ Auckland: {}, Wellington: {}, Christchurch: {} });
@@ -2292,7 +2302,7 @@ function renderCal(){
         ${j.client?`<div class="gt-client">${_esc(j.client)}</div>`:''}
         <div class="gt-jfoot">
           ${j.val?`<span class="gt-val">$${Math.round(j.val).toLocaleString('en-NZ')}</span>`:''}
-          <span class="gt-crew ${short?'short':''}">👷 ${named}${need?'/'+need:''}</span>
+          <span class="gt-crew ${short?'short':''}">${WK} ${named}${need?'/'+need:''}</span>
           <select class="gt-close co-${closeoutOf(j)||'open'}" onclick="event.stopPropagation()" onchange="setCloseout('${j.id}',this.value)" title="Status / close-out">
             <option value="" ${!closeoutOf(j)?'selected':''}>○ Open</option>
             <option value="hold" ${closeoutOf(j)==='hold'?'selected':''}>⏸ On hold</option>
@@ -3713,7 +3723,7 @@ function renderBoard(){
       html+=`<div class="bd-job ${sg.cl?'cont-l':''} ${sg.cr?'cont-r':''} ${sg.short?'short':''} ${sg.short&&sg.crew===0?'nocrew':''} ${j.done?'done':''} ${isHold(j)?'hold':''}" style="grid-column:${sg.s+1}/${sg.e+2};grid-row:${sg.lane+2};background:${c.bg};color:${c.fg}" data-jid="${j.id}" onclick="event.stopPropagation();editJob('${j.id}')">
         ${sg.cl?'<span class="bd-arr">‹</span>':''}
         <div class="bd-txt"><div class="t">${label}</div><div class="s2">${j.jobno?`<b>${_esc(j.jobno)}</b> · `:''}${isHold(j)?'⏸ ON HOLD · start TBC':_esc(nmTxt)}</div></div>
-        ${wfmBadge(j)}${hasClash?'<span class="bd-warn" title="Someone on this job is double-booked">⚠</span>':''}${co==='invoiced'?'<span class="bd-co">$ INV</span>':co==='finished'?'<span class="bd-co">✓ FIN</span>':''}<span class="crew">👷 ${crewTxt}</span>${sg.cr?'<span class="bd-arr">›</span>':''}
+        ${wfmBadge(j)}${hasClash?'<span class="bd-warn" title="Someone on this job is double-booked">⚠</span>':''}${co==='invoiced'?'<span class="bd-co">$ INV</span>':co==='finished'?'<span class="bd-co">✓ FIN</span>':''}<span class="crew">${WK} ${crewTxt}</span>${sg.cr?'<span class="bd-arr">›</span>':''}
       </div>`;
     }
     html+=`</div>`;
@@ -4237,7 +4247,7 @@ function rsChipMenu(el,jobId,ds,key){
     <div class="rm-sec">This job</div>
     <button onclick="rsRemoveFromJob('${j.id}','${ds}','${k2}',false)">✕ Take off this job — this day</button>
     <button onclick="rsRemoveFromJob('${j.id}','${ds}','${k2}',true)">✕ Take off this job — rest of job</button>
-    <button onclick="document.getElementById('rs-menu').style.display='none';openDayModal('${j.id}','${ds}')">👷 Change crew for this day…</button>
+    <button onclick="document.getElementById('rs-menu').style.display='none';openDayModal('${j.id}','${ds}')">${WK} Change crew for this day…</button>
     <button onclick="document.getElementById('rs-menu').style.display='none';editJob('${j.id}')">✎ Open job setup (or double-click)</button>`;
   m.style.display='block';
   { const hc=document.getElementById('hovercard'); if(hc) hc.classList.remove('show'); clearTimeout(_hcT); }
@@ -4463,7 +4473,7 @@ function renderBoardAgenda(start, nDays, weeks){
         <div class="ag-site">${_esc(j.site||'Job')}</div>
         ${j.client?`<div class="ag-client">${_esc(j.client)}</div>`:''}${isHold(j)?'<div class="gt-holdtag">⏸ On hold — start TBC</div>':''}
         <div class="ag-names">${names.map(nm=>{const hr=personHours(j,d,nm); const c=cl.find(x=>x.d===d&&x.key===_nm(nm)&&x.jobs.includes(j)); return `<span class="ag-nm ${c&&c.status!=='split'?'clash':''}">${_esc(nm)}${hr!=null?` <b>${hr}h</b>`:''}</span>`;}).join('')||'<span class="ag-none">No crew named</span>'}
-          <span class="ag-badge ${short?'short':''}">👷 ${names.length}${need?'/'+need:''}</span></div>
+          <span class="ag-badge ${short?'short':''}">${WK} ${names.length}${need?'/'+need:''}</span></div>
       </div>`;
     });
     h+='</div>';
@@ -4998,5 +5008,6 @@ window.addEventListener('pageshow', function(){
   </div>
 </div>
 
+<script>if('serviceWorker' in navigator && location.protocol==='https:'){addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}</script>
 </body>
 </html>
