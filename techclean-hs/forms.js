@@ -433,3 +433,18 @@ var SEQUENCE = [
   { key: 'D11B', group: 'finish', form: 'D11', preset: { dir: 'back' }, title: 'Inventory back — equipment and unused consumables' }
 ];
 var GROUPS = { start: 'Start of job — once', day: 'Every day', week: 'Every week', finish: 'Close-out — when removal is finished' };
+
+/* Form revisions — printed on every PDF so each record shows the version it was filled in on.
+   Add a line here whenever a form changes (approved by HSC / GM Ops; ARCP Part D forms changed in the ARCP Word template first). */
+var FORM_LOG = [
+  { code: 'D2', rev: '1.1', date: '2026-11-14', what: '10 questions now come from the records or their own steps — fit test and training from certificates; set-up items on D6' },
+  { code: 'D3', rev: '1.1', date: '2026-11-14', what: 'Licence, face fit and health monitoring filled in from each person’s certificates — check and sign' },
+  { code: 'D5', rev: '1.1', date: '2026-11-14', what: '5 repeated questions removed; enclosure, NPUs and pressure are one check' },
+  { code: 'D6', rev: '1.1', date: '2026-11-14', what: 'Set-up: smoke test answered from the D7 record' },
+  { code: 'D8', rev: '1.1', date: '2026-11-14', what: '8 items now checked from the week’s records' },
+  { code: 'AUD', rev: '1.6', date: '2026-11-14', what: '18 critical ▲ items marked (stop-work triggers)' }
+];
+Object.keys(FORMS).forEach(function (c) {
+  var l = FORM_LOG.filter(function (x) { return x.code === c; }).pop();
+  FORMS[c].rev = l ? l.rev : (FORMS[c].rev || '1.0');
+});

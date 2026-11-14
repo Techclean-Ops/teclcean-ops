@@ -25,7 +25,7 @@ var PDF = (function () {
       doc.setTextColor(255, 255, 255); doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
       doc.text(rec.formTitle, W - M, 11, { align: 'right' });
       doc.setFont('helvetica', 'normal'); doc.setFontSize(8.5); doc.setTextColor(200, 200, 200);
-      doc.text(rec.formRef + '   ·   ' + CONFIG.ARCP_DOC + ' Rev ' + rec.arcpRev, W - M, 17, { align: 'right' });
+      doc.text(rec.formRef + (rec.formRev && !/\bRev\b/.test(rec.formRef) ? ' · Rev ' + rec.formRev : '') + '   ·   ' + CONFIG.ARCP_DOC + ' Rev ' + rec.arcpRev, W - M, 17, { align: 'right' });
       y = 32;
     }
     function footer() {

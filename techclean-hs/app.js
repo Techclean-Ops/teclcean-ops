@@ -192,6 +192,7 @@
     var old = null;
     if (S.amend && S.amend.old.form === rec.form && !rec.id) { old = S.amend.old; applyAmend(rec, old, S.amend.reason); }
     rec.id = rec.id || uid();
+    if (!rec.formRev && FORMS[rec.form]) rec.formRev = FORMS[rec.form].rev;   // the form version this record was filled in on
     rec.createdAt = rec.createdAt || Date.now();
     if (S.job && rec.jobNo === S.job.jobNo && S.job.id) rec.scheduleId = S.job.id;   // still matches if the Job No is added to the schedule later
     rec.updatedAt = Date.now();
@@ -541,6 +542,7 @@
     var h = top('Kia ora ' + first(S.me.name), longDate() + ' · ' + roleName(S.me)) + '<div class="body">' +
       '<div class="card job"><h2>' + esc(j.street) + ', ' + esc(j.suburb) + '</h2><div class="meta"><span class="chip cls">Class ' + esc(j.cls) + '</span>' +
       esc(j.jobNo) + ' · Supervisor ' + esc(sup ? sup.name : '') + '</div></div>';
+    h += formsNews();
     if (j.status === 'closed') h += '<div class="banner">Job closed — site file is read only.</div>';
     else if (j.status === 'hold') h += '<div class="banner">On hold — start TBC.</div>';
     if (j.status !== 'closed') {
@@ -560,6 +562,7 @@
     app.innerHTML = h + footLinks() + '</div>'; renderBanner(); bindFootLinks();
     $$('[data-go]').forEach(function (b) { b.onclick = function () { go(b.getAttribute('data-go')); }; });
     var o = $('#other'); if (o) o.onclick = function () { S.qrJob = null; S.job = null; history.replaceState(null, '', location.pathname); renderMgrToday(); };
+    bindFormsNews();
   }
 
   /* ---------- Answers the app already has: filled in from records and certificates, shown to the supervisor and printed on the PDF ---------- */
@@ -820,6 +823,19 @@
     await saveRecord(rec);
     return rec;
   }
+
+  /* ---------- "Forms updated" note for supervisors and managers ---------- */
+  function formsNews() {
+    var seen = null; try { seen = JSON.parse(localStorage.getItem('tc.formRevs') || 'null'); } catch (e) {}
+    var now = {}; Object.keys(FORMS).forEach(function (c) { now[c] = FORMS[c].rev; });
+    if (!seen) { try { localStorage.setItem('tc.formRevs', JSON.stringify(now)); } catch (e) {} return ''; }   // first use: nothing to announce
+    var changed = FORM_LOG.filter(function (x) { return seen[x.code] !== now[x.code] && now[x.code] === x.rev; });
+    if (!changed.length) return '';
+    return '<div class="card" id="fnews"><div class="lbl" style="margin-top:0">📝 Forms updated</div>' + changed.map(function (x) {
+      return '<div style="margin-bottom:8px"><b>' + esc((FORMS[x.code].short || x.code) + ' — ' + (x.code.charAt(0) === 'D' ? 'Form ' + x.code + ' ' : '') + 'Rev ' + x.rev) + '</b><br><span class="small">' + esc(x.what) + '</span></div>';
+    }).join('') + '<button class="btn sec" id="fnok" style="min-height:48px;font-size:17px;padding:10px">Got it</button></div>';
+  }
+  function bindFormsNews() { var b = $('#fnok'); if (b) b.onclick = function () { var now = {}; Object.keys(FORMS).forEach(function (c) { now[c] = FORMS[c].rev; }); try { localStorage.setItem('tc.formRevs', JSON.stringify(now)); } catch (e) {} var c = $('#fnews'); if (c) c.remove(); }; }
 
   /* ---------- Corrective actions: register, follow-up and close-out ---------- */
   function allActions() {
@@ -1090,7 +1106,7 @@
     var next = dayItems.filter(function (x) { return !x.st.done; })[0];
     var h = top('Kia ora ' + first(S.me.name), longDate() + ' · start ' + j.start) + '<div class="body">';
     h += '<div class="card job"><h2>' + esc(j.street) + ', ' + esc(j.suburb) + '</h2><div class="meta"><span class="chip cls">Class ' + esc(j.cls) + '</span>' +
-      esc(j.jobNo) + ' · ' + present().length + ' crew today</div></div>';
+      esc(j.jobNo) + ' · ' + present().length + ' crew today</div></div>' + formsNews();
     h += next ? '<button class="btn" id="nextstep" style="margin-bottom:12px">Next: ' + next.num + '. ' + esc(next.step.title) + ' →</button>'
       : '<div class="card center" style="border:2px solid var(--green)"><b>✅ All of today’s steps are done</b></div>';
     var showStart = !plan.startDone || S.showStart;
@@ -1113,7 +1129,7 @@
       [['add', '➕', 'Add to job'], ['lib', '📚', 'SWMS library'], ['D10', '🚛', 'Waste load'], ['D11', '🧰', 'Inventory out / back'], ['D4', '🎓', 'Induct someone new'], ['visitor', '🪪', 'Visitor sign in'], ['file', '📁', 'Site file'], ['hnd', '🤝', 'Hand over to another supervisor']]
         .map(function (b) { return '<button data-any="' + b[0] + '"><span>' + b[1] + '</span>' + b[2] + '</button>'; }).join('') + '</div>';
     h += footLinks() + '</div>';
-    app.innerHTML = h; renderBanner(); bindFootLinks();
+    app.innerHTML = h; renderBanner(); bindFootLinks(); bindFormsNews();
     var ns = $('#nextstep'); if (ns) ns.onclick = function () { runStep(next.step); };
     var ss = $('#showstart'); if (ss) ss.onclick = function () { S.showStart = true; renderSupToday(); };
     $$('[data-step]').forEach(function (b) { b.onclick = function () {
@@ -2322,7 +2338,7 @@
     if (code === 'D11') INVENTORY.consumables.concat(INVENTORY.equipment).forEach(function (it) { rows.push({ section: 'Item (unit) · out · back', label: it.name + ' (' + it.unit + ')', value: 'Out ____  Back ____', flag: '' }); });
     if (code === 'D13' || code === 'D14') for (var i = 0; i < 12; i++) rows.push({ section: 'Name · company · time in · time out · signature', label: ' ', value: '', flag: '' });
     var sigs = code === 'D1' ? [1, 2, 3, 4, 5, 6].map(function () { return { name: 'Name:', label: 'Signature / date / rev', text: ' ' }; }) : [{ name: 'Name:', label: 'Signature', text: ' ' }];
-    openPdf({ id: 'BLANK-' + code, formTitle: (f.title || code) + ' — blank', formRef: (f.ref || code), arcpRev: arcpRev(), createdAt: Date.now(), gps: null,
+    openPdf({ id: 'BLANK-' + code, formTitle: (f.title || code) + ' — blank', formRef: (f.ref || code), formRev: f.rev, arcpRev: arcpRev(), createdAt: Date.now(), gps: null,
       details: [['Job number', S.job ? S.job.jobNo : ''], ['Site', S.job ? S.job.street + ', ' + S.job.suburb : ''], ['Date', ''], ['Completed by', '']],
       statement: code === 'D1' ? FORMS.D1.statement : null, rows: rows, sigs: sigs, fileName: 'Blank ' + code + ' ' + (f.title || '') + '.pdf' });
   }
