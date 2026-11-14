@@ -1,5 +1,5 @@
 /* TechClean H&S — offline cache + background send (Android). Bump VERSION on every release. */
-var VERSION = 'tc-hs-v26';
+var VERSION = 'tc-hs-v27';
 var FILES = ['./', 'index.html', 'app.js', 'forms.js', 'config.js', 'pdf.js', 'jspdf.umd.min.js',
   'logo-white.png', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'manifest.webmanifest'];
 
@@ -16,7 +16,7 @@ self.addEventListener('fetch', function (e) {
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return; // API calls go straight to the network
   // App pages (including /j/<job> QR links) always get the app shell
   if (req.mode === 'navigate') {
-    e.respondWith(fetch(req).then(function (r) { return r.ok ? r : caches.match('index.html'); }).catch(function () { return caches.match('index.html'); }));
+    e.respondWith(fetch(req, { cache: 'no-cache' }).then(function (r) { return r.ok ? r : caches.match('index.html'); }).catch(function () { return caches.match(new URL(req.url).pathname.indexOf('dashboard') >= 0 ? 'dashboard.html' : 'index.html'); }));   // always the latest page when there's signal
     return;
   }
   e.respondWith(caches.match(req, { ignoreSearch: true }).then(function (hit) {
