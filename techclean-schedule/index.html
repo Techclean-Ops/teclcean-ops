@@ -1267,7 +1267,7 @@ body.tv #version-tag{display:none}
 
       <div class="setup-card">
         <h3>Manager / supervisor emails — "needs crew" alert</h3>
-        <p style="font-size:11px;color:var(--c-muted);line-height:1.6;margin-bottom:10px">At 6am on weekdays each manager is emailed the jobs they look after (the job's <b>TechClean manager</b>) that have days with no crew, or short of crew, in the next 5 working days. Leave an email blank to skip that person. Needs the v51 sync script with <code>installNoCrewAlert</code> run once.</p>
+        <p style="font-size:11px;color:var(--c-muted);line-height:1.6;margin-bottom:10px">At 6am on weekdays each manager is emailed the jobs they look after (the job's <b>TechClean manager</b>) that have days with no crew, or short of crew, in the next 5 working days. Leave an email blank to skip that person. Sent through Microsoft 365. Needs the v52 sync script, the Microsoft 365 settings, and <code>installNoCrewAlert</code> run once.</p>
         <div id="mgr-emails"></div>
         <button class="btn btn-primary" style="margin-top:10px" onclick="saveMgrEmails()">Save emails</button>
       </div>
@@ -2043,7 +2043,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v56-202611132230';
+const APP_VERSION = 'v56-202611141500';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 
 const BLANK_BRANCH_MAP = () => ({ Auckland: {}, Wellington: {}, Christchurch: {} });
@@ -4018,7 +4018,8 @@ function json(obj) {
 //     (Setup → Manager / supervisor emails) and ride the Absences sync (Auckland | training | __mgrEmails).
 //   • optional overview of everything: Script Property ALERT_EMAILS = a@x.co.nz, b@x.co.nz
 //     (optional per branch: ALERT_EMAILS_AUCKLAND / _WELLINGTON / _CHRISTCHURCH)
-// Setup (once): run installNoCrewAlert and approve the email permission. noCrewTest = dry run.
+// Sent through Microsoft 365 (see m365Send_ below) — nothing goes out until M365_* properties are set.
+// Setup (once): run installNoCrewAlert and approve the permissions. noCrewTest = dry run.
 // ─────────────────────────────────────────────────────────────────────────────
 const ALERT_DAYS = 5;   // working days ahead to check
 function installNoCrewAlert() {
@@ -4079,7 +4080,7 @@ function noCrewRun_(dryRun) {
   const send = function(to, brs) {
     if (!to || !brs.length) return;
     const n = brs.reduce(function(a, b){ return a + result[b].length; }, 0);
-    MailApp.sendEmail({to: to, subject: 'Schedule: ' + n + ' job' + (n !== 1 ? 's' : '') + ' need crew in the next ' + ALERT_DAYS + ' working days',
+    m365Send_({to: to, subject: 'Schedule: ' + n + ' job' + (n !== 1 ? 's' : '') + ' need crew in the next ' + ALERT_DAYS + ' working days',
       htmlBody: '<p style="font-family:Arial">These jobs have days with no crew (or fewer than needed) named in the Operations Schedule. Please allocate crew in Resources.</p>' + brs.map(block).join('') +
         '<p style="font-family:Arial;font-size:12px;color:#777;margin-top:18px">Sent daily at 6am on weekdays by the TechClean Operations Schedule.</p>'});
   };
@@ -4087,7 +4088,7 @@ function noCrewRun_(dryRun) {
   // each manager / supervisor: their own jobs
   Object.keys(byMgr).forEach(function(e) {
     const o = byMgr[e], brs = Object.keys(o.items), n = brs.reduce(function(a, b){ return a + o.items[b].length; }, 0);
-    MailApp.sendEmail({to: e, subject: 'Schedule: ' + (n === 1 ? '1 of your jobs needs' : n + ' of your jobs need') + ' crew in the next ' + ALERT_DAYS + ' working days',
+    m365Send_({to: e, subject: 'Schedule: ' + (n === 1 ? '1 of your jobs needs' : n + ' of your jobs need') + ' crew in the next ' + ALERT_DAYS + ' working days',
       htmlBody: '<p style="font-family:Arial">Hi ' + o.name.split(' ')[0] + ', these jobs you look after have days with no crew (or fewer than needed) in the Operations Schedule. Please allocate crew in Resources.</p>' +
         brs.map(function(b){ return block(b, o.items); }).join('') +
         '<p style="font-family:Arial;font-size:12px;color:#777;margin-top:18px">Sent daily at 6am on weekdays by the TechClean Operations Schedule.</p>'});
@@ -4198,6 +4199,64 @@ function hsStatusRefresh() {
   sh.getRange(1, 1, 1, 4).setValues([['JobKey', 'Date', 'JSON', 'Fetched']]).setFontWeight('bold');
   if (out.length) { sh.getRange(2, 1, out.length, 2).setNumberFormat('@'); sh.getRange(2, 1, out.length, 4).setValues(out); }
   return {jobs: keys.length, cached: out.length};
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MICROSOFT 365 EMAIL — all schedule email goes out through TechClean's Microsoft 365
+// (Microsoft Graph, app-only). IT registers one app in Microsoft Entra ID with the
+// Mail.Send application permission, limited to the sending mailbox only.
+// Script Properties:
+//   M365_TENANT_ID   — Directory (tenant) ID
+//   M365_CLIENT_ID   — Application (client) ID
+//   M365_SECRET      — client secret value
+//   M365_FROM        — sending mailbox, e.g. schedule@techclean.co.nz
+// Run m365Test once to send a test email to M365_FROM.
+// ─────────────────────────────────────────────────────────────────────────────
+function m365Token_() {
+  const cache = CacheService.getScriptCache(), hit = cache.get('m365_token');
+  if (hit) return hit;
+  const p = PropertiesService.getScriptProperties();
+  const tenant = p.getProperty('M365_TENANT_ID'), id = p.getProperty('M365_CLIENT_ID'), secret = p.getProperty('M365_SECRET');
+  if (!tenant || !id || !secret) throw new Error('Microsoft 365 not set up — add M365_TENANT_ID, M365_CLIENT_ID, M365_SECRET, M365_FROM in Script Properties');
+  const res = UrlFetchApp.fetch('https://login.microsoftonline.com/' + encodeURIComponent(tenant) + '/oauth2/v2.0/token', {
+    method: 'post', muteHttpExceptions: true,
+    payload: {grant_type: 'client_credentials', client_id: id, client_secret: secret, scope: 'https://graph.microsoft.com/.default'}
+  });
+  const d = JSON.parse(res.getContentText() || '{}');
+  if (!d.access_token) throw new Error('Microsoft 365 sign-in failed: ' + (d.error_description || d.error || res.getResponseCode()));
+  cache.put('m365_token', d.access_token, Math.max(60, Math.min(3000, (Number(d.expires_in) || 3600) - 300)));
+  return d.access_token;
+}
+
+/** Send one email through Microsoft 365. o = {to: 'a@x, b@y', subject, htmlBody}. Returns true if accepted. */
+function m365Send_(o) {
+  const from = PropertiesService.getScriptProperties().getProperty('M365_FROM');
+  if (!from) { console.error('M365_FROM not set — email not sent: ' + o.subject); return false; }
+  const to = String(o.to || '').split(/[,;]/).map(function(x) { return x.trim(); }).filter(String);
+  if (!to.length) return false;
+  const body = {message: {subject: o.subject, body: {contentType: 'HTML', content: o.htmlBody || ''},
+    toRecipients: to.map(function(a) { return {emailAddress: {address: a}}; })}, saveToSentItems: true};
+  let res;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    res = UrlFetchApp.fetch('https://graph.microsoft.com/v1.0/users/' + encodeURIComponent(from) + '/sendMail', {
+      method: 'post', contentType: 'application/json', muteHttpExceptions: true,
+      headers: {Authorization: 'Bearer ' + m365Token_()}, payload: JSON.stringify(body)
+    });
+    const c = res.getResponseCode();
+    if (c === 202) return true;
+    if (c === 401 && attempt === 0) { CacheService.getScriptCache().remove('m365_token'); continue; }   // token expired — retry once
+    if (c === 429 || c >= 500) { Utilities.sleep(2000); continue; }                                    // busy — retry once
+    break;
+  }
+  console.error('Microsoft 365 send failed (' + res.getResponseCode() + '): ' + res.getContentText().slice(0, 300));
+  return false;
+}
+
+function m365Test() {
+  const from = PropertiesService.getScriptProperties().getProperty('M365_FROM');
+  const ok = m365Send_({to: from, subject: 'TechClean schedule — Microsoft 365 test', htmlBody: '<p style="font-family:Arial">If you can read this, the schedule can send email through Microsoft 365. ✓</p>'});
+  Logger.log(ok ? 'Sent ✓ — check the ' + from + ' inbox and Sent Items' : 'Not sent — see the error above');
 }
 `;
   navigator.clipboard.writeText(s).then(()=>toast('Apps Script copied to clipboard ✓'));
