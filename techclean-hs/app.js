@@ -109,6 +109,13 @@
     if (cl) d.jobs.forEach(function (j) { j.cls = cl; });
   }
   function setData(d) { S.people = d.people || []; S.jobs = d.jobs || []; S.library = d.library || LIBRARY_DEMO; if (d.me) S.meFromServer = d.me; }
+  async function fetchDocFile(r) {
+    try {
+      var res = await fetch(CONFIG.API_URL + '?action=docFile&token=' + encodeURIComponent(localStorage.getItem('tc.token') || '') + '&id=' + encodeURIComponent(r.id));
+      var d = await res.json(); if (!d.ok) return false;
+      r.file = 'data:' + d.mime + ';base64,' + d.b64; r.data.mime = d.mime; await DB.put(r); return true;
+    } catch (e) { return false; }
+  }
   /* Records made on other phones for the same jobs (from the back end): kept here so every phone sees the whole job, even with no signal. */
   async function mergeRemote(list) {
     if (!list || !list.length) return;
@@ -118,6 +125,8 @@
       r.status = 'sent'; r.remote = true; await DB.put(r); have[r.id] = r; changed = true;
     }
     if (!changed) return;
+    // key documents are kept on the phone so they open with no signal on site
+    for (var k2 in have) { var d = have[k2]; if (d.form === 'DOC' && !d.file && !d.supersededBy && ['arcp', 'survey', 'wsn', 'swms'].indexOf((d.data || {}).type) >= 0) fetchDocFile(d); }
     for (var k in have) { var x = have[k]; if (x.supersedes && have[x.supersedes] && !have[x.supersedes].supersededBy) { have[x.supersedes].supersededBy = x.id; await DB.put(have[x.supersedes]); } }
     await refreshRecs();
   }
@@ -2291,6 +2300,11 @@
 
   async function openDoc(r) {
     if (!r) return;
+    if (!r.file) {
+      if (!CONFIG.API_URL || !isOnline()) { toast('This document opens once there\u2019s signal'); return; }
+      toast('Getting the document…');
+      if (!(await fetchDocFile(r))) { toast('Couldn\u2019t get the document — try again'); return; }
+    }
     var blob = await (await fetch(r.file)).blob(), file = null;
     try { file = new File([blob], r.fileName, { type: r.data.mime }); } catch (e) {}
     if (file && navigator.canShare && navigator.canShare({ files: [file] })) { navigator.share({ files: [file], title: r.data.title }).catch(function () {}); return; }

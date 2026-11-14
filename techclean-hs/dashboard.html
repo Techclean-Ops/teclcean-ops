@@ -46,6 +46,7 @@ tr.click{cursor:pointer} tr.click:hover td{background:var(--surface)}
 .small{color:var(--grey);font-size:12px}
 .btn{border:0;border-radius:6px;background:var(--lime);color:#1A1A1A;font:inherit;font-weight:700;padding:9px 14px;cursor:pointer}
 .btn.sec{background:var(--surface);color:var(--ink);border:1px solid var(--line2)}
+.btn[disabled]{background:#4A4D50;color:#78797C;cursor:default}
 input,select,textarea{font:inherit;border:1px solid var(--line2);border-radius:6px;padding:8px 10px;width:100%;background:var(--surface);color:var(--ink)}
 label{font-weight:500;font-size:11px;color:var(--grey);text-transform:uppercase;letter-spacing:.06em;display:block;margin:10px 0 4px;font-family:'DM Mono',monospace}
 .form{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
@@ -179,10 +180,58 @@ label{font-weight:500;font-size:11px;color:var(--grey);text-transform:uppercase;
     h += '<div class="card"><h2>Job totals</h2><table><tr><td>Records filed</td><td><b>' + j.records + '</b></td></tr><tr><td>Consumables signed out</td><td><b>' + j.items + ' items</b> <span class="small">(costed in WorkflowMax)</span></td></tr>' +
       '<tr><td>Flags</td><td>' + (j.gaps.length ? j.gaps.map(function (g) { return chip('red', g); }).join('<br>') : chip('green', 'None')) + '</td></tr></table>' +
       '<div style="margin-top:12px;display:flex;gap:8px"><button class="btn" id="pack">Job H&amp;S pack (PDF)</button><button class="btn sec" id="inv">Inventory PDF</button></div></div></div></div>';
-    main.innerHTML = h;
+    h += docsCard(j);
+    main.innerHTML = h; bindDocs(j);
     document.getElementById('bk').onclick = function () { S.sub = null; render(); };
     document.getElementById('pack').onclick = function () { toast('Demo: builds one PDF of every record for ' + j.no + ' from the job folder'); };
     document.getElementById('inv').onclick = function () { toast('Demo: inventory out / back for ' + j.no); };
+  }
+
+
+  /* ---------- Job documents: drag-and-drop from the desktop, or picked up from the job folder automatically ---------- */
+  var DTYPES = [['arcp', 'ARCP / SSSP', 'ARCP'], ['survey', 'Asbestos survey / report', 'Survey'], ['wsn', 'WorkSafe notification', 'WSN'], ['swms', 'SWMS', 'H&S/Documents'],
+    ['air', 'Air monitoring results', 'H&S/Documents'], ['clear', 'Clearance certificate', 'H&S/Documents'], ['permit', 'Permit', 'H&S/Documents'], ['plan', 'Site plan / drawing', 'Drawing'],
+    ['variation', 'Client instruction / variation', 'Documents'], ['other', 'Other', 'H&S/Documents']];
+  function dtype(id) { return DTYPES.filter(function (t) { return t[0] === id; })[0]; }
+  function jobDocsDemo(j) {
+    if (!j.docs) j.docs = [{ type: 'arcp', title: 'SSSP-ARCP - ' + j.no + ' - B Class Rev 1.2.pdf', rev: '1.2', src: 'Picked up from the job folder › ARCP', by: 'Auto', at: '13 Nov 2026' },
+      { type: 'survey', title: 'Asbestos survey - ' + j.street + '.pdf', src: 'Picked up from the job folder › Survey', by: 'Auto', at: '12 Nov 2026' }];
+    return j.docs;
+  }
+  function docsCard(j) {
+    var d = jobDocsDemo(j);
+    return '<div class="card"><h2>Job documents — what the crew see on site<span class="sp"></span></h2><table><tr><th>Type</th><th>Document</th><th>Rev</th><th>Where from</th><th>Added</th></tr>' +
+      d.map(function (x) { return '<tr><td>' + esc(dtype(x.type)[1]) + '</td><td>' + esc(x.title) + '</td><td>' + esc(x.rev || '') + '</td><td class="small">' + esc(x.src) + '</td><td class="small">' + esc(x.by + ' · ' + x.at) + '</td></tr>'; }).join('') + '</table>' +
+      '<div id="drop" style="margin-top:14px;border:2px dashed var(--line2);border-radius:8px;padding:22px;text-align:center;cursor:pointer;background:var(--surface)"><b>Drag a file here</b> or click to choose — PDF, Word or Excel<input type="file" id="df" accept=".pdf,.doc,.docx,.xls,.xlsx,image/*" style="display:none"><div class="small" id="dname" style="margin-top:6px"></div></div>' +
+      '<div class="form" style="margin-top:6px"><div><label>What is it?</label><select id="dt">' + DTYPES.map(function (t) { return '<option value="' + t[0] + '">' + t[1] + '</option>'; }).join('') + '</select></div>' +
+      '<div><label>Revision (ARCP)</label><input id="dr" placeholder="e.g. 1.3"></div><div style="grid-column:1/3"><label>Title</label><input id="dti" placeholder="Filled in from the file name"></div></div>' +
+      '<div class="small" id="dpath" style="margin:8px 0"></div><button class="btn" id="dup" disabled>Upload to job</button>' +
+      '<p class="small" style="margin-top:10px">Saved into the job folder, then on every phone on this job at the next refresh (it opens offline on site). A new ARCP, survey or WorkSafe notification replaces the current one — the old one is kept — and a new ARCP revision makes the crew re-sign.<br>Already saved the ARCP or survey into the job folder’s ARCP or Survey folder? Nothing to do — the app picks it up from there automatically.</p></div>';
+  }
+  function bindDocs(j) {
+    var drop = document.getElementById('drop'), inp = document.getElementById('df'), file = null;
+    var dt = document.getElementById('dt'), dr = document.getElementById('dr'), ti = document.getElementById('dti'), up = document.getElementById('dup');
+    function path() { var t = dtype(dt.value); document.getElementById('dpath').textContent = 'Saves to: Operations Hub › ' + j.branch + ' › 1. Jobs › 1. 2026 Jobs › ' + j.no + ' ' + j.street + ' › ' + t[2].replace('/', ' › '); }
+    function chk() { up.disabled = !(file && ti.value.trim() && (dt.value !== 'arcp' || dr.value.trim())); }
+    function take(f) {
+      if (!f) return; file = f; document.getElementById('dname').textContent = f.name + ' (' + Math.round(f.size / 1024) + ' KB)';
+      var n = f.name.toLowerCase();
+      if (/arcp|sssp/.test(n)) dt.value = 'arcp'; else if (/survey|report|asbestos/.test(n)) dt.value = 'survey'; else if (/wsn|worksafe|notif/.test(n)) dt.value = 'wsn'; else if (/swms/.test(n)) dt.value = 'swms';
+      var m = f.name.match(/(?:rev|version|v)\s*\.?\s*(\d+(?:\.\d+)?)/i); if (m && dt.value === 'arcp') dr.value = m[1];
+      ti.value = f.name.replace(/\.[a-z0-9]+$/i, ''); path(); chk();
+    }
+    drop.onclick = function () { inp.click(); }; inp.onchange = function () { take(inp.files[0]); };
+    drop.ondragover = function (e) { e.preventDefault(); drop.style.borderColor = 'var(--lime)'; };
+    drop.ondragleave = function () { drop.style.borderColor = ''; };
+    drop.ondrop = function (e) { e.preventDefault(); drop.style.borderColor = ''; take(e.dataTransfer.files[0]); };
+    dt.onchange = function () { path(); chk(); }; dr.oninput = chk; ti.oninput = chk; path();
+    up.onclick = function () {
+      var t = dtype(dt.value), d = jobDocsDemo(j);
+      if (t[0] === 'arcp' || t[0] === 'survey' || t[0] === 'wsn') d.forEach(function (x) { if (x.type === t[0] && !x.old) { x.old = true; x.title += ' (replaced — kept)'; } });
+      d.unshift({ type: t[0], title: ti.value.trim(), rev: t[0] === 'arcp' ? dr.value.trim() : '', src: 'Uploaded from the dashboard › ' + t[2], by: ({ admin: 'Admin', bm: 'Branch Manager', pm: 'Project Manager' })[S.role] || 'You', at: 'just now' });
+      toast('Demo: ' + t[1] + ' uploaded to ' + j.no + (t[0] === 'arcp' ? ' — crew will re-sign Rev ' + dr.value.trim() : '') + '. Live: saved to the job folder and sent to the phones.');
+      render();
+    };
   }
 
   function peopleTab() {
