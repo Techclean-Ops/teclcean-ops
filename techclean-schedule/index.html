@@ -276,6 +276,8 @@ td.td-neg{background:rgba(239,68,68,.15)!important;color:#FCA5A5!important}
 .staff-item{display:flex;align-items:center;gap:6px;padding:4px 8px;background:rgba(255,255,255,.03);border-radius:3px;font-size:11px}
 .staff-item button{margin-left:auto;background:none;border:none;color:var(--c-red);cursor:pointer;font-size:13px;line-height:1;padding:0 2px;opacity:.6;transition:.12s}
 .staff-item button:hover{opacity:1}
+.staff-item span button{margin-left:0}
+.staff-item span button:first-child{color:var(--c-muted)}
 .add-row{display:flex;gap:6px;margin-top:8px}
 .add-row input{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--c-border);border-radius:4px;color:var(--c-text);font-family:var(--font-mono);font-size:11px;padding:5px 8px;outline:none;transition:.12s}
 .add-row input:focus{border-color:var(--c-blue)}
@@ -2045,8 +2047,11 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v57-202611180830';
+const APP_VERSION = 'v57-202611180930';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
+// v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
+let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
+function _queueStaffOp(o){ o.at=new Date().toISOString(); _staffOps.push(o); try{ localStorage.setItem('aops_staff_ops',JSON.stringify(_staffOps)); }catch(e){} _staffDirty=true; }
 
 const BLANK_BRANCH_MAP = () => ({ Auckland: {}, Wellington: {}, Christchurch: {} });
 
@@ -3104,7 +3109,7 @@ function renderSetup(){
       <div class="staff-list">
         ${S.staff[br].map((n,i)=>`<div class="staff-item">
           <span>${n}</span>
-          <button onclick="rmStaff('${br}',${i})">✕</button>
+          <span style="margin-left:auto;display:flex;gap:2px"><button onclick="renameStaff('${br}',${i})" title="Rename (updates their jobs, leave and lists)">✎</button><button onclick="rmStaff('${br}',${i})" title="Remove">✕</button></span>
         </div>`).join('')}
       </div>
       <div class="add-row">
@@ -3520,12 +3525,48 @@ function goToday(){const n=new Date();S.year=n.getFullYear();S.month=n.getMonth(
 function addStaff(br){
   const el=document.getElementById('add-'+br);
   const n=el.value.trim();if(!n)return;
-  if(!S.staff[br].includes(n)){S.staff[br].push(n);S.staff[br].sort();_staffDirty=true;save();if(S.gsUrl)autoSync();renderSetup();updateSidebar();toast(`${n} added`)}
+  if(S.staff[br].some(x=>_nm(x)===_nm(n))){ toast(`${n} is already in ${br}`,'err'); return; }
+  S.staff[br].push(n);S.staff[br].sort();_queueStaffOp({op:'add',br,name:n});save();if(S.gsUrl)autoSync();renderSetup();updateSidebar();toast(`${n} added`);
   el.value='';
 }
 function rmStaff(br,i){
   if(!confirm(`Remove ${S.staff[br][i]} from ${br}?`))return;
-  S.staff[br].splice(i,1);_staffDirty=true;save();if(S.gsUrl)autoSync();renderSetup();updateSidebar();toast('Removed');
+  const name=S.staff[br][i];
+  S.staff[br].splice(i,1);_queueStaffOp({op:'remove',br,name});save();if(S.gsUrl)autoSync();renderSetup();updateSidebar();toast('Removed');
+}
+// Rename a person everywhere: roster, jobs (crew, day changes, split hours), leave & training, allocations, lists
+function renameStaff(br,i){
+  const from=S.staff[br][i]; if(!from) return;
+  const to=(prompt(`Rename ${from} to:`, from)||'').trim().replace(/\s+/g,' ');
+  if(!to||to===from) return;
+  if(S.staff[br].some((x,k)=>k!==i&&_nm(x)===_nm(to))){ toast(`${to} is already in ${br}`,'err'); return; }
+  const kf=_nm(from), kt=_nm(to), now=new Date().toISOString();
+  const swapList=str=>String(str||'').split(',').map(x=>x.trim()).filter(Boolean).map(x=>_nm(x)===kf?to:x).join(', ');
+  const swapArr=a=>Array.isArray(a)?a.map(x=>typeof x==='string'&&_nm(x)===kf?to:x):a;
+  let jobsChanged=0;
+  S.jobs.forEach(j=>{
+    let ch=false;
+    const r=swapList(j.resource); if(r!==String(j.resource||'').split(',').map(x=>x.trim()).filter(Boolean).join(', ')&&String(j.resource||'').split(',').some(x=>_nm(x)===kf)){ j.resource=r; ch=true; }
+    if(j.dayOverrides) Object.keys(j.dayOverrides).forEach(d=>{ const v=j.dayOverrides[d]; if(v&&v!=='__OFF__'&&String(v).split(',').some(x=>_nm(x)===kf)){ j.dayOverrides[d]=swapList(v); ch=true; } });
+    const ck=j.checklist;
+    if(ck){
+      if(ck.splits) Object.keys(ck.splits).forEach(d=>{ const sp=ck.splits[d]; if(sp&&sp[kf]!=null){ sp[kt]=sp[kf]; delete sp[kf]; ch=true; } });
+      ['tsFill','tsDiff'].forEach(f=>{ if(ck[f]) Object.keys(ck[f]).forEach(d=>{ if((ck[f][d]||[]).some(x=>_nm(x)===kf)){ ck[f][d]=swapArr(ck[f][d]); ch=true; } }); });
+      ['manager','assessor'].forEach(f=>{ if(ck[f]&&_nm(ck[f])===kf){ ck[f]=to; ch=true; } });
+    }
+    if(ch){ j.ts=now; jobsChanged++; }
+  });
+  ['Auckland','Wellington','Christchurch'].forEach(b=>{
+    [S.leave,S.training].forEach(src=>{ const m=(src&&src[b])||{}; Object.keys(m).forEach(d=>{
+      const v=m[d]; if(!Array.isArray(v)) return;
+      if(d==='__secondments'||d==='__mgrEmails'||d==='__staffmap') m[d]=v.map(o=>o&&typeof o==='object'?Object.assign({},o,(o.name&&_nm(o.name)===kf)?{name:to}:{}):o);
+      else m[d]=swapArr(v);
+    }); });
+  });
+  S.staff[br][i]=to; S.staff[br].sort();
+  _queueStaffOp({op:'rename',br,name:from,to});
+  save(); if(S.gsUrl) autoSync(); renderSetup(); updateSidebar(); renderAll();
+  toast(`${from} → ${to}${jobsChanged?` · ${jobsChanged} job${jobsChanged!==1?'s':''} updated`:''}`);
 }
 
 function saveSettings(){
@@ -3576,12 +3617,13 @@ async function doSync(silent=false){
     // so a delete only hid the job on this device and it came back everywhere else.
     const _payload={action:'sync',jobs:S.jobs,leave:S.leave||{},training:S.training||{},ts:_syncStart};
     try{ _payload.hsFeed=buildHsFeed(); }catch(e){ console.error('hsFeed',e); }
-    if(_staffDirty){ _payload.staff=S.staff; _payload.staffEdit=true; }   // roster is sent AND flagged as a real edit ONLY on add/remove; backend ignores staff on every other sync
+    const _opsSent=_staffOps.length;
+    if(_staffDirty){ _payload.staff=S.staff; _payload.staffEdit=true; if(_opsSent) _payload.staffOps=_staffOps.slice(); }   // v53 server applies staffOps (removals stick); older servers use staff
     const body=JSON.stringify(_payload);
     const res=await fetch(S.gsUrl,{method:'POST',body});
     const data=await res.json();
     if(data.ok){
-      if(_payload.staff) _staffDirty=false;   // roster change acknowledged by server
+      if(_payload.staff){ _staffDirty=false; if(_opsSent){ _staffOps.splice(0,_opsSent); try{ localStorage.setItem('aops_staff_ops',JSON.stringify(_staffOps)); }catch(e){} if(_staffOps.length) _staffDirty=true; } }   // roster change acknowledged by server
       document.getElementById('sync-pill').textContent='LIVE';
       document.getElementById('sync-pill').className='pill live';
       document.getElementById('gs-status').textContent='⬤ Connected — last sync '+new Date().toLocaleTimeString('en-NZ');
@@ -3815,31 +3857,47 @@ function handleSync(data) {
     if (rows.length > 0) sheet.getRange(2,1,rows.length,headers.length).setValues(rows);
   }
 
-  // Sync staff
-  if (data.staff) {
+  // Sync staff — v53: changes arrive as add / remove / rename operations, so removals stick.
+  // Removed names are kept as "removed" rows (tombstones) so a device with an old list can't add them back.
+  if (data.staffOps || data.staff) {
     let staffSheet = ss.getSheetByName('Staff');
     if (!staffSheet) staffSheet = ss.insertSheet('Staff');
-    const existingStaff = {Auckland:[], Wellington:[], Christchurch:[]};
-    const staffData = staffSheet.getDataRange().getValues();
-    for (let i = 1; i < staffData.length; i++) {
-      const br = staffData[i][0];
-      const name = staffData[i][1];
-      if (br && name && existingStaff[br]) {
-        if (!existingStaff[br].includes(name)) existingStaff[br].push(name);
-      }
+    const BRS = ['Auckland','Wellington','Christchurch'];
+    const nk = function(n) { return String(n || '').trim().toLowerCase().replace(/\\s+/g, ' '); };
+    // rows: key "branch|name" → {br, name, removed, changed}
+    const rows = {};
+    staffSheet.getDataRange().getValues().slice(1).forEach(function(r) {
+      const br = String(r[0] || '').trim(), name = String(r[1] || '').trim();
+      if (!br || !name || BRS.indexOf(br) < 0) return;
+      rows[br + '|' + nk(name)] = {br: br, name: name, removed: String(r[2] || '').toLowerCase() === 'removed', changed: r[3] || ''};
+    });
+    const now = new Date().toISOString();
+    const setActive = function(br, name) { if (BRS.indexOf(br) < 0 || !String(name || '').trim()) return; rows[br + '|' + nk(name)] = {br: br, name: String(name).trim(), removed: false, changed: now}; };
+    const setRemoved = function(br, name) { const k = br + '|' + nk(name); if (rows[k]) { rows[k].removed = true; rows[k].changed = now; } else if (BRS.indexOf(br) >= 0 && name) rows[k] = {br: br, name: String(name).trim(), removed: true, changed: now}; };
+    if (Array.isArray(data.staffOps) && data.staffOps.length) {
+      data.staffOps.forEach(function(o) {
+        if (!o || !o.br) return;
+        if (o.op === 'add') setActive(o.br, o.name);
+        else if (o.op === 'remove') setRemoved(o.br, o.name);
+        else if (o.op === 'rename' && o.to) { setRemoved(o.br, o.name); setActive(o.br, o.to); }
+        else if (o.op === 'setAll' && Array.isArray(o.list)) {   // admin "force overwrite": this list becomes the branch roster
+          const keep = {}; o.list.forEach(function(n) { keep[nk(n)] = 1; setActive(o.br, n); });
+          Object.keys(rows).forEach(function(k) { const x = rows[k]; if (x.br === o.br && !x.removed && !keep[nk(x.name)]) setRemoved(x.br, x.name); });
+        }
+      });
+    } else if (data.staff && data.staffEdit) {
+      // older app versions send the whole list: add new names only, never revive removed ones
+      BRS.forEach(function(br) { (data.staff[br] || []).forEach(function(name) {
+        const k = br + '|' + nk(name); if (!rows[k]) setActive(br, name);
+      }); });
     }
-    for (const br of ['Auckland','Wellington','Christchurch']) {
-      const incoming = data.staff[br] || [];
-      existingStaff[br] = [...new Set([...existingStaff[br], ...incoming])].sort();
-    }
+    const out = Object.keys(rows).map(function(k) { return rows[k]; })
+      .sort(function(a, b) { return BRS.indexOf(a.br) - BRS.indexOf(b.br) || (a.removed - b.removed) || a.name.localeCompare(b.name); })
+      .map(function(x) { return [x.br, x.name, x.removed ? 'removed' : '', x.changed]; });
     staffSheet.clearContents();
-    staffSheet.getRange(1,1,1,2).setValues([['Branch','Name']])
+    staffSheet.getRange(1,1,1,4).setValues([['Branch','Name','Status','Changed']])
               .setFontWeight('bold').setBackground('#2B2D2F').setFontColor('#A8C800');
-    const staffRows = [];
-    for (const br of ['Auckland','Wellington','Christchurch']) {
-      existingStaff[br].forEach(name => staffRows.push([br, name]));
-    }
-    if (staffRows.length > 0) staffSheet.getRange(2,1,staffRows.length,2).setValues(staffRows);
+    if (out.length) staffSheet.getRange(2,1,out.length,4).setValues(out);
   }
 
   // ── Absences (Leave & Training) ──────────────────────────
@@ -3947,7 +4005,8 @@ function handleGetJobs() {
     for (let i = 1; i < staffData.length; i++) {
       const br = staffData[i][0];
       const name = String(staffData[i][1]||'').trim();
-      if (br && name && staff[br]) staff[br].push(name);
+      const removed = String(staffData[i][2]||'').toLowerCase() === 'removed';
+      if (br && name && staff[br] && !removed && staff[br].indexOf(name) < 0) staff[br].push(name);
     }
   }
 
@@ -5437,7 +5496,7 @@ function forceUpdate(){
 async function adminForceOverwrite(){
   if(!confirm('FORCE OVERWRITE\n\nThis pushes THIS device\'s schedule and staff list up to the Sheet as the master copy (overwriting the roster there), then clears this device\'s cache and reloads.\n\nOnly use it from a device you know is correct. Continue?')) return;
   try{
-    _staffDirty = true;               // force the roster to be pushed as authoritative
+    ['Auckland','Wellington','Christchurch'].forEach(b=>_queueStaffOp({op:'setAll',br:b,list:(S.staff[b]||[]).slice()}));   // this device's roster becomes the master list
     if(typeof toast==='function') toast('Overwriting the Sheet from this device…');
     if(S.gsUrl) await doSync(false);  // push (server replaces staff) + pull
   }catch(e){ /* proceed to refresh regardless */ }
