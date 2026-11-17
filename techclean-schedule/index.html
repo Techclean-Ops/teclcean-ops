@@ -1003,6 +1003,36 @@ body.tv #version-tag{display:none}
 .rp-row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
 .rp-row label{display:flex;flex-direction:column;gap:3px;font-size:10px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.05em}
 .rp-row select,.rp-row input{min-width:150px}
+.dr-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9000;display:flex;align-items:flex-start;justify-content:center;padding:40px 12px;overflow:auto}
+.dr-box{background:var(--c-panel,#1E1F21);border:1px solid var(--c-border);border-radius:12px;width:100%;max-width:720px;box-shadow:0 20px 60px rgba(0,0,0,.5);color:var(--c-text)}
+.dr-head{display:flex;justify-content:space-between;align-items:flex-start;padding:16px 18px 10px;border-bottom:1px solid var(--c-border)}
+.dr-t{font-family:var(--font-head);font-size:17px;font-weight:700;color:var(--c-white)}
+.dr-s{font-size:11.5px;color:var(--c-muted);margin-top:3px}
+.dr-x{background:none;border:none;color:var(--c-muted);font-size:18px;cursor:pointer}
+.dr-list{padding:10px 18px 4px}
+.dr-stop{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.dr-n{width:24px;height:24px;border-radius:50%;background:#E8192C;color:#fff;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;flex:none}
+.dr-stop .sw{width:5px;height:30px;border-radius:3px;flex:none}
+.dr-tx{flex:1;min-width:0}.dr-tx b{display:block;font-size:13px;color:var(--c-white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dr-tx small{display:block;font-size:10.5px;color:var(--c-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dr-f{display:flex;flex-direction:column;font-size:9px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.05em;gap:2px}
+.dr-f input{width:86px;padding:4px 6px;background:var(--c-bg);border:1px solid var(--c-border-lt,#444);border-radius:5px;color:var(--c-text);font-size:12px}
+.dr-f input[type=number]{width:58px}
+.dr-mv{display:flex;flex-direction:column;gap:2px}.dr-mv button,.dr-rm{background:rgba(255,255,255,.06);border:1px solid var(--c-border);color:var(--c-text);border-radius:4px;font-size:10px;cursor:pointer;padding:1px 6px}
+.dr-mv button:disabled{opacity:.3;cursor:default}.dr-rm{color:#EF4444;padding:4px 7px}
+.dr-tot{padding:8px 18px;font-size:12px;color:var(--c-text)}
+.dr-link{background:none;border:none;color:#8AB4F8;font-size:11.5px;cursor:pointer;margin-left:10px;padding:0}
+.dr-sec{padding:10px 18px 4px;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--c-muted);border-top:1px solid var(--c-border)}
+.dr-avail{padding:2px 18px 8px;display:flex;flex-wrap:wrap;gap:6px}
+.dr-add{display:flex;align-items:center;gap:6px;background:rgba(255,255,255,.05);border:1px solid var(--c-border);border-radius:6px;color:var(--c-text);font-size:12px;padding:6px 9px;cursor:pointer}
+.dr-add:hover{background:rgba(255,255,255,.1)}.dr-add .sw{width:8px;height:8px;border-radius:2px}.dr-plus{color:#A8C800;font-weight:700;margin-left:2px}
+.dr-chk{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--c-muted);width:100%;margin-top:4px}
+.dr-warn{padding:6px 18px;color:#F59E0B}
+.dr-empty{font-size:12px;color:var(--c-muted);padding:6px 0}
+.dr-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 18px;border-top:1px solid var(--c-border)}
+.rs-run{font-style:normal;font-size:9.5px;font-weight:700;background:#111;color:#fff;border-radius:3px;padding:0 4px;margin-right:3px}
+.hc-run{font-style:normal;font-size:10px;color:#FDD835}
+@media(max-width:640px){.dr-stop{flex-wrap:wrap}.dr-tx{flex-basis:calc(100% - 40px)}}
 </style>
 </head>
 <body>
@@ -2052,7 +2082,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v57-202611181000';
+const APP_VERSION = 'v58-202611181000';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -2729,7 +2759,7 @@ function buildHsFeed(){
     if(!j._del && st && fin && !isHold(j)){
       for(let d=toD(st>from?st:from); dsOf(d)<=(fin<to?fin:to); d=addD(d,1)){
         const ds=dsOf(d); if(!jobActiveOnDay(j,ds)) continue;
-        const crew=getStaffForDay(j,ds).split(',').map(x=>x.trim()).filter(Boolean).map(n=>{ const h=personHours(j,ds,n); return h!=null?{name:n,hours:h}:{name:n}; });
+        const crew=getStaffForDay(j,ds).split(',').map(x=>x.trim()).filter(Boolean).map(n=>{ const h=personHours(j,ds,n), ru=runOf(j,ds,n); const o={name:n}; if(h!=null) o.hours=h; if(ru){ o.runStop=ru.n; o.runOf=ru.of; if(ru.t) o.startTime=ru.t; } return o; });
         days.push({date:ds,startTime:null,crew});
       }
     }
@@ -2760,6 +2790,95 @@ function hsHoverHTML(j,d){
   return `<div class="hc-lbl">H&amp;S today <span class="hc-hs-tag">testing</span></div>${body}<div class="hc-hs-none" style="opacity:.75">${_esc(hsJobKey(j))} · open in H&amp;S app from the job</div>`;
 }
 function hsOpen(jid){ const j=S.jobs.find(x=>x.id===jid); if(j) window.open(hsLink(j),'_blank','noopener'); }
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// DAY RUN — one person doing several jobs in a day: pick jobs, set the order, hours and start times in one go
+// Stored per job: checklist.run[date][personKey] = {n, of, t}; hours in checklist.splits as usual
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let DR=null;   // {name, key, d, stops:[{id,h,t}], others:false, dropOthers:true}
+function runOf(j,d,name){ const r=j.checklist&&j.checklist.run&&j.checklist.run[d]; return r?r[_nm(name)]||null:null; }
+function _t2m(t){ const m=/^(\d{1,2}):(\d{2})$/.exec(String(t||'')); return m?(+m[1])*60+(+m[2]):null; }
+function _m2t(m){ m=Math.max(0,Math.round(m)); return String(Math.floor(m/60)%24).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }
+function _tNice(t){ const m=_t2m(t); if(m==null) return ''; const h=Math.floor(m/60), mm=m%60; return (h%12||12)+(mm?':'+String(mm).padStart(2,'0'):'')+(h<12?'am':'pm'); }
+function openDayRun(key,d){
+  const m=document.getElementById('rs-menu'); if(m) m.style.display='none';
+  const name=_personName(key);
+  // start from what they're already on that day, in the saved run order if there is one
+  const cur=jobsForPersonOnDay(name,d);
+  cur.sort((a,b)=>((runOf(a,d,name)||{}).n||99)-((runOf(b,d,name)||{}).n||99));
+  const hpd=_hpd(), def=cur.length?Math.round(hpd/cur.length*2)/2:hpd;
+  DR={name,key:_nm(name),d,others:false,dropOthers:true,
+      stops:cur.map(j=>({id:j.id,h:personHours(j,d,name)!=null?personHours(j,d,name):def,t:(runOf(j,d,name)||{}).t||''}))};
+  if(DR.stops.length&&!DR.stops[0].t) drAutoTimes();
+  renderDayRun();
+}
+function drAutoTimes(){
+  if(!DR) return; let t=_t2m(DR.stops[0]&&DR.stops[0].t)||_t2m((S.cfg&&S.cfg.startTime)||'07:00')||420;
+  DR.stops.forEach(s=>{ s.t=_m2t(t); t+=(Number(s.h)||0)*60; });
+}
+function _drJobsAvailable(){
+  const br=S.branch, chosen=new Set(DR.stops.map(s=>s.id));
+  return S.jobs.filter(j=>!j._del&&!j.done&&!isHold(j)&&jobActiveOnDay(j,DR.d)&&!chosen.has(j.id)&&(DR.others||j.branch===br))
+    .sort((a,b)=>(a.branch===br?0:1)-(b.branch===br?0:1)||String(a.site).localeCompare(String(b.site)));
+}
+function renderDayRun(){
+  let ov=document.getElementById('dr-overlay');
+  if(!ov){ ov=document.createElement('div'); ov.id='dr-overlay'; ov.className='dr-overlay'; ov.onclick=e=>{ if(e.target===ov) closeDayRun(); }; document.body.appendChild(ov); }
+  const dt=toD(DR.d), first=DR.name.split(' ')[0], hpd=_hpd();
+  const tot=DR.stops.reduce((a,s)=>a+(Number(s.h)||0),0);
+  const endT=DR.stops.length?_m2t((_t2m(DR.stops[DR.stops.length-1].t)||0)+(Number(DR.stops[DR.stops.length-1].h)||0)*60):'';
+  const avail=_drJobsAvailable();
+  const was=jobsForPersonOnDay(DR.name,DR.d).filter(j=>!DR.stops.some(s=>s.id===j.id));
+  const jl=id=>S.jobs.find(x=>x.id===id)||{};
+  ov.innerHTML=`<div class="dr-box">
+    <div class="dr-head"><div><div class="dr-t">🗺 Day run — ${_esc(DR.name)}</div><div class="dr-s">${_DOW3[dt.getDay()].slice(0,1)+_DOW3[dt.getDay()].slice(1).toLowerCase()} ${dt.getDate()} ${_MON3[dt.getMonth()]} · set the order, hours and start times</div></div><button class="dr-x" onclick="closeDayRun()">✕</button></div>
+    <div class="dr-list">${DR.stops.length?DR.stops.map((s,i)=>{ const j=jl(s.id), col=jobColor(j,false);
+      return `<div class="dr-stop"><span class="dr-n">${i+1}</span><span class="sw" style="background:${col.bg}"></span>
+        <div class="dr-tx"><b>${_esc((j.site||j.jobno||'Job').split(',')[0])}</b><small>${_esc(j.jobno||'')}${j.branch!==S.branch?' · '+_esc(j.branch):''} · ${_esc(getStaffForDay(j,DR.d).split(',').map(x=>x.trim()).filter(x=>x&&_nm(x)!==DR.key).join(', ')||'no other crew')}</small></div>
+        <label class="dr-f">Start<input type="time" value="${s.t}" onchange="DR.stops[${i}].t=this.value;renderDayRun()"></label>
+        <label class="dr-f">Hrs<input type="number" min="0" max="24" step="0.5" value="${s.h}" onchange="DR.stops[${i}].h=Number(this.value)||0;renderDayRun()"></label>
+        <span class="dr-mv"><button ${i?'':'disabled'} onclick="drMove(${i},-1)" title="Earlier">▲</button><button ${i<DR.stops.length-1?'':'disabled'} onclick="drMove(${i},1)" title="Later">▼</button></span>
+        <button class="dr-rm" onclick="DR.stops.splice(${i},1);renderDayRun()" title="Take out of the run">✕</button></div>`; }).join('')
+      :`<div class="dr-empty">No jobs in the run yet — add them below.</div>`}</div>
+    <div class="dr-tot">${DR.stops.length} stop${DR.stops.length!==1?'s':''} · <b>${tot}h</b> of a ${hpd}h day ${tot>hpd?`<span style="color:#F59E0B">— ${tot-hpd}h over</span>`:tot<hpd&&DR.stops.length?`— ${hpd-tot}h unallocated`:DR.stops.length?'✓':''}${endT?` · finishes about ${_tNice(endT)}`:''}
+      ${DR.stops.length?`<button class="dr-link" onclick="drAutoTimes();renderDayRun()">↻ Work out start times from hours</button><button class="dr-link" onclick="drEvenHours()">⇋ Share hours evenly</button>`:''}</div>
+    <div class="dr-sec">Add a job running that day</div>
+    <div class="dr-avail">${avail.length?avail.slice(0,14).map(j=>{ const col=jobColor(j,false), sh=crewShort(j,DR.d), need=(Number(j.staff)||0)-crewOnDay(j,DR.d);
+      return `<button class="dr-add" onclick="drAdd('${j.id}')"><span class="sw" style="background:${col.bg}"></span>${j.branch!==S.branch?`<em class="rs-br">${BR_CODE[j.branch]}</em>`:''}${_esc((j.site||j.jobno||'').split(',')[0])}${sh?`<b class="rm-short">${need>0?'−'+need:'short'}</b>`:''}<span class="dr-plus">＋</span></button>`; }).join('')
+      :`<div class="dr-empty">No other ${DR.others?'':_esc(S.branch)+' '}jobs running that day.</div>`}
+      <label class="dr-chk"><input type="checkbox" ${DR.others?'checked':''} onchange="DR.others=this.checked;renderDayRun()"> Include other branches' jobs</label></div>
+    ${was.length?`<label class="dr-chk dr-warn"><input type="checkbox" ${DR.dropOthers?'checked':''} onchange="DR.dropOthers=this.checked"> Take ${_esc(first)} off ${was.length} job${was.length!==1?'s':''} not in the run (${_esc(was.map(j=>(j.site||j.jobno||'').split(',')[0]).join(', '))})</label>`:''}
+    <div class="dr-foot"><button class="btn btn-ghost btn-sm" onclick="closeDayRun()">Cancel</button><button class="btn btn-primary btn-sm" onclick="saveDayRun()" ${DR.stops.length?'':'disabled'}>✓ Save day run</button></div>
+  </div>`;
+}
+function drMove(i,dir){ const a=DR.stops, j=i+dir; if(j<0||j>=a.length) return; const t0=a[0].t; [a[i],a[j]]=[a[j],a[i]]; a[0].t=a[0].t||t0; if(i===0||j===0){ a[0].t=t0; } drAutoTimes(); renderDayRun(); }
+function drAdd(id){ const n=DR.stops.length+1, hpd=_hpd(); DR.stops.push({id,h:0,t:''}); const h=Math.round(hpd/n*2)/2; DR.stops.forEach(s=>s.h=h); if(!DR.stops[0].t) DR.stops[0].t=(S.cfg&&S.cfg.startTime)||'07:00'; drAutoTimes(); renderDayRun(); }
+function drEvenHours(){ const n=DR.stops.length; if(!n) return; const h=Math.round(_hpd()/n*2)/2; DR.stops.forEach(s=>s.h=h); drAutoTimes(); renderDayRun(); }
+function closeDayRun(){ const ov=document.getElementById('dr-overlay'); if(ov) ov.remove(); DR=null; }
+function saveDayRun(){
+  if(!DR||!DR.stops.length) return;
+  const {name,key,d}=DR, now=new Date().toISOString(), N=DR.stops.length, skipped=[];
+  DR.stops.forEach((s,i)=>{
+    const j=S.jobs.find(x=>x.id===s.id); if(!j) return;
+    if(!personDaysFor(j,d,name,false).days.includes(d)){ skipped.push((j.site||j.jobno||'').split(',')[0]); return; }
+    if(!j.dayOverrides) j.dayOverrides={};
+    const cur=getStaffForDay(j,d).split(',').map(x=>x.trim()).filter(Boolean);
+    if(!cur.some(x=>_nm(x)===key)) cur.push(name);
+    j.dayOverrides[d]=cur.join(', ');
+    const ck=_chk(j);
+    (ck.splits[d]=ck.splits[d]||{})[key]=Number(s.h)||0;
+    if(ck.dupFlags[d]) delete ck.dupFlags[d][key];
+    ck.run=ck.run||{}; (ck.run[d]=ck.run[d]||{})[key]={n:i+1,of:N,t:s.t||''};
+    j.ts=now;
+  });
+  // jobs they were on that day but aren't in the run
+  const out=jobsForPersonOnDay(name,d).filter(j=>!DR.stops.some(s=>s.id===j.id));
+  out.forEach(j=>{ const ck=j.checklist||{};
+    if(DR.dropOthers){ _removeFromJob(j,[d],name); }
+    if(ck.run&&ck.run[d]){ delete ck.run[d][key]; j.ts=now; } });
+  closeDayRun(); save(); if(S.gsUrl) autoSync(); renderAll();
+  toast(`Day run saved — ${name.split(' ')[0]}, ${N-skipped.length} stop${N-skipped.length!==1?'s':''}${skipped.length?` · not added (not available): ${skipped.join(', ')}`:''} ✓`, skipped.length?'err':undefined);
+}
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // MANAGEMENT OVERVIEW (admin) — all branches: pipeline by month, labour cost, resource allocation
@@ -4727,6 +4846,7 @@ function renderRes(){
       if(_secAway&&!js.length) c+=`<span class="rs-chip rs-sec" title="Allocated to ${_sec.to} ${_fmtD(_sec.start)} – ${_fmtD(_sec.end)}">⇄ ${BR_CODE[_sec.to]||_sec.to}</span>`;
       if(_notYet&&!js.length) c+=`<span class="rs-free" style="color:#5A5D61" title="Not allocated to ${br} this day">· ${BR_CODE[homeBranch(nm)]||''}</span>`;
       const jc=rcl[d+'|'+k];
+      if(js.length>1) js.sort((a,b)=>((runOf(a,d,k)||{}).n||99)-((runOf(b,d,k)||{}).n||99));   // day run order
       js.forEach(j=>{
         const col=jobColor(j,false), hrs=personHours(j,d,nm);
         const st=jc?jc.status:(clash?'open':'');
@@ -4734,7 +4854,7 @@ function renderRes(){
         const click=jc?`dupOpenPerson('${d}','${k.replace(/'/g,"\\'")}')`:`editJob('${j.id}')`;
         const tip=(j.jobno?j.jobno+' — ':'')+(j.site||'')+(hrs!=null?` · ${hrs}h`:'')+(st==='open'?' · DOUBLE-BOOKED — click to split hours or flag':st==='flag'?' · Schedule error: '+jc.note:'');
         const other=j.branch!==br;
-        c+=`<span class="rs-chip ${cls}" style="background:${col.bg};color:${col.fg}" data-jid="${j.id}" data-day="${d}" onclick="rsChipClick(event,'${j.id}','${d}','${k.replace(/'/g,"\\'")}')" ondblclick="rsChipDbl(event,'${j.id}')" title="Click: change / move · Double-click: open job">${other?`<em class="rs-br" style="background:${BRANCH_COLORS[j.branch]};color:#111">${BR_CODE[j.branch]||j.branch}</em>`:''}${hrs!=null?`<em class="rs-h">${hrs}h</em>`:''}${st==='flag'?'⚑ ':''}${tsTag(j,d)}${_esc(j.site||j.jobno||'Job')}</span>`;
+        c+=`<span class="rs-chip ${cls}" style="background:${col.bg};color:${col.fg}" data-jid="${j.id}" data-day="${d}" onclick="rsChipClick(event,'${j.id}','${d}','${k.replace(/'/g,"\\'")}')" ondblclick="rsChipDbl(event,'${j.id}')" title="Click: change / move · Double-click: open job">${other?`<em class="rs-br" style="background:${BRANCH_COLORS[j.branch]};color:#111">${BR_CODE[j.branch]||j.branch}</em>`:''}${(()=>{ const ru=runOf(j,d,k); return ru?`<em class="rs-run" title="Day run: stop ${ru.n} of ${ru.of}${ru.t?' · start '+_tNice(ru.t):''}${hrs!=null?' · '+hrs+'h':''}">${ru.t?_tNice(ru.t):ru.n}</em>`:''; })()}${hrs!=null&&!runOf(j,d,k)?`<em class="rs-h">${hrs}h</em>`:''}${st==='flag'?'⚑ ':''}${tsTag(j,d)}${_esc(j.site||j.jobno||'Job')}</span>`;
       });
       if(js.length) worked++;
       if(!c){
@@ -5034,7 +5154,7 @@ function hoverCardHTML(j, day){
   const wk=j.workSat&&j.workSun?'Sat & Sun':j.workSat?'Saturdays':'Weekdays only';
   const sp=j.schedPattern&&j.schedPattern.type!=='full'?(j.schedPattern.type==='alt'?'Every other day':'Split dates'):'Full days';
   const clashes=d?findClashes(d,d).filter(c=>c.jobs.includes(j)):[];
-  const nameHtml=names.length?names.map(n=>{const h=personHours(j,d,n); const c=clashes.find(x=>x.key===_nm(n)); return `<span class="hc-name ${c&&c.status!=='split'?'clash':''}">${_esc(n)}${h!=null?` <b>${h}h</b>`:''}${c&&c.status==='open'?' ⚠':''}${c&&c.status==='flag'?' ⚑':''}</span>`;}).join(''):'<span class="hc-none">No crew named</span>';
+  const nameHtml=names.length?names.map(n=>{const h=personHours(j,d,n); const c=clashes.find(x=>x.key===_nm(n)); const ru=d?runOf(j,d,n):null; return `<span class="hc-name ${c&&c.status!=='split'?'clash':''}">${_esc(n)}${h!=null?` <b>${h}h</b>`:''}${ru?` <i class="hc-run">stop ${ru.n}/${ru.of}${ru.t?' · '+_tNice(ru.t):''}</i>`:''}${c&&c.status==='open'?' ⚠':''}${c&&c.status==='flag'?' ⚑':''}</span>`;}).join(''):'<span class="hc-none">No crew named</span>';
   return `
     <div class="hc-top"><span class="hc-cls" style="background:${cc[0]};color:${cc[1]}">${CLASS_LABEL[ck]||ck}</span><span class="hc-no">${_esc(j.jobno||'')}</span><span class="hc-st">${status}</span></div>
     <div class="hc-site">${_esc(j.site||'—')}</div>
@@ -5113,7 +5233,7 @@ function rsCellMenu(ev, ds, key){
     <div class="rm-job"><div class="rm-jt"><span class="rm-dot" style="background:${CLASS_COLORS[classKey(j)][0]}"></span>${j.branch!==br?`<em class="rs-br">${BR_CODE[j.branch]}</em>`:''}${_esc((j.site||j.jobno||'').split(',')[0])}${short?`<b class="rm-short">${need>0?'−'+need:'short'}</b>`:''}</div>
     <div class="rm-btns"><button onclick="rsAddToJob('${j.id}','${ds}','${k2}',false)">This day</button>${_restBtn(j,ds,name,`rsAddToJob('${j.id}','${ds}','${k2}',true)`)}</div></div>`)
     :`<div class="rm-sec">No jobs running on ${_fmtD(ds)}</div>`;
-  m.innerHTML=`<div class="rm-h">${_esc(name)} · ${_fmtD(ds)}</div>${addHtml}<div class="rm-sec">Leave / training</div>
+  m.innerHTML=`<div class="rm-h">${_esc(name)} · ${_fmtD(ds)}</div>${addHtml}<button onclick="openDayRun('${k2}','${ds}')">🗺 Plan a day run (several jobs)…</button><div class="rm-sec">Leave / training</div>
     <button onclick="rsQuick('leave','${ds}','${key.replace(/'/g,"\\'")}',${!onLv})">${onLv?'✕ Remove leave':'🏖 On leave'}</button>
     <button onclick="rsQuick('training','${ds}','${key.replace(/'/g,"\\'")}',${!onTr})">${onTr?'✕ Remove training':'📋 Training / compliance'}</button>
     <button onclick="openLeaveRange('${key.replace(/'/g,"\\'")}','${ds}')">📅 Book a date range…</button>
@@ -5155,6 +5275,7 @@ function rsChipMenu(el,jobId,ds,key){
     ${others.length?rmJobGroups(others,br,({x,short,need})=>`<div class="rm-job"><div class="rm-jt"><span class="rm-dot" style="background:${CLASS_COLORS[classKey(x)][0]}"></span>${x.branch!==br?`<em class="rs-br">${BR_CODE[x.branch]}</em>`:''}${_esc((x.site||x.jobno||'').split(',')[0])}${short?`<b class="rm-short">${need>0?'−'+need:'short'}</b>`:''}</div>
       <div class="rm-btns"><button onclick="rsMoveToJob('${j.id}','${x.id}','${ds}','${k2}',false)">This day</button>${_restBtn(x,ds,name,`rsMoveToJob('${j.id}','${x.id}','${ds}','${k2}',true)`)}<button class="rm-split" onclick="rsAddToJob('${x.id}','${ds}','${k2}',false)" title="Keep them on ${_esc((j.site||j.jobno||'').split(',')[0]).replace(/"/g,'')} too and split the day's hours between both jobs">½ Split day</button></div></div>`)
       :`<div style="font-size:11px;color:#78797C;padding:2px 8px 6px">No other jobs running that day</div>`}
+    <button onclick="openDayRun('${k2}','${ds}')">🗺 ${runOf(j,ds,name)?'Edit':'Plan a'} day run for ${_esc(name.split(' ')[0])} (several jobs)…</button>
     <div class="rm-sec">This job</div>
     <button onclick="rsRemoveFromJob('${j.id}','${ds}','${k2}',false)">✕ Take off this job — this day</button>
     <button onclick="rsRemoveFromJob('${j.id}','${ds}','${k2}',true)">✕ Take off this job — rest of job</button>
