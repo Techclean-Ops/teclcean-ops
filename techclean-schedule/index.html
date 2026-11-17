@@ -1158,11 +1158,8 @@ body.tv #version-tag{display:none}
     </div>
 
     <div class="sb-section">
-      <div class="sb-item" id="snav-mgmt" onclick="showPanel('mgmt')" title="Senior management overview (admin)">
+      <div class="sb-item" id="snav-mgmt" onclick="showPanel('mgmt')" title="Senior management: overview and staff optimisation (admin)">
         <span class="sb-icon">📈</span><span class="sb-txt">Senior Mgmt 🔒</span>
-      </div>
-      <div class="sb-item" id="snav-opt" onclick="showPanel('opt')" title="Staff Optimisation (admin)">
-        <span class="sb-icon">📊</span><span class="sb-txt">Optimisation 🔒</span>
       </div>
       <div class="sb-item" id="snav-setup" onclick="showPanel('setup')" title="Setup (admin)">
         <span class="sb-icon">⚙️</span><span class="sb-txt">Setup 🔒</span>
@@ -1177,7 +1174,6 @@ body.tv #version-tag{display:none}
       <div class="tab" data-tab="res" onclick="showPanel('res')">Resources</div>
       <div class="tab active" data-tab="cal" onclick="showPanel('cal')">Gantt</div>
       <div class="tab" data-tab="mgmt" onclick="showPanel('mgmt')">Senior Management 🔒</div>
-      <div class="tab" data-tab="opt" onclick="showPanel('opt')">Staff Optimisation 🔒</div>
       <div class="tab" data-tab="setup" onclick="showPanel('setup')">⚙ Setup 🔒</div>
     </div>
 
@@ -1256,6 +1252,7 @@ body.tv #version-tag{display:none}
 
     <div class="panel" id="panel-opt" style="overflow-y:auto!important">
       <div style="padding:20px">
+        <div id="opt-views"></div>
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-shrink:0">
           <h2 style="font-family:var(--font-head);font-size:20px;font-weight:700;color:var(--c-white)">Staff Optimisation</h2>
           <button class="btn btn-ghost btn-sm" onclick="exportCSV()">↓ CSV</button>
@@ -2082,7 +2079,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v58-202611181000';
+const APP_VERSION = 'v59-202611181215';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -2885,10 +2882,13 @@ function saveDayRun(){
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const MG_BR=['Auckland','Wellington','Christchurch'];
 let MG={off:-2, br:'All', view:'overview'};          // first month shown = this month + off; 12 months
-function mgSet(k,v){ if(k==='off') MG.off+=v; else if(k==='view') MG.view=v; else MG.br=v; renderMgmt(); }
+function mgSet(k,v){
+  if(k==='view'){ MG.view=v; showPanel(v==='opt'?'opt':'mgmt'); return; }   // Staff optimisation lives under Senior Management
+  if(k==='off') MG.off+=v; else MG.br=v; renderMgmt();
+}
 function hsTestToggle(on){ try{ localStorage.setItem('aops_hs_test',on?'1':'0'); }catch(e){} renderMgmt(); toast(on?'H&S link switched on for this device (testing)':'H&S link switched off'); }
 function mgViewBar(){
-  return `<div class="mg-views"><button class="${MG.view==='overview'?'on':''}" onclick="mgSet('view','overview')">📈 Overview</button><button class="${MG.view==='hs'?'on':''}" onclick="mgSet('view','hs')">🦺 H&amp;S <span class="hc-hs-tag">testing</span></button></div>`;
+  return `<div class="mg-views"><button class="${MG.view==='overview'?'on':''}" onclick="mgSet('view','overview')">📈 Overview</button><button class="${MG.view==='opt'?'on':''}" onclick="mgSet('view','opt')">📊 Staff optimisation</button><button class="${MG.view==='hs'?'on':''}" onclick="mgSet('view','hs')">🦺 H&amp;S <span class="hc-hs-tag">testing</span></button></div>`;
 }
 function renderMgmtHS(el){
   const on=hsTestOn(), n=Object.keys(S.hsStatus||{}).length;
@@ -3623,10 +3623,10 @@ function showPanel(name){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('panel-'+name).classList.add('active');
-  document.querySelector(`.tab[data-tab="${name}"]`)?.classList.add('active');
-  ['snav-opt','snav-setup','snav-mgmt'].forEach(id=>{ const e=document.getElementById(id); if(e) e.classList.remove('active'); });
-  if(name==='mgmt'){document.getElementById('snav-mgmt').classList.add('active');renderMgmt()}
-  else if(name==='opt'){document.getElementById('snav-opt').classList.add('active');renderOpt()}
+  document.querySelector(`.tab[data-tab="${name==='opt'?'mgmt':name}"]`)?.classList.add('active');
+  ['snav-setup','snav-mgmt'].forEach(id=>{ const e=document.getElementById(id); if(e) e.classList.remove('active'); });
+  if(name==='mgmt'){ if(MG.view==='opt') MG.view='overview'; document.getElementById('snav-mgmt').classList.add('active');renderMgmt()}
+  else if(name==='opt'){ MG.view='opt'; document.getElementById('snav-mgmt').classList.add('active'); const ov=document.getElementById('opt-views'); if(ov) ov.innerHTML=mgViewBar(); renderOpt()}
   else if(name==='setup'){document.getElementById('snav-setup').classList.add('active');renderSetup()}
   else if(name==='cal')renderCal();
   else if(name==='board')renderBoard();
@@ -5804,7 +5804,7 @@ function openAdminPin(targetPanel){
   // Update modal subtitle to reflect which panel is being unlocked
   const sub=document.getElementById('admin-pin-sub');
   if(sub) sub.textContent = _pendingAdminPanel==='opt'
-    ? 'Enter the admin PIN to access Staff Optimisation'
+    ? 'Enter the admin PIN to access Senior Management (staff optimisation)'
     : _pendingAdminPanel==='mgmt' ? 'Enter the admin PIN to access the Senior Management overview'
     : 'Enter the admin PIN to access Setup';
   document.querySelectorAll('#admin-overlay .pin-key').forEach(k=>k.disabled=false);
