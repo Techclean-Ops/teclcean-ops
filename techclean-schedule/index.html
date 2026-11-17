@@ -1158,11 +1158,8 @@ body.tv #version-tag{display:none}
     </div>
 
     <div class="sb-section">
-      <div class="sb-item" id="snav-mgmt" onclick="showPanel('mgmt')" title="Senior management: overview and staff optimisation (admin)">
-        <span class="sb-icon">📈</span><span class="sb-txt">Senior Mgmt 🔒</span>
-      </div>
-      <div class="sb-item" id="snav-setup" onclick="showPanel('setup')" title="Setup (admin)">
-        <span class="sb-icon">⚙️</span><span class="sb-txt">Setup 🔒</span>
+      <div class="sb-item" id="snav-setup" onclick="showPanel('setup')" title="Admin: setup, management overview, staff optimisation, H&amp;S (admin PIN)">
+        <span class="sb-icon">⚙️</span><span class="sb-txt">Admin 🔒</span>
       </div>
     </div>
   </nav>
@@ -1173,8 +1170,7 @@ body.tv #version-tag{display:none}
       <div class="tab" data-tab="board" onclick="showPanel('board')">Board</div>
       <div class="tab" data-tab="res" onclick="showPanel('res')">Resources</div>
       <div class="tab active" data-tab="cal" onclick="showPanel('cal')">Gantt</div>
-      <div class="tab" data-tab="mgmt" onclick="showPanel('mgmt')">Senior Management 🔒</div>
-      <div class="tab" data-tab="setup" onclick="showPanel('setup')">⚙ Setup 🔒</div>
+      <div class="tab" data-tab="setup" onclick="showPanel('setup')">⚙ Admin 🔒</div>
     </div>
 
     <!-- CALENDAR -->
@@ -1265,6 +1261,7 @@ body.tv #version-tag{display:none}
 
     <!-- SETUP -->
     <div class="panel" id="panel-setup" style="overflow-y:auto!important;padding:20px">
+      <div id="setup-views"></div>
       <div class="setup-card">
         <h3>Google Sheets Connection</h3>
         <div class="gs-box">
@@ -1336,7 +1333,7 @@ body.tv #version-tag{display:none}
       </div>
 
             <div class="setup-card">
-        <h3>Admin PIN <span style="font-size:11px;color:var(--c-muted);font-weight:400">— required to access Setup</span></h3>
+        <h3>Admin PIN <span style="font-size:11px;color:var(--c-muted);font-weight:400">— required to open Admin</span></h3>
         <div style="display:flex;flex-direction:column;gap:12px;max-width:320px">
           <p style="font-size:11px;color:var(--c-muted);line-height:1.6">The admin PIN is separate from the staff PIN. Only administrators who need to change settings, manage staff, or connect Google Sheets need this PIN.</p>
           <div class="field"><label>Current Admin PIN</label><input type="password" id="admin-pin-current" placeholder="Current 4-digit admin PIN" maxlength="4" inputmode="numeric"></div>
@@ -2079,7 +2076,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v59-202611181215';
+const APP_VERSION = 'v60-202611181300';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -2721,7 +2718,7 @@ function saveMgrEmails(){
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-// H&S APP LINK — feed for the H&S back end + H&S status in hover cards (testing, behind Senior Management)
+// H&S APP LINK — feed for the H&S back end + H&S status in hover cards (testing, behind Admin)
 // Contract: Schedule_to_HS_Integration_Brief + H&S answers (13 Nov 2026)
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 const HS_APP_URL='https://techclean-ops.github.io/teclcean-ops/techclean-hs/';
@@ -2883,12 +2880,12 @@ function saveDayRun(){
 const MG_BR=['Auckland','Wellington','Christchurch'];
 let MG={off:-2, br:'All', view:'overview'};          // first month shown = this month + off; 12 months
 function mgSet(k,v){
-  if(k==='view'){ MG.view=v; showPanel(v==='opt'?'opt':'mgmt'); return; }   // Staff optimisation lives under Senior Management
+  if(k==='view'){ MG.view=v; showPanel(v==='opt'?'opt':v==='setup'?'setup':'mgmt'); return; }   // Admin tab = Setup · Overview · Staff optimisation · H&S
   if(k==='off') MG.off+=v; else MG.br=v; renderMgmt();
 }
 function hsTestToggle(on){ try{ localStorage.setItem('aops_hs_test',on?'1':'0'); }catch(e){} renderMgmt(); toast(on?'H&S link switched on for this device (testing)':'H&S link switched off'); }
 function mgViewBar(){
-  return `<div class="mg-views"><button class="${MG.view==='overview'?'on':''}" onclick="mgSet('view','overview')">📈 Overview</button><button class="${MG.view==='opt'?'on':''}" onclick="mgSet('view','opt')">📊 Staff optimisation</button><button class="${MG.view==='hs'?'on':''}" onclick="mgSet('view','hs')">🦺 H&amp;S <span class="hc-hs-tag">testing</span></button></div>`;
+  return `<div class="mg-views"><button class="${MG.view==='setup'?'on':''}" onclick="mgSet('view','setup')">⚙ Setup</button><button class="${MG.view==='overview'?'on':''}" onclick="mgSet('view','overview')">📈 Overview</button><button class="${MG.view==='opt'?'on':''}" onclick="mgSet('view','opt')">📊 Staff optimisation</button><button class="${MG.view==='hs'?'on':''}" onclick="mgSet('view','hs')">🦺 H&amp;S <span class="hc-hs-tag">testing</span></button></div>`;
 }
 function renderMgmtHS(el){
   const on=hsTestOn(), n=Object.keys(S.hsStatus||{}).length;
@@ -2938,7 +2935,7 @@ function renderMgmt(){
   const clashes=brs.reduce((a,b)=>a+findClashes(today,dsOf(addD(now,30)),b).filter(c=>c.status==='open'||c.status==='over').length,0);
   const holdN=open.filter(isHold).length;
   const tile=(l,v,sub,cls)=>`<div class="mg-tile ${cls||''}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${sub||''}</div></div>`;
-  let h=mgViewBar()+`<div class="mg-head"><h2>Senior Management overview</h2><span class="mg-sub">${br==='All'?'All branches':br} · ${_fmtD(today)}</span>
+  let h=mgViewBar()+`<div class="mg-head"><h2>Management overview</h2><span class="mg-sub">${br==='All'?'All branches':br} · ${_fmtD(today)}</span>
     <div class="tr-seg" style="margin-left:auto">${['All'].concat(MG_BR).map(b=>`<button class="${b===br?'on':''}" onclick="mgSet('br','${b}')">${b==='All'?'All':BR_CODE[b]}</button>`).join('')}</div></div>`;
   h+=`<div class="mg-tiles">
     ${tile('Open pipeline',_fmtK(pipeTot),`${open.length} jobs${undated.length?` · ${undated.length} undated (${_fmtK(undated.reduce((a,j)=>a+(Number(j.val)||0),0))})`:''}${holdN?` · ${holdN} on hold`:''}`)}
@@ -3623,11 +3620,11 @@ function showPanel(name){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('panel-'+name).classList.add('active');
-  document.querySelector(`.tab[data-tab="${name==='opt'?'mgmt':name}"]`)?.classList.add('active');
-  ['snav-setup','snav-mgmt'].forEach(id=>{ const e=document.getElementById(id); if(e) e.classList.remove('active'); });
-  if(name==='mgmt'){ if(MG.view==='opt') MG.view='overview'; document.getElementById('snav-mgmt').classList.add('active');renderMgmt()}
-  else if(name==='opt'){ MG.view='opt'; document.getElementById('snav-mgmt').classList.add('active'); const ov=document.getElementById('opt-views'); if(ov) ov.innerHTML=mgViewBar(); renderOpt()}
-  else if(name==='setup'){document.getElementById('snav-setup').classList.add('active');renderSetup()}
+  document.querySelector(`.tab[data-tab="${(name==='opt'||name==='mgmt')?'setup':name}"]`)?.classList.add('active');
+  ['snav-setup'].forEach(id=>{ const e=document.getElementById(id); if(e) e.classList.remove('active'); });
+  if(name==='mgmt'){ if(MG.view==='opt'||MG.view==='setup') MG.view='overview'; document.getElementById('snav-setup').classList.add('active');renderMgmt()}
+  else if(name==='opt'){ MG.view='opt'; document.getElementById('snav-setup').classList.add('active'); const ov=document.getElementById('opt-views'); if(ov) ov.innerHTML=mgViewBar(); renderOpt()}
+  else if(name==='setup'){ MG.view='setup'; document.getElementById('snav-setup').classList.add('active'); const sv=document.getElementById('setup-views'); if(sv) sv.innerHTML=mgViewBar(); renderSetup()}
   else if(name==='cal')renderCal();
   else if(name==='board')renderBoard();
   else if(name==='res')renderRes();
@@ -5804,9 +5801,9 @@ function openAdminPin(targetPanel){
   // Update modal subtitle to reflect which panel is being unlocked
   const sub=document.getElementById('admin-pin-sub');
   if(sub) sub.textContent = _pendingAdminPanel==='opt'
-    ? 'Enter the admin PIN to access Senior Management (staff optimisation)'
-    : _pendingAdminPanel==='mgmt' ? 'Enter the admin PIN to access the Senior Management overview'
-    : 'Enter the admin PIN to access Setup';
+    ? 'Enter the admin PIN to open Admin (staff optimisation)'
+    : _pendingAdminPanel==='mgmt' ? 'Enter the admin PIN to open Admin (management overview)'
+    : 'Enter the admin PIN to open Admin';
   document.querySelectorAll('#admin-overlay .pin-key').forEach(k=>k.disabled=false);
   document.getElementById('admin-overlay').classList.add('open');
 }
@@ -6017,7 +6014,7 @@ window.addEventListener('pageshow', function(){
       <button onclick="closeAdminPin()">✕</button>
     </div>
     <div style="padding:24px;text-align:center">
-      <p id="admin-pin-sub" style="font-size:11px;color:var(--c-muted);margin-bottom:20px">Enter the admin PIN to access Setup</p>
+      <p id="admin-pin-sub" style="font-size:11px;color:var(--c-muted);margin-bottom:20px">Enter the admin PIN to open Admin</p>
       <div class="pin-dots" id="admin-dots" style="justify-content:center;margin-bottom:20px">
         <div class="pin-dot" id="ad0"></div>
         <div class="pin-dot" id="ad1"></div>
