@@ -995,6 +995,8 @@ body.tv #version-tag{display:none}
 .mg-views button.on{background:rgba(255,255,255,.1);color:var(--c-white)}
 .mg-hs-tog{font-size:12px;color:var(--c-text);display:flex;align-items:center;gap:6px;margin-right:auto;margin-left:12px}
 .mg-hs-frame{width:100%;height:calc(100vh - 260px);min-height:520px;border:1px solid var(--c-border);border-radius:8px;background:#fff;margin-top:8px}
+#rs-menu .rm-more{width:100%;text-align:left;font-size:11px;color:#8AB4F8;background:none;border:none;border-top:1px solid rgba(255,255,255,.08);padding:7px 8px;cursor:pointer;font-family:inherit}
+#rs-menu .rm-more:hover{background:rgba(255,255,255,.05)}
 </style>
 </head>
 <body>
@@ -2043,7 +2045,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v56-202611141500';
+const APP_VERSION = 'v57-202611180830';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 
 const BLANK_BRANCH_MAP = () => ({ Auckland: {}, Wellington: {}, Christchurch: {} });
@@ -4958,6 +4960,16 @@ function _absSet(type, br, ds, name, on){
   if(on) cur.push(name);
   if(cur.length) store[br][ds]=cur; else delete store[br][ds];
 }
+// Job pickers in Resources menus: this branch's jobs first; other branches only when asked
+function rmJobGroups(list, br, rowFn){
+  const own=list.filter(o=>(o.j||o.x).branch===br), oth=list.filter(o=>(o.j||o.x).branch!==br);
+  let h=own.length?own.slice(0,10).map(rowFn).join(''):`<div style="font-size:11px;color:#78797C;padding:2px 8px 6px">No other ${_esc(br)} jobs running that day</div>`;
+  if(oth.length){
+    const id='rmoth'+Math.random().toString(36).slice(2,8);
+    h+=`<button class="rm-more" onclick="const o=document.getElementById('${id}');o.style.display=o.style.display==='none'?'block':'none';this.textContent=o.style.display==='none'?'⇄ Other branches’ jobs (${oth.length})':'▴ Hide other branches';">⇄ Other branches’ jobs (${oth.length})</button><div id="${id}" style="display:none">${oth.slice(0,10).map(rowFn).join('')}</div>`;
+  }
+  return h;
+}
 function rsCellMenu(ev, ds, key){
   if(ev.target.closest('.rs-chip:not(.rs-leave):not(.rs-train)')) return; // job chips keep their own click
   ev.stopPropagation();
@@ -4970,9 +4982,9 @@ function rsCellMenu(ev, ds, key){
   const dayJobs=S.jobs.filter(j=>!j._del&&!j.done&&jobActiveOnDay(j,ds)&&!busyOn.has(j.id))
     .map(j=>({j,short:crewShort(j,ds),need:(Number(j.staff)||0)-crewOnDay(j,ds)}))
     .sort((a,b)=>(a.j.branch===br?0:1)-(b.j.branch===br?0:1)||(b.short-a.short)||String(a.j.site).localeCompare(String(b.j.site)));
-  const addHtml=dayJobs.length?`<div class="rm-sec">Add to a job on ${_fmtD(ds)}</div>`+dayJobs.slice(0,8).map(({j,short,need})=>`
+  const addHtml=dayJobs.length?`<div class="rm-sec">Add to a job on ${_fmtD(ds)}</div>`+rmJobGroups(dayJobs,br,({j,short,need})=>`
     <div class="rm-job"><div class="rm-jt"><span class="rm-dot" style="background:${CLASS_COLORS[classKey(j)][0]}"></span>${j.branch!==br?`<em class="rs-br">${BR_CODE[j.branch]}</em>`:''}${_esc((j.site||j.jobno||'').split(',')[0])}${short?`<b class="rm-short">${need>0?'−'+need:'short'}</b>`:''}</div>
-    <div class="rm-btns"><button onclick="rsAddToJob('${j.id}','${ds}','${k2}',false)">This day</button>${_restBtn(j,ds,name,`rsAddToJob('${j.id}','${ds}','${k2}',true)`)}</div></div>`).join('')
+    <div class="rm-btns"><button onclick="rsAddToJob('${j.id}','${ds}','${k2}',false)">This day</button>${_restBtn(j,ds,name,`rsAddToJob('${j.id}','${ds}','${k2}',true)`)}</div></div>`)
     :`<div class="rm-sec">No jobs running on ${_fmtD(ds)}</div>`;
   m.innerHTML=`<div class="rm-h">${_esc(name)} · ${_fmtD(ds)}</div>${addHtml}<div class="rm-sec">Leave / training</div>
     <button onclick="rsQuick('leave','${ds}','${key.replace(/'/g,"\\'")}',${!onLv})">${onLv?'✕ Remove leave':'🏖 On leave'}</button>
@@ -5013,8 +5025,8 @@ function rsChipMenu(el,jobId,ds,key){
   m.innerHTML=`<div class="rm-h">${_esc(name)} · ${_fmtD(ds)}<br><b style="color:#E8E8E8">on ${_esc((j.site||j.jobno||'').split(',')[0])}</b></div>
     ${cl?`<button onclick="document.getElementById('rs-menu').style.display='none';dupOpenPerson('${ds}','${k2}')">⚠ Sort out double-booking…</button>`:''}
     <div class="rm-sec">Move to another job — or split the day</div>
-    ${others.length?others.slice(0,8).map(({x,short,need})=>`<div class="rm-job"><div class="rm-jt"><span class="rm-dot" style="background:${CLASS_COLORS[classKey(x)][0]}"></span>${x.branch!==br?`<em class="rs-br">${BR_CODE[x.branch]}</em>`:''}${_esc((x.site||x.jobno||'').split(',')[0])}${short?`<b class="rm-short">${need>0?'−'+need:'short'}</b>`:''}</div>
-      <div class="rm-btns"><button onclick="rsMoveToJob('${j.id}','${x.id}','${ds}','${k2}',false)">This day</button>${_restBtn(x,ds,name,`rsMoveToJob('${j.id}','${x.id}','${ds}','${k2}',true)`)}<button class="rm-split" onclick="rsAddToJob('${x.id}','${ds}','${k2}',false)" title="Keep them on ${_esc((j.site||j.jobno||'').split(',')[0]).replace(/"/g,'')} too and split the day's hours between both jobs">½ Split day</button></div></div>`).join('')
+    ${others.length?rmJobGroups(others,br,({x,short,need})=>`<div class="rm-job"><div class="rm-jt"><span class="rm-dot" style="background:${CLASS_COLORS[classKey(x)][0]}"></span>${x.branch!==br?`<em class="rs-br">${BR_CODE[x.branch]}</em>`:''}${_esc((x.site||x.jobno||'').split(',')[0])}${short?`<b class="rm-short">${need>0?'−'+need:'short'}</b>`:''}</div>
+      <div class="rm-btns"><button onclick="rsMoveToJob('${j.id}','${x.id}','${ds}','${k2}',false)">This day</button>${_restBtn(x,ds,name,`rsMoveToJob('${j.id}','${x.id}','${ds}','${k2}',true)`)}<button class="rm-split" onclick="rsAddToJob('${x.id}','${ds}','${k2}',false)" title="Keep them on ${_esc((j.site||j.jobno||'').split(',')[0]).replace(/"/g,'')} too and split the day's hours between both jobs">½ Split day</button></div></div>`)
       :`<div style="font-size:11px;color:#78797C;padding:2px 8px 6px">No other jobs running that day</div>`}
     <div class="rm-sec">This job</div>
     <button onclick="rsRemoveFromJob('${j.id}','${ds}','${k2}',false)">✕ Take off this job — this day</button>
