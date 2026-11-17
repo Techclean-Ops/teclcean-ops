@@ -999,6 +999,10 @@ body.tv #version-tag{display:none}
 .mg-hs-frame{width:100%;height:calc(100vh - 260px);min-height:520px;border:1px solid var(--c-border);border-radius:8px;background:#fff;margin-top:8px}
 #rs-menu .rm-more{width:100%;text-align:left;font-size:11px;color:#8AB4F8;background:none;border:none;border-top:1px solid rgba(255,255,255,.08);padding:7px 8px;cursor:pointer;font-family:inherit}
 #rs-menu .rm-more:hover{background:rgba(255,255,255,.05)}
+.rp-box{margin-top:6px;border-top:1px solid var(--c-border);padding-top:4px}
+.rp-row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end}
+.rp-row label{display:flex;flex-direction:column;gap:3px;font-size:10px;color:var(--c-muted);text-transform:uppercase;letter-spacing:.05em}
+.rp-row select,.rp-row input{min-width:150px}
 </style>
 </head>
 <body>
@@ -1319,6 +1323,7 @@ body.tv #version-tag{display:none}
       <div class="setup-card">
         <h3>Staff Register</h3>
         <div class="staff-cols" id="staff-cols"></div>
+        <div class="rp-box" id="rp-box"></div>
       </div>
       <div class="setup-card">
         <h3>Assumptions</h3>
@@ -2047,7 +2052,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v57-202611180930';
+const APP_VERSION = 'v57-202611181000';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -3119,6 +3124,7 @@ function renderSetup(){
     </div>`;
   }
   document.getElementById('staff-cols').innerHTML=html;
+  try{ renderReplaceTool(); }catch(e){ console.error(e); }
   renderJobLists();
   { const el=document.getElementById('wfm-setup-status'); if(el){ const t=wfmLastSync(), n=S.jobs.filter(j=>wfmOf(j)&&!j._del).length;
     el.innerHTML=t?`<span style="color:#8BC34A">⬤ Connected</span> — ${n} linked job${n!==1?'s':''}, last import ${new Date(t).toLocaleString('en-NZ',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}`:'<span style="color:var(--c-muted)">⬤ Not connected yet — waiting for WorkflowMax API credentials</span>'; } }
@@ -3532,8 +3538,70 @@ function addStaff(br){
 function rmStaff(br,i){
   if(!confirm(`Remove ${S.staff[br][i]} from ${br}?`))return;
   const name=S.staff[br][i];
-  S.staff[br].splice(i,1);_queueStaffOp({op:'remove',br,name});save();if(S.gsUrl)autoSync();renderSetup();updateSidebar();toast('Removed');
+  S.staff[br].splice(i,1);_queueStaffOp({op:'remove',br,name});
+  const _up=S.jobs.filter(j=>j.branch===br&&!j._del&&!j.done&&(j.finish||'')>=dsOf(new Date())&&(String(j.resource||'')+','+Object.values(j.dayOverrides||{}).join(',')).split(',').some(x=>_nm(x)===_nm(name))).length;
+  if(_up){ RP.br=br; RP.from=name; RP.to=''; RP.date=dsOf(new Date()); }
+  save();if(S.gsUrl)autoSync();renderSetup();updateSidebar();
+  toast(_up?`Removed — ${name.split(' ')[0]} is still on ${_up} upcoming ${br} job${_up!==1?'s':''}: use “Replace a person on jobs” below`:'Removed');
+  if(_up){ const b=document.getElementById('rp-box'); if(b) b.scrollIntoView({behavior:'smooth',block:'center'}); }
 }
+// ── Replace a person on a branch's jobs (e.g. someone left / was renamed): old → new, from a date onwards
+let RP={br:null, from:'', to:'', date:''};
+function rpNamesOnJobs(br){
+  const set=new Map();
+  S.jobs.filter(j=>j.branch===br&&!j._del&&!j.done).forEach(j=>{
+    String(j.resource||'').split(',').concat(Object.values(j.dayOverrides||{}).filter(v=>v&&v!=='__OFF__').join(',').split(','))
+      .map(x=>x.trim()).filter(Boolean).forEach(n=>{ if(!set.has(_nm(n))) set.set(_nm(n),n); });
+  });
+  return [...set.values()].sort((a,b)=>a.localeCompare(b));
+}
+function renderReplaceTool(){
+  const el=document.getElementById('rp-box'); if(!el) return;
+  const brs=['Auckland','Wellington','Christchurch'];
+  if(!RP.br) RP.br=S.branch||'Auckland';
+  if(!RP.date) RP.date=dsOf(new Date());
+  const names=rpNamesOnJobs(RP.br), roster=(S.staff[RP.br]||[]);
+  const notOn=n=>!roster.some(r=>_nm(r)===_nm(n));
+  el.innerHTML=`<h4 style="margin:14px 0 6px">⇄ Replace a person on jobs</h4>
+    <p style="font-size:11px;color:var(--c-muted);margin:0 0 8px;line-height:1.5">For when someone leaves or their name changes: swaps them for another person on that branch's jobs from a date onwards. Days before that date keep the old name. Other branches' jobs aren't touched.</p>
+    <div class="rp-row">
+      <label>Branch<select id="rp-br" onchange="RP.br=this.value;RP.from='';RP.to='';renderReplaceTool()">${brs.map(b=>`<option${b===RP.br?' selected':''}>${b}</option>`).join('')}</select></label>
+      <label>Replace<select id="rp-from" onchange="RP.from=this.value"><option value="">— name on ${_esc(RP.br)} jobs —</option>${names.map(n=>`<option value="${_esc(n)}"${_nm(n)===_nm(RP.from)?' selected':''}>${_esc(n)}${notOn(n)?' (not on roster)':''}</option>`).join('')}</select></label>
+      <label>With<select id="rp-to" onchange="RP.to=this.value"><option value="">— ${_esc(RP.br)} staff —</option>${roster.map(n=>`<option${_nm(n)===_nm(RP.to)?' selected':''}>${_esc(n)}</option>`).join('')}</select></label>
+      <label>From<input type="date" id="rp-date" value="${RP.date}" onchange="RP.date=this.value"></label>
+      <button class="btn btn-primary btn-sm" onclick="replaceOnJobs()">Replace</button>
+    </div>`;
+}
+function replaceOnJobs(){
+  const br=RP.br, from=document.getElementById('rp-from').value, to=document.getElementById('rp-to').value, date=document.getElementById('rp-date').value||dsOf(new Date());
+  if(!from||!to){ toast('Pick who to replace and who with','err'); return; }
+  if(_nm(from)===_nm(to)){ toast('Pick two different people','err'); return; }
+  const kf=_nm(from), kt=_nm(to), now=new Date().toISOString();
+  const swap=str=>{ const a=String(str||'').split(',').map(x=>x.trim()).filter(Boolean); const out=[]; a.forEach(x=>{ const y=_nm(x)===kf?to:x; if(!out.some(z=>_nm(z)===_nm(y))) out.push(y); }); return out.join(', '); };
+  const has=str=>String(str||'').split(',').some(x=>_nm(x)===kf);
+  const jobs=S.jobs.filter(j=>j.branch===br&&!j._del&&!j.done&&(j.finish||j.start||'9999')>=date);
+  let nJobs=0, nDays=0;
+  jobs.forEach(j=>{
+    let ch=false;
+    if(!j.dayOverrides) j.dayOverrides={};
+    // whole-job crew: keep past days as they were, then swap
+    if(has(j.resource)){
+      if(j.start&&j.start<date){
+        for(let d=toD(j.start); dsOf(d)<date && dsOf(d)<=(j.finish||j.start); d=addD(d,1)){ const ds=dsOf(d);
+          if(jobActiveOnDay(j,ds) && j.dayOverrides[ds]==null) j.dayOverrides[ds]=String(j.resource).split(',').map(x=>x.trim()).filter(Boolean).join(', '); }
+      }
+      j.resource=swap(j.resource); ch=true;
+    }
+    Object.keys(j.dayOverrides).forEach(d=>{ const v=j.dayOverrides[d]; if(d>=date&&v&&v!=='__OFF__'&&has(v)){ j.dayOverrides[d]=swap(v); ch=true; nDays++; } });
+    const sp=j.checklist&&j.checklist.splits;
+    if(sp) Object.keys(sp).forEach(d=>{ if(d>=date&&sp[d]&&sp[d][kf]!=null){ sp[d][kt]=sp[d][kf]; delete sp[d][kf]; ch=true; } });
+    if(ch){ j.ts=now; nJobs++; }
+  });
+  if(!nJobs){ toast(`${from} isn't on any ${br} jobs from ${_fmtD(date)}`,'err'); return; }
+  save(); if(S.gsUrl) autoSync(); renderAll(); RP.from=''; renderReplaceTool();
+  toast(`${from} → ${to} on ${nJobs} ${br} job${nJobs!==1?'s':''} from ${_fmtD(date)} ✓`);
+}
+
 // Rename a person everywhere: roster, jobs (crew, day changes, split hours), leave & training, allocations, lists
 function renameStaff(br,i){
   const from=S.staff[br][i]; if(!from) return;
