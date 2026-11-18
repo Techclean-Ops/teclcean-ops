@@ -177,6 +177,9 @@ body{font-family:var(--font-mono);background:var(--c-bg);color:var(--c-text);fon
   text-align:center;font-weight:700;font-size:12px;position:sticky;top:0;z-index:5;
   border-bottom:2px solid var(--c-border);white-space:nowrap;
 }
+ #cal-table thead tr.wk-row th{top:0;height:24px;box-sizing:border-box;border-bottom:1px solid #2C2E30!important}
+#cal-table thead tr.cal-days th{top:24px}
+#cal-table thead tr.wk-row th.wk-mon,#cal-table thead tr.cal-days th.wk-mon,#cal-table tbody td.wk-mon{border-left:3px solid #55595E!important}
 #cal-table thead th.th-sticky{position:sticky;left:0;z-index:6;text-align:left;min-width:180px;padding:6px 10px;border-right:1px solid var(--c-border)}
 #cal-table thead th.th-sat{background:#1A2D40;color:#93C5D7;font-weight:600}
 #cal-table thead th.th-sun{background:#16253D;color:#7BA8C9;font-weight:600}
@@ -542,6 +545,17 @@ body.tv-mode #tv-bar { display:flex }
 .bd-scroll{flex:1;overflow:auto;padding:0 10px 10px}
 .bd-dow{display:grid;grid-template-columns:var(--bd-cols);position:sticky;top:0;z-index:5;background:#161718;padding-top:6px}
 .bd-dow div{font-family:var(--font-head);font-size:11px;font-weight:600;color:#8E9093;text-align:center;letter-spacing:.08em;padding:4px 0}
+.bd-wkbar{display:flex;align-items:center;gap:10px;padding:12px 8px 6px;margin-top:8px;border-top:3px solid #3A3D40;font-family:var(--font-head);font-size:12px;color:#A8AAAD}
+.bd-wkbar:first-of-type{margin-top:0}
+.bd-wkbar .wk-n{color:#E8E9EA;font-weight:700;font-size:12px;letter-spacing:.08em;text-transform:uppercase}
+.bd-wkbar em,.wk-row em{font-style:normal;font-size:10.5px;padding:1px 8px;border-radius:10px;background:rgba(255,255,255,.08);color:#C9CBCE}
+.bd-wkbar em.now,.wk-row em.now{background:rgba(168,200,0,.18);color:#C5E000}
+.bd-wkbar.now{border-top-color:#A8C800}
+.wk-row th{font-size:10.5px!important;font-weight:500!important;letter-spacing:.04em;color:#A8AAAD!important;padding:5px 6px!important;text-align:left!important;white-space:nowrap}
+.wk-row th .wk-n{color:#E8E9EA;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-right:8px;font-size:11px}
+.wk-row th .wk-d{margin-right:8px;color:#B8BABD}
+.wk-row th.alt{background:#232427!important}
+.wk-row th.now{box-shadow:inset 0 -2px 0 #A8C800}
 .bd-week{display:grid;grid-template-columns:var(--bd-cols);position:relative;border-top:1px solid #2C2E30;min-height:var(--bd-wk-h,150px)}
 .bd-day{grid-row:1/-1;border-left:1px solid #2C2E30;position:relative;z-index:0;cursor:copy}
 .bd-day:first-child{border-left:none}
@@ -599,9 +613,12 @@ body.tv .bd-stat .l{font-size:11px}
 .rs-grid th{position:sticky;top:0;z-index:3;background:#1E1F21;color:#A8AAAD;font-family:var(--font-head);font-weight:600;font-size:11px;padding:8px 4px;border-bottom:1px solid #2C2E30;text-align:center;min-width:92px}
 .rs-grid th.today{color:#8AB4F8}
 .rs-grid th.hol{color:#FCA5A5}
-.rs-grid th.wk{border-left:2px solid #3A3D40}
+.rs-grid th.wk{border-left:3px solid #55595E}
+.rs-grid tr.wk-row th{top:0;height:26px;box-sizing:border-box;border-bottom:1px solid #2C2E30}
+.rs-grid thead tr.rs-days th{top:26px}
+.rs-grid tr.wk-row th.wk{border-left:3px solid #55595E}
 .rs-grid td{border-bottom:1px solid #222426;padding:3px;vertical-align:middle;height:34px}
-.rs-grid td.wk{border-left:2px solid #3A3D40}
+.rs-grid td.wk{border-left:3px solid #55595E}
 .rs-grid .nm{position:sticky;left:0;z-index:2;background:#1A1B1D;color:#E8E8E8;font-family:var(--font-head);font-weight:600;font-size:12px;padding:0 12px;white-space:nowrap;text-align:left;min-width:150px}
 .rs-grid th.nm{z-index:4}
 .rs-grid .nm small{display:block;font-family:var(--font-mono);font-weight:400;font-size:9px;color:#78797C}
@@ -1033,6 +1050,19 @@ body.tv #version-tag{display:none}
 .rs-run{font-style:normal;font-size:9.5px;font-weight:700;background:#111;color:#fff;border-radius:3px;padding:0 4px;margin-right:3px}
 .hc-run{font-style:normal;font-size:10px;color:#FDD835}
 @media(max-width:640px){.dr-stop{flex-wrap:wrap}.dr-tx{flex-basis:calc(100% - 40px)}}
+
+/* v64 — brighter day cells and clearer grid lines */
+.bd-day{background:#202124;border-left:1px solid #36393D}
+.bd-day.wknd{background:#18191B}
+.bd-day.past{background:#1B1C1E}
+.bd-week{border-top:1px solid #3A3D40}
+.bd-dnum .n{color:#E8E9EA}
+.rs-grid tbody td{background:#202124;border-bottom:1px solid #2E3134}
+.rs-grid tbody td.nm{background:#1A1B1D}
+.rs-grid tbody tr:hover td{background:#26282B}
+#cal-table tbody td.td-date{background:#202124;border-left:1px solid #2A2C2F;border-bottom:1px solid #2E3134}
+#cal-table tbody td.td-date.td-sat,#cal-table tbody td.td-date.td-sun{background:#18191B}
+#cal-table thead tr.cal-days th b{color:#F0F1F2}
 </style>
 </head>
 <body>
@@ -2076,7 +2106,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v63-202611181430';
+const APP_VERSION = 'v64-202611181545';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -2235,6 +2265,15 @@ function toast(msg,type='ok'){
 let _gtClash={};
 const GANTT=Object.assign({view:'names'},(()=>{try{return JSON.parse(localStorage.getItem('aops_gantt')||'{}')}catch(e){return{}}})());
 function ganttSet(k,v){ GANTT[k]=v; try{localStorage.setItem('aops_gantt',JSON.stringify(GANTT))}catch(e){} renderCal(); }
+// ── Week labels (Board, Resources, Gantt): ISO week number, date range, This/Next/Last week
+function isoWeekNo(ds){ const d=new Date(ds+'T12:00:00'); const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())); const day=t.getUTCDay()||7; t.setUTCDate(t.getUTCDate()+4-day); const y0=new Date(Date.UTC(t.getUTCFullYear(),0,1)); return Math.ceil(((t-y0)/864e5+1)/7); }
+function wkMonday(ds){ const d=new Date(ds+'T12:00:00'); d.setDate(d.getDate()-((d.getDay()+6)%7)); return dsOf(d); }
+function wkRel(ds){ const a=wkMonday(ds), t=wkMonday(dsOf(new Date())); const n=Math.round((new Date(a+'T12:00:00')-new Date(t+'T12:00:00'))/(7*864e5)); return n===0?'This week':n===1?'Next week':n===-1?'Last week':''; }
+function wkRange(a,b){ const A=new Date(a+'T12:00:00'), B=new Date(b+'T12:00:00'); return A.getMonth()===B.getMonth()? `${A.getDate()} – ${B.getDate()} ${_MON3[B.getMonth()]}` : `${A.getDate()} ${_MON3[A.getMonth()]} – ${B.getDate()} ${_MON3[B.getMonth()]}`; }
+// group consecutive days into weeks (Mon–Sun): [{days:[...], n, rel}]
+function wkGroups(days){ const g=[]; days.forEach(d=>{ const m=wkMonday(d); if(!g.length||g[g.length-1].mon!==m) g.push({mon:m,days:[]}); g[g.length-1].days.push(d); }); g.forEach((w,i)=>{ w.n=isoWeekNo(w.days[0]); w.rel=wkRel(w.days[0]); w.alt=i%2===1; }); return g; }
+function wkLabelHTML(w,short){ return short? `<strong class="wk-n">${w.n}</strong>` : `<strong class="wk-n">Week ${w.n}</strong><span class="wk-d">${wkRange(w.days[0],w.days[w.days.length-1])}</span>${w.rel?`<em class="${w.rel==='This week'?'now':''}">${w.rel}</em>`:''}`; }
+
 function renderCal(){
   const br=S.branch;
   const bJobs=S.jobs.filter(j=>j.branch===br&&!j._del);
@@ -2308,7 +2347,8 @@ function renderCal(){
     <div class="stat-card ${todayA>cap?'red':'blue'}"><div class="sc-label">Today Available</div><div class="sc-val">${cap-todayA}</div><div class="sc-sub">${cap?Math.round(todayA/cap*100):0}% utilised</div></div>`;
 
   // header
-  let hdr=`<tr><th class="th-sticky">Jobs · ${MONTHS[S.month]}</th>`;
+  const _wg=wkGroups(days);
+  let hdr=`<tr class="wk-row"><th class="th-sticky"></th>${_wg.map((w,i)=>`<th colspan="${w.days.length}" class="${i?'wk-mon':''} ${w.alt?'alt':''} ${w.rel==='This week'?'now':''}">${wkLabelHTML(w, w.days.length<4)}</th>`).join('')}</tr><tr class="cal-days"><th class="th-sticky">Jobs · ${MONTHS[S.month]}</th>`;
   for(const d of days){
     const dt=new Date(d+'T00:00:00');
     const isNextMonth = dt.getMonth() !== S.month;
@@ -2317,7 +2357,7 @@ function renderCal(){
     const hTitle=isHol(d)?' title="'+holName(d).replace(/"/g,'&quot;')+'"':'';
     const todayStyle = isToday ? ';outline:2px solid var(--c-lime);outline-offset:-2px;border-radius:2px' : '';
     const opacity = isNextMonth ? ' style="opacity:.35'+todayStyle+'"' : (isToday ? ' style="'+todayStyle.slice(1)+'"' : '');
-    hdr+=`<th class="${cls} ${isToday?'th-today':''} ${isNextMonth?'th-next':''}"${hTitle}><small>${DAYS[dt.getDay()]}</small><b>${dt.getDate()}</b>${isHol(d)?'<i>HOL</i>':''}</th>`;
+    hdr+=`<th class="${cls} ${isToday?'th-today':''} ${isNextMonth?'th-next':''} ${dt.getDay()===1&&d!==days[0]?'wk-mon':''}"${hTitle}><small>${DAYS[dt.getDay()]}</small><b>${dt.getDate()}</b>${isHol(d)?'<i>HOL</i>':''}</th>`;
   }
   document.getElementById('cal-head').innerHTML=hdr+'</tr>';
 
@@ -2546,6 +2586,9 @@ function renderCal(){
   }
 
   document.getElementById('cal-body').innerHTML=body;
+  // Monday lines down the whole Gantt (works out each cell's day column, allowing for colspans)
+  { const mon=new Set(days.map((d,i)=>new Date(d+'T00:00:00').getDay()===1&&i>0?i:-1).filter(i=>i>=0));
+    document.querySelectorAll('#cal-body tr').forEach(tr=>{ let c=-1; for(const td of tr.children){ const span=td.colSpan||1; if(c>=0&&mon.has(c)) td.classList.add('wk-mon'); c+=span; } }); }
   // keep the crew-allocated row pinned just under the (taller) date header
   { const hh=document.getElementById('cal-head').offsetHeight; if(hh) document.querySelectorAll('#cal-body .tr-alloc td').forEach(td=>{ td.style.top=hh+'px'; }); }
   updateSidebar();
@@ -4698,6 +4741,7 @@ function renderBoard(){
     const rows=`${tv?40:34}px repeat(${lanes},${laneH}px) minmax(10px,1fr) auto`;
     const resRow=lanes+3;
 
+    { const wg=wkGroups(dates)[0]; if(wg) html+=`<div class="bd-wkbar ${wg.rel==='This week'?'now':''}">${wkLabelHTML({...wg,days:dates})}</div>`; }
     html+=`<div class="bd-week" style="--bd-cols:${cols};grid-template-rows:${rows}">`;
     // day backgrounds + numbers + resource footers
     dates.forEach((d,ci)=>{
@@ -4707,19 +4751,9 @@ function renderBoard(){
       const first=(w===0&&ci===0)||dt.getDate()===1;
       const dn=(first?_MON3[dt.getMonth()]+' ':'')+dt.getDate();
       html+=`<div class="bd-dnum ${d===today?'today':''}" style="grid-column:${ci+1}"><span class="n" style="${first&&d!==today?'width:auto;padding:0 4px':''}">${dn}</span>${hol?`<span class="hn">${_esc(holNameB(d,br))}</span>`:''}</div>`;
-      // resourcing footer
-      const st=branchDayStats(br,d);
-      const alloc=st.busy;
-      const lv=st.leave, tr=st.train;
-      if((!wk && !hol) || alloc>0 || st.borrowed){
-        const avail=st.over?-(st.busy+lv+tr-cap):st.free;
-        const pct=cap?Math.min(100,Math.round((alloc+lv+tr)/cap*100)):0;
-        const col=avail<0?'#EF4444':pct>=85?'#F59E0B':'#A8C800';
-        html+=`<div class="bd-res ${avail<0?'over':''}" style="grid-column:${ci+1};grid-row:${resRow}">
-          <div class="row"><span>Crew</span><b>${alloc}/${cap}</b></div>
-          ${st.borrowed||st.lent?`<div class="row xb">${st.borrowed?`<span title="Crew from other branches on ${br} jobs">+${st.borrowed} borrowed</span>`:'<span></span>'}${st.lent?`<span title="${br} crew working on another branch's jobs">${st.lent} lent out</span>`:''}</div>`:''}
-          <div class="meter"><i style="width:${pct}%;background:${col}"></i></div>
-          <div class="row" style="margin-top:3px"><span class="${avail<0?'':'free'}" style="color:${avail<0?'#F87171':'#8BC34A'}">${avail<0?Math.abs(avail)+' over':avail+' free'}</span>${lv||tr?`<span class="abs">${lv?'🏖'+lv:''}${tr?' 📋'+tr:''}</span>`:''}</div>
+      // footer: crew / free bar removed (v64) — only the double-booked warning stays
+      if(clDay[d]&&(clDay[d].open||clDay[d].flag)){
+        html+=`<div class="bd-res" style="grid-column:${ci+1};grid-row:${resRow}">
           ${clDay[d]&&(clDay[d].open||clDay[d].flag)?`<div class="bd-clash ${clDay[d].open?'':'flagged'}" onclick="event.stopPropagation();dupOpenDay('${d}')">${clDay[d].open?'⚠ '+clDay[d].open+' double-booked':''}${clDay[d].open&&clDay[d].flag?' · ':''}${clDay[d].flag?'⚑ '+clDay[d].flag+' sched error':''}</div>`:''}
         </div>`;
       }
@@ -4820,7 +4854,7 @@ function renderRes(){
   const _rcl=findClashes(days[0],days[days.length-1]);
   const rcl={}; _rcl.forEach(c=>{ rcl[c.d+'|'+c.key]=c; });
   const wkBreak=d=>(new Date(d+'T00:00:00').getDay()===1)&&d!==days[0];
-  let h=`<table class="rs-grid"><thead><tr><th class="nm">Crew (${roster.length})</th>`;
+  let h=`<table class="rs-grid"><thead><tr class="wk-row"><th class="nm"></th>${wkGroups(days).map((w,i)=>`<th colspan="${w.days.length}" class="${i?'wk':''} ${w.alt?'alt':''} ${w.rel==='This week'?'now':''}">${wkLabelHTML(w)}</th>`).join('')}</tr><tr class="rs-days"><th class="nm">Crew (${roster.length})</th>`;
   days.forEach(d=>{
     const dt=toD(d), hol=isHolB(d,br);
     h+=`<th class="${d===today?'today':''} ${hol?'hol':''} ${wkBreak(d)?'wk':''}" ${hol?`title="${_esc(holNameB(d,br))}"`:''}>${_DOW3[dt.getDay()]} ${dt.getDate()}${hol?' 🎌':''}</th>`;
