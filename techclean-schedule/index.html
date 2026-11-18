@@ -1072,6 +1072,10 @@ body.tv #version-tag{display:none}
 .gt-site{font-size:12px}
 .gt-jfoot{gap:6px;margin-top:2px}
 .gt-close{max-width:84px}
+
+/* v69 — closed jobs kept on past days in Resources */
+.rs-chip.rs-done{opacity:.5;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
+.rs-chip.rs-done:hover{opacity:.85}
 </style>
 <style id="light-css">
 body.light{--c-bg:#E5E6E7;--c-surface:#E0E1E3;--c-panel:#DBDCDE;--c-border:#A3A6AA;--c-border-lt:#9A9EA2;--c-navy:#E5E6E7;--c-muted:#8A8B8E;--c-text:#202020;--c-text-dim:#5F6265;--c-white:#1A1A1A}
@@ -1416,6 +1420,7 @@ body.light .rs-grid tbody tr:hover td{background:#E7E8EA}
 body.light #cal-table tbody td.td-date{background:#EBECED;border-left:1px solid #C9CBCF;border-bottom:1px solid #C3C7CA}
 body.light #cal-table tbody td.td-date.td-sat, body.light #cal-table tbody td.td-date.td-sun{background:#F0F1F2}
 body.light #cal-table thead tr.cal-days th b{color:#1D1F21}
+body.light .rs-chip.rs-done{box-shadow:inset 0 0 0 1px rgba(0,0,0,0.225)}
 body.light{color-scheme:light}
 body.light{--c-bg:#DFE2E6;--c-surface:#E8EBEE;--c-panel:#EEF0F2;background:#DFE2E6}
 body.light #main,body.light .panel{background:#DFE2E6}
@@ -1438,6 +1443,7 @@ body.light #theme-btn{background:#FFFFFF}
 body.light #version-tag{color:#4A5560!important;background:#E4E6E9!important}
 
 </style><!--/light-css-->
+
 
 
 
@@ -2486,7 +2492,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v68-202611181615';
+const APP_VERSION = 'v69-202611181630';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -4990,6 +4996,7 @@ const BOARD = Object.assign(
   (()=>{ try{ return JSON.parse(localStorage.getItem('aops_board')||'{}'); }catch(e){ return {}; } })()
 );
 if(BOARD.days==null) BOARD.days = BOARD.wknd===false ? 5 : 7;
+if(!BOARD.doneV69){ BOARD.done=true; BOARD.doneV69=1; try{ localStorage.setItem('aops_board', JSON.stringify(BOARD)); }catch(e){} }   // closed jobs stay visible for review
 function boardSave(){ try{ localStorage.setItem('aops_board', JSON.stringify(BOARD)); }catch(e){} }
 function boardSet(k,v){ BOARD[k]=v; boardSave(); boardRender(); }
 function mondayOf(d){ const r=new Date(d); r.setHours(0,0,0,0); const dow=(r.getDay()+6)%7; r.setDate(r.getDate()-dow); return r; }
@@ -5226,13 +5233,15 @@ function renderRes(){
   const start=boardStartDate();
   const roster=(S.staff[br]||[]).slice();
   const leaveData=(S.leave&&S.leave[br])||{}, trainData=(S.training&&S.training[br])||{};
-  const jobs=S.jobs.filter(j=>j.branch===br && !j._del && !j.done);
+  // closed (finished / invoiced) jobs stay on PAST days so the crew record can be reviewed; never on today or later
+  const _pastDone=(j,d)=>!j.done||d<today;
+  const jobs=S.jobs.filter(j=>j.branch===br && !j._del && (!j.done || (j.start && j.start<today)));
 
   // two weeks: weekdays always, weekend days only if someone is working
   const days=[];
   for(let i=0;i<14;i++){
     const d=dsOf(addD(start,i));
-    if(isSat(d)||isSun(d)){ if(!jobs.some(j=>jobActiveOnDay(j,d) && crewOnDay(j,d)>0)) continue; }
+    if(isSat(d)||isSun(d)){ if(!jobs.some(j=>_pastDone(j,d) && jobActiveOnDay(j,d) && crewOnDay(j,d)>0)) continue; }
     days.push(d);
   }
   const end=toD(days[days.length-1]);
@@ -5250,12 +5259,12 @@ function renderRes(){
   const extras=[];
   const shortJobs=[];
   const rosterSet=new Set(roster.map(_nm));
-  const allOpen=S.jobs.filter(j=>!j._del&&!j.done);
+  const allOpen=S.jobs.filter(j=>!j._del&&(!j.done||(j.start&&j.start<today)));
   // 1) our own crew wherever they are working (incl. other branches' jobs)
   for(const j of allOpen){
     if(j.branch===br) continue;
     for(const d of days){
-      if(!jobActiveOnDay(j,d)) continue;
+      if(!_pastDone(j,d)||!jobActiveOnDay(j,d)) continue;
       getStaffForDay(j,d).split(',').map(x=>x.trim()).filter(Boolean).forEach(n=>{
         const k=_nm(n); if(!rosterSet.has(k)) return;
         (A[k][d]=A[k][d]||[]).push(j);
@@ -5266,7 +5275,7 @@ function renderRes(){
   for(const j of jobs){
     let worst=0, shortDays=[];
     for(const d of days){
-      if(!jobActiveOnDay(j,d)) continue;
+      if(!_pastDone(j,d)||!jobActiveOnDay(j,d)) continue;
       const names=getStaffForDay(j,d).split(',').map(s=>s.trim()).filter(Boolean);
       names.forEach(n=>{
         const k=_nm(n);
@@ -5275,12 +5284,12 @@ function renderRes(){
       });
       const need=Number(j.staff)||0;
       const gap=need?need-names.length:(names.length?0:1);
-      if(gap>0){ shortDays.push(d); worst=Math.max(worst,gap); }
+      if(gap>0&&!j.done){ shortDays.push(d); worst=Math.max(worst,gap); }
     }
     if(shortDays.length) shortJobs.push({j,worst,shortDays});
   }
 
-  extras.forEach(k=>{ for(const j of allOpen){ if(j.branch===br) continue; for(const d of days){ if(jobActiveOnDay(j,d)&&getStaffForDay(j,d).split(',').some(x=>_nm(x)===k)) (A[k][d]=A[k][d]||[]).push(j); } } });
+  extras.forEach(k=>{ for(const j of allOpen){ if(j.branch===br) continue; for(const d of days){ if(_pastDone(j,d)&&jobActiveOnDay(j,d)&&getStaffForDay(j,d).split(',').some(x=>_nm(x)===k)) (A[k][d]=A[k][d]||[]).push(j); } } });
   const _rcl=findClashes(days[0],days[days.length-1]);
   const rcl={}; _rcl.forEach(c=>{ rcl[c.d+'|'+c.key]=c; });
   const wkBreak=d=>(new Date(d+'T00:00:00').getDay()===1)&&d!==days[0];
@@ -5313,6 +5322,7 @@ function renderRes(){
         const st=jc?jc.status:(clash?'open':'');
         const cls=st==='open'||st==='over'?'rs-clash':st==='flag'?'rs-flagged':'';
         const click=jc?`dupOpenPerson('${d}','${k.replace(/'/g,"\\'")}')`:`editJob('${j.id}')`;
+        if(j.done){ c+=`<span class="rs-chip rs-done" style="background:${col.bg};color:${col.fg}" data-jid="${j.id}" data-day="${d}" onclick="event.stopPropagation();editJob('${j.id}')" title="${_esc((j.jobno?j.jobno+' — ':'')+(j.site||''))} · closed (${closeoutOf(j)==='invoiced'?'invoiced':'finished'}) — click to review">${closeoutOf(j)==='invoiced'?'$ ':'✓ '}${_esc(j.site||j.jobno||'Job')}</span>`; return; }
         const tip=(j.jobno?j.jobno+' — ':'')+(j.site||'')+(hrs!=null?` · ${hrs}h`:'')+(st==='open'?' · DOUBLE-BOOKED — click to split hours or flag':st==='flag'?' · Schedule error: '+jc.note:'');
         const other=j.branch!==br;
         c+=`<span class="rs-chip ${cls}" style="background:${col.bg};color:${col.fg}" data-jid="${j.id}" data-day="${d}" onclick="rsChipClick(event,'${j.id}','${d}','${k.replace(/'/g,"\\'")}')" ondblclick="rsChipDbl(event,'${j.id}')" title="Click: change / move · Double-click: open job">${other?`<em class="rs-br" style="background:${BRANCH_COLORS[j.branch]};color:#111">${BR_CODE[j.branch]||j.branch}</em>`:''}${(()=>{ const ru=runOf(j,d,k); return ru?`<em class="rs-run" title="Day run: stop ${ru.n} of ${ru.of}${ru.t?' · start '+_tNice(ru.t):''}${hrs!=null?' · '+hrs+'h':''}">${ru.t?_tNice(ru.t):ru.n}</em>`:''; })()}${hrs!=null&&!runOf(j,d,k)?`<em class="rs-h">${hrs}h</em>`:''}${st==='flag'?'⚑ ':''}${tsTag(j,d)}${_esc(j.site||j.jobno||'Job')}</span>`;
