@@ -1280,7 +1280,7 @@ body.tv #version-tag{display:none}
       <div class="setup-card">
         <h3>WorkflowMax Connection</h3>
         <div id="wfm-setup-status" style="font-size:12px;margin-bottom:8px"></div>
-        <p style="font-size:11px;color:var(--c-muted);line-height:1.7">Jobs set to <b>Scheduled</b> or <b>In Progress</b> in WorkflowMax are added here automatically every 10 minutes (branch and class from the WorkflowMax custom fields), marked <span class="wfm-b new">📥 needs crew</span>. Invoiced / closed jobs are marked <b>$ Invoiced</b>. Read-only — nothing is written back to WorkflowMax.<br>
+        <p style="font-size:11px;color:var(--c-muted);line-height:1.7">Jobs set to <b>Planned</b> in WorkflowMax are added here automatically every 5 minutes (branch from the job Category, class from the start of the Description or the Friable / Non-Friable ticks), marked <span class="wfm-b new">📥 needs crew</span>. <b>On Hold</b> shows as on hold, <b>Completed</b> and <b>Open Wages</b> are marked <b>$ Invoiced</b>, <b>Cancelled</b> jobs are taken off. Read-only — nothing is written back to WorkflowMax.<br>
         Set-up (once): add the <b>wfm</b> script file (<code>techclean_wfm_v4.gs</code>) to the Apps Script project → put the Client ID / Secret in Script Properties → redeploy → open the web app URL with <code>?action=wfmAuth</code> → approve → run <code>wfmInstallTrigger</code>.</p>
       </div>
 
@@ -2076,7 +2076,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v62-202611181415';
+const APP_VERSION = 'v63-202611181430';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
