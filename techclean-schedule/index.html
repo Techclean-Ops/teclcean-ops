@@ -1417,14 +1417,19 @@ body.light #cal-table tbody td.td-date{background:#EBECED;border-left:1px solid 
 body.light #cal-table tbody td.td-date.td-sat, body.light #cal-table tbody td.td-date.td-sun{background:#F0F1F2}
 body.light #cal-table thead tr.cal-days th b{color:#1D1F21}
 body.light{color-scheme:light}
-body.light .bd-day{background:#FFFFFF}
-body.light .bd-day.wknd{background:#F1F2F4}
-body.light .bd-day.past{background:#F6F7F8}
-body.light .rs-grid tbody td{background:#FFFFFF}
-body.light .rs-grid tbody td.nm{background:#F6F7F8}
-body.light .rs-grid tbody tr:hover td{background:#F1F4E6}
-body.light #cal-table tbody td.td-date{background:#FFFFFF}
-body.light #cal-table tbody td.td-date.td-sat,body.light #cal-table tbody td.td-date.td-sun{background:#F1F2F4}
+body.light{--c-bg:#DFE2E6;--c-surface:#E8EBEE;--c-panel:#EEF0F2;background:#DFE2E6}
+body.light #main,body.light .panel{background:#DFE2E6}
+body.light .bd-day{background:#EEF0F2}
+body.light .bd-day.wknd{background:#E2E5E8}
+body.light .bd-day.past{background:#E8EAED}
+body.light .rs-grid tbody td{background:#EEF0F2}
+body.light .rs-grid tbody td.nm{background:#EBEDF0}
+body.light .rs-grid tbody tr:hover td{background:#E9EEDB}
+body.light #cal-table tbody td.td-date{background:#EEF0F2}
+body.light #cal-table tbody td.td-date.td-sat,body.light #cal-table tbody td.td-date.td-sun{background:#E6E8EB}
+/* finished / invoiced jobs: washed-out colour with dark text instead of see-through */
+body.light .bd-job.done,body.light .gt-bar.done,body.light .ag-job.done{opacity:1;filter:saturate(.35) brightness(1.65)}
+body.light .bd-job.done *,body.light .gt-bar.done *,body.light .ag-job.done *{color:#2E3338!important}
 body.light .wk-row th.alt{background:#ECEEF0!important}
 body.light .bd-wkbar em.now,body.light .wk-row em.now{background:rgba(122,146,0,.15);color:#5C6E00}
 body.light .bd-wkbar.now{border-top-color:#7A9200}
@@ -1433,6 +1438,9 @@ body.light #theme-btn{background:#FFFFFF}
 body.light #version-tag{color:#4A5560!important;background:#E4E6E9!important}
 
 </style><!--/light-css-->
+
+
+
 
 </head>
 <body>
@@ -2478,7 +2486,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v67-202611181630';
+const APP_VERSION = 'v68-202611181615';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -2667,11 +2675,12 @@ function _ltMap(rgb,kind,a){
 }
 function _ltHex(x){ return '#'+x.map(v=>Math.max(0,Math.min(255,Math.round(v*255))).toString(16).padStart(2,'0')).join('').toUpperCase(); }
 function _ltVal(v,kind){
+  if(kind==='bg') v=String(v).replace(/#9E9E9E/gi,'#4E6E8E');   // Roof legend swatch
   return String(v).replace(_LT.rgba,(m,R,G,B,A)=>{ const a=A!=null?parseFloat(A):1; const [c,a2]=_ltMap([R/255,G/255,B/255],kind,a); return A!=null?`rgba(${c.map(x=>Math.round(x*255)).join(',')},${+a2.toFixed(3)})`:_ltHex(c); })
     .replace(_LT.hex,m=>{ let h=m.slice(1); if(h.length===3) h=h.split('').map(c=>c+c).join(''); const c=[0,2,4].map(i=>parseInt(h.substr(i,2),16)/255); return _ltHex(_ltMap(c,kind,1)[0]); });
 }
 function _ltKind(p){ p=p.trim().toLowerCase(); if(p==='color'||p==='fill'||p==='stroke'||p==='caret-color') return 'text'; if(p.startsWith('border')||p.startsWith('outline')) return 'border'; if(p.startsWith('background')||p==='box-shadow') return 'bg'; return null; }
-function _ltSatBg(st){ const m=/background(?:-color)?\s*:\s*([^;]+)/i.exec(st); if(!m) return false; const h=/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/.exec(m[1]); if(!h) return /var\(--c-(orange|lime|red|green)/.test(m[1]); let x=h[1]; if(x.length===3) x=x.split('').map(c=>c+c).join(''); const [hh,l,s]=_hls(...[0,2,4].map(i=>parseInt(x.substr(i,2),16)/255)); return s>0.35&&l>0.25&&l<0.85; }
+function _ltSatBg(st){ const m=/background(?:-color)?\s*:\s*([^;]+)/i.exec(st); if(!m) return false; const h=/#([0-9a-fA-F]{6}|[0-9a-fA-F]{3})\b/.exec(m[1]); if(!h) return /var\(--c-(orange|lime|red|green)/.test(m[1]); let x=h[1]; if(x.length===3) x=x.split('').map(c=>c+c).join(''); const [hh,l,s]=_hls(...[0,2,4].map(i=>parseInt(x.substr(i,2),16)/255)); return s>0.25&&l>0.25&&l<0.85; }
 function lightFix(root){
   if(!isLight()||!root||root.nodeType!==1) return;
   const els=[root,...root.querySelectorAll('[style],[fill],[stroke]')];
@@ -5011,6 +5020,7 @@ function crewShort(j, ds){ if(isHold(j)) return false; const need=Number(j.staff
 
 // Job class colours: A = red, B = yellow, Roof = grey, Meth decon = teal (old 'C' jobs map here), Mould decon = green
 const CLASS_COLORS={A:['#E53935','#FFFFFF'],B:['#FDD835','#2A2200'],Roof:['#9E9E9E','#151515'],Meth:['#26C6DA','#05262B'],Mould:['#43A047','#FFFFFF']};
+if(document.body&&document.body.classList.contains('light')) CLASS_COLORS.Roof=['#4E6E8E','#FFFFFF'];   // light mode: slate Roof so it doesn't read as 'finished' grey
 function classKey(j){ const c=String((j&&j.jclass)||'A').trim(); if(/^roof/i.test(c)) return 'Roof'; if(/^(meth|c$)/i.test(c)) return 'Meth'; if(/^mou?ld/i.test(c)) return 'Mould'; if(/^b$/i.test(c)) return 'B'; return 'A'; }
 // Colour for a job bar → {bg, fg, key}
 function jobColor(j, shortFlag){

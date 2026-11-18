@@ -76,7 +76,7 @@ def saturated_bg(decls):
             m = HEX.search(val)
             if m:
                 h, l, s = colorsys.rgb_to_hls(*to_rgb(m.group(0)))
-                if s > 0.35 and 0.25 < l < 0.85: return True
+                if s > 0.25 and 0.25 < l < 0.85: return True
             if 'var(--c-orange' in val or 'var(--c-lime' in val or 'var(--c-red' in val or 'var(--c-green' in val: return True
     return False
 
@@ -116,14 +116,19 @@ light = rules_to_css(tinycss2.parse_stylesheet(css, skip_whitespace=True, skip_c
 # hand-tuned extras on top of the generated rules
 light += """
 body.light{color-scheme:light}
-body.light .bd-day{background:#FFFFFF}
-body.light .bd-day.wknd{background:#F1F2F4}
-body.light .bd-day.past{background:#F6F7F8}
-body.light .rs-grid tbody td{background:#FFFFFF}
-body.light .rs-grid tbody td.nm{background:#F6F7F8}
-body.light .rs-grid tbody tr:hover td{background:#F1F4E6}
-body.light #cal-table tbody td.td-date{background:#FFFFFF}
-body.light #cal-table tbody td.td-date.td-sat,body.light #cal-table tbody td.td-date.td-sun{background:#F1F2F4}
+body.light{--c-bg:#DFE2E6;--c-surface:#E8EBEE;--c-panel:#EEF0F2;background:#DFE2E6}
+body.light #main,body.light .panel{background:#DFE2E6}
+body.light .bd-day{background:#EEF0F2}
+body.light .bd-day.wknd{background:#E2E5E8}
+body.light .bd-day.past{background:#E8EAED}
+body.light .rs-grid tbody td{background:#EEF0F2}
+body.light .rs-grid tbody td.nm{background:#EBEDF0}
+body.light .rs-grid tbody tr:hover td{background:#E9EEDB}
+body.light #cal-table tbody td.td-date{background:#EEF0F2}
+body.light #cal-table tbody td.td-date.td-sat,body.light #cal-table tbody td.td-date.td-sun{background:#E6E8EB}
+/* finished / invoiced jobs: washed-out colour with dark text instead of see-through */
+body.light .bd-job.done,body.light .gt-bar.done,body.light .ag-job.done{opacity:1;filter:saturate(.35) brightness(1.65)}
+body.light .bd-job.done *,body.light .gt-bar.done *,body.light .ag-job.done *{color:#2E3338!important}
 body.light .wk-row th.alt{background:#ECEEF0!important}
 body.light .bd-wkbar em.now,body.light .wk-row em.now{background:rgba(122,146,0,.15);color:#5C6E00}
 body.light .bd-wkbar.now{border-top-color:#7A9200}
