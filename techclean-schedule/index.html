@@ -2115,7 +2115,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v65-202611181600';
+const APP_VERSION = 'v66-202611181610';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -2417,12 +2417,16 @@ function renderCal(){
   body+='</tr>';
 
   // job rows — group by project, then active before done
-  const _allSorted=[...bJobs].sort((a,b)=>{
-    // Sort by job number (J01XXXX sequential), fallback to start date
-    const an=a.jobno||'',bn=b.jobno||'';
-    if(an&&bn) return an.localeCompare(bn,undefined,{numeric:true});
-    return (a.start||'').localeCompare(b.start||'');
-  });
+  // Closest dates first: running today → upcoming (soonest first) → on hold → finished / past (most recent first)
+  const _gtKey=j=>{
+    const st=j.start||'9999-12-31', fi=j.finish||st;
+    if(!j.done&&!isHold(j)&&st<=today&&fi>=today) return [0, st, fi];
+    if(!j.done&&!isHold(j)&&st>today) return [1, st, fi];
+    if(isHold(j)&&!j.done) return [2, st, fi];
+    return [3, String(99999999-Number(String(fi).replace(/-/g,'')||0)).padStart(8,'0'), ''];
+  };
+  const _gtCmp=(a,b)=>{ const x=_gtKey(a), y=_gtKey(b); return (x[0]-y[0])||x[1].localeCompare(y[1])||x[2].localeCompare(y[2])||String(a.jobno||'').localeCompare(String(b.jobno||''),undefined,{numeric:true}); };
+  const _allSorted=[...bJobs].sort(_gtCmp);
   const _inMonth=j=>j.start&&j.finish&&j.finish>=days[0]&&j.start<=days[days.length-1];
   const _activeJobs=_allSorted.filter(j=>!j.done||_inMonth(j));   // finished/invoiced jobs stay visible in their month
   const _doneJobs=_allSorted.filter(j=>j.done&&!_inMonth(j));
@@ -2541,18 +2545,15 @@ function renderCal(){
     if(p){
       if(!_projSeen.has(p)){
         _projSeen.add(p);
-        // Use the minimum jobno in the group as the sort key
-        const groupMinJobno = _projectGroups[p]
-          .map(pj=>pj.jobno||'')
-          .sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}))[0]||j.jobno||'';
-        _renderItems.push({type:'group', projName:p, sortKey:groupMinJobno});
+        // a project sits where its nearest job would (jobs are already in closest-date order)
+        _renderItems.push({type:'group', projName:p, lead:_projectGroups[p][0]});
       }
     } else {
-      _renderItems.push({type:'standalone', job:j, sortKey:j.jobno||j.start||''});
+      _renderItems.push({type:'standalone', job:j, lead:j});
     }
   }
   // Sort the mixed list by sortKey (job number order)
-  _renderItems.sort((a,b)=>a.sortKey.localeCompare(b.sortKey,undefined,{numeric:true}));
+  _renderItems.sort((a,b)=>_gtCmp(a.lead,b.lead));
 
   // Render in order
   for(const item of _renderItems){
