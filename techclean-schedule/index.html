@@ -2560,7 +2560,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v75-202611201030';
+const APP_VERSION = 'v76-202611201145';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -3882,7 +3882,7 @@ function editJob(id){
   document.getElementById('f-class').value=classKey(j);
   {const w=document.getElementById('f-wknd'); if(w) w.value=j.workSat&&j.workSun?'both':j.workSat?'sat':j.workSun?'sun':'none';}
   {const w=wfmOf(j), el=document.getElementById('f-wfm-note');
-   if(el){ if(w){ el.style.display=''; el.innerHTML=`<div class="wfm-note">🔗 <b>Linked to WorkflowMax</b> (${_esc(w.status||'')}). Job no, site, client, dates, value and class update automatically from WorkflowMax — change those in WorkflowMax. Crew, assessor, contact and everything else are set here.${w.flag==='dates'?`<br><b style="color:#FCD34D">📅 Dates changed in WorkflowMax</b> — was ${_esc(w.oldStart)} → ${_esc(w.oldFinish)}. Check the crew, then Save to clear this.`:''}${w.flag==='new'?'<br><b style="color:#8AB4F8">📥 New from WorkflowMax</b> — add the crew and any missing details, then Save.':''}</div>`; } else { el.style.display='none'; el.innerHTML=''; } }}
+   if(el){ if(w){ el.style.display=''; el.innerHTML=`<div class="wfm-note">🔗 <b>Linked to WorkflowMax</b> (${_esc(w.status||'')}). Job no, site, client, value and class update automatically; dates follow WorkflowMax until someone changes them here, then the schedule's dates are kept. Crew, assessor, contact and everything else are set here.${w.flag==='dates'?`<br><b style="color:#FCD34D">📅 Dates changed in WorkflowMax</b> — was ${_esc(w.oldStart)} → ${_esc(w.oldFinish)}. Check the crew, then Save to clear this.`:''}${w.flag==='wfmdiff'?`<br><b style="color:#FCD34D">📅 WorkflowMax dates differ</b> — WorkflowMax has ${_esc(w.wfmStart||'?')} → ${_esc(w.wfmFinish||'?')}. The schedule's dates are kept; change them here if WorkflowMax is right, then Save to clear this.`:''}${w.flag==='new'?'<br><b style="color:#8AB4F8">📥 New from WorkflowMax</b> — add the crew and any missing details, then Save.':''}</div>`; } else { el.style.display='none'; el.innerHTML=''; } }}
   {const c=j.checklist||{}; document.getElementById('f-scope').value=c.scope||''; document.getElementById('f-contract').value=c.contact||c.contract||'';
    document.getElementById('f-closeout').value=closeoutOf(j);
    fillJobLists(j.branch||S.branch, c.manager||'', c.assessor||'');}
@@ -5462,7 +5462,7 @@ function renderRes(){
   const wf=S.jobs.filter(j=>j.branch===br&&!j._del&&wfmFlag(j)).sort((a,b)=>(a.start||'').localeCompare(b.start||''));
   let wfH=`<div class="rs-card"><h4>From WorkflowMax <span>${wf.length} to check</span></h4>`;
   if(!wf.length) wfH+=`<div class="rs-ok">✓ Nothing new from WorkflowMax.</div>`;
-  wf.slice(0,15).forEach(j=>{ const f=wfmFlag(j), w=wfmOf(j); wfH+=`<div class="rs-item" onclick="editJob('${j.id}')"><span class="sw" style="background:${f==='new'?'#3B82F6':'#F59E0B'}"></span><div class="tx"><b>${_esc(j.site||j.jobno)}</b><small>${_esc(j.jobno||'')} · ${j.start?_fmtD(j.start)+' → '+_fmtD(j.finish):'no dates'}${f==='dates'?' · was '+_esc(w.oldStart||'?'):''}</small></div><span class="gap" style="color:${f==='new'?'#8AB4F8':'#FCD34D'}">${f==='new'?'needs crew':'dates moved'}</span></div>`; });
+  wf.slice(0,15).forEach(j=>{ const f=wfmFlag(j), w=wfmOf(j); wfH+=`<div class="rs-item" onclick="editJob('${j.id}')"><span class="sw" style="background:${f==='new'?'#3B82F6':'#F59E0B'}"></span><div class="tx"><b>${_esc(j.site||j.jobno)}</b><small>${_esc(j.jobno||'')} · ${j.start?_fmtD(j.start)+' → '+_fmtD(j.finish):'no dates'}${f==='dates'?' · was '+_esc(w.oldStart||'?'):''}${f==='wfmdiff'?' · WFM has '+(w.wfmStart?_fmtD(w.wfmStart)+' → '+_fmtD(w.wfmFinish):'?'):''}</small></div><span class="gap" style="color:${f==='new'?'#8AB4F8':'#FCD34D'}">${f==='new'?'needs crew':f==='wfmdiff'?'WFM dates differ':'dates moved'}</span></div>`; });
   wfH+=`</div>`;
   side=side.replace('<div class="rs-side">','<div class="rs-side">'+wfH+tsSideCard(br));
   const _mine=c=>c.jobs.some(j=>j.branch===br)||homeBranch(c.name)===br;   // this branch's jobs or this branch's people
@@ -6151,6 +6151,7 @@ const wfmFlag = j => { const w=wfmOf(j); return w&&!j.done ? (w.flag||'') : ''; 
 function wfmBadge(j, big){
   const f=wfmFlag(j);
   if(f==='new') return `<span class="wfm-b new" title="New from WorkflowMax — assign crew">📥${big?' From WFM · needs crew':''}</span>`;
+  if(f==='wfmdiff'){ const w=wfmOf(j); return `<span class="wfm-b dates" title="WorkflowMax has ${_esc(w.wfmStart||'?')} → ${_esc(w.wfmFinish||'?')}. The schedule's dates were set by hand and are kept — change them here if WorkflowMax is right, then Save.">📅${big?' WFM dates differ':''}</span>`; }
   if(f==='dates'){ const w=wfmOf(j); return `<span class="wfm-b dates" title="Dates changed in WorkflowMax (was ${_esc(w.oldStart||'?')} → ${_esc(w.oldFinish||'?')}) — check crew">📅${big?' Dates changed in WFM':''}</span>`; }
   return '';
 }
