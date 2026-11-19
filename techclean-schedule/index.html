@@ -1123,6 +1123,8 @@ body.tv .bd-week.dens-t .bd-job{height:25px;font-size:13px}
 
 /* v74 — Invoiced this month tile */
 .bd-stat.invd .v{color:#4FC3F7}
+
+.hc-grid b.hc-client{color:#FFFFFF;font-weight:700}
 </style>
 <style id="light-css">
 body.light{--c-bg:#E5E6E7;--c-surface:#E0E1E3;--c-panel:#DBDCDE;--c-border:#A3A6AA;--c-border-lt:#9A9EA2;--c-navy:#E5E6E7;--c-muted:#8A8B8E;--c-text:#202020;--c-text-dim:#5F6265;--c-white:#1A1A1A}
@@ -1477,6 +1479,7 @@ body.light .rs-grid th.we{color:#87898C}
 body.light .f-crew-note{border:1px dashed var(--c-border-lt,#B5B9BC)}
 body.light .f-crew-note b{color:var(--c-text,#282828)}
 body.light .bd-stat.invd .v{color:#076E9C}
+body.light .hc-grid b.hc-client{color:#1A1A1A}
 body.light{color-scheme:light}
 body.light{--c-bg:#DFE2E6;--c-surface:#E8EBEE;--c-panel:#EEF0F2;background:#DFE2E6}
 body.light #main,body.light .panel{background:#DFE2E6}
@@ -1499,6 +1502,7 @@ body.light #theme-btn{background:#FFFFFF}
 body.light #version-tag{color:#4A5560!important;background:#E4E6E9!important}
 
 </style><!--/light-css-->
+
 
 
 
@@ -2556,7 +2560,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v74-202611201040';
+const APP_VERSION = 'v75-202611201030';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -5726,8 +5730,9 @@ function hoverCardHTML(j, day){
     <div class="hc-top"><span class="hc-cls" style="background:${cc[0]};color:${cc[1]}">${CLASS_LABEL[ck]||ck}</span><span class="hc-no">${_esc(j.jobno||'')}</span><span class="hc-st">${status}</span></div>
     <div class="hc-site">${_esc(j.site||'—')}</div>
     ${wfmOf(j)?`<div class="hc-wfm">🔗 WorkflowMax · ${_esc(wfmOf(j).status||'')}${wfmOf(j).syncedAt?' · synced '+new Date(wfmOf(j).syncedAt).toLocaleString('en-NZ',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):''}${wfmFlag(j)==='new'?' · <b>needs crew</b>':''}${wfmFlag(j)==='dates'?` · <b>dates changed (was ${_esc(wfmOf(j).oldStart)} → ${_esc(wfmOf(j).oldFinish)})</b>`:''}</div>`:''}
-    ${j.client||j.project?`<div class="hc-sub">${_esc(j.client||'')}${j.client&&j.project?' · ':''}${j.project?'Project: '+_esc(j.project):''}</div>`:''}
+    ${j.project?`<div class="hc-sub">Project: ${_esc(j.project)}</div>`:''}
     <div class="hc-grid">
+      <span>Client</span><b class="hc-client">${_esc(j.client||'—')}</b>
       <span>Dates</span><b>${j.start?_fmtD(j.start)+' → '+_fmtD(j.finish):'—'}</b>
       <span>Working days</span><b>${wd||'—'} · ${sp}</b>
       <span>Weekends</span><b>${wk}</b>
