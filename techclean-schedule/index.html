@@ -1115,6 +1115,11 @@ body.tv .bd-week.dens-t .bd-job{height:25px;font-size:13px}
 .rs-grid td .rs-free{white-space:nowrap}
 .rs-grid th.we,.rs-grid td.we{font-size:10px}
 .rs-grid th.we{color:#7E8084}
+
+/* v73 — crew line removed from the job form */
+.f-crew-note{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border:1px dashed var(--c-border-lt,#3A3D40);border-radius:8px;font-size:12.5px;color:var(--c-muted)}
+.f-crew-note b{color:var(--c-text,#E8E8E8)}
+.f-crew-note .btn{margin-left:auto}
 </style>
 <style id="light-css">
 body.light{--c-bg:#E5E6E7;--c-surface:#E0E1E3;--c-panel:#DBDCDE;--c-border:#A3A6AA;--c-border-lt:#9A9EA2;--c-navy:#E5E6E7;--c-muted:#8A8B8E;--c-text:#202020;--c-text-dim:#5F6265;--c-white:#1A1A1A}
@@ -1466,6 +1471,8 @@ body.light .rs-card .rs-item{border-top:1px solid rgba(0,0,0,0.078)}
 body.light .bd-alert.bd-alert-bad{border-color:rgba(229,57,53,0.6);background:rgba(229,57,53,0.1)}
 body.light .bd-alert.bd-alert-bad b{color:#A30D00}
 body.light .rs-grid th.we{color:#87898C}
+body.light .f-crew-note{border:1px dashed var(--c-border-lt,#B5B9BC)}
+body.light .f-crew-note b{color:var(--c-text,#282828)}
 body.light{color-scheme:light}
 body.light{--c-bg:#DFE2E6;--c-surface:#E8EBEE;--c-panel:#EEF0F2;background:#DFE2E6}
 body.light #main,body.light .panel{background:#DFE2E6}
@@ -1488,6 +1495,7 @@ body.light #theme-btn{background:#FFFFFF}
 body.light #version-tag{color:#4A5560!important;background:#E4E6E9!important}
 
 </style><!--/light-css-->
+
 
 
 
@@ -1898,9 +1906,10 @@ body.light #version-tag{color:#4A5560!important;background:#E4E6E9!important}
       </div>
       <div class="field"><label>Start Date</label><input type="date" id="f-start"></div>
       <div class="field"><label>Finish Date</label><input type="date" id="f-finish"></div>
-      <div class="field full"><label>Resource(s) — comma separated</label>
-        <input type="text" id="f-res" placeholder="Cory, Sam, Bea" list="res-dl">
-        <datalist id="res-dl"></datalist>
+      <div class="field full">
+        <input type="hidden" id="f-res"><datalist id="res-dl"></datalist>
+        <div class="f-crew-note">👷 <b>Crew is allocated in the Resources tab</b> — save the job, then put people on it there.
+          <button type="button" class="btn btn-ghost btn-sm" id="f-crew-go" onclick="openResForJob()" style="display:none">Allocate crew in Resources →</button></div>
       </div>
       <div class="field full"><label>Project <span style="font-weight:400;color:var(--c-muted)">(optional — groups related jobs on dashboard)</span></label>
         <div style="position:relative">
@@ -2542,7 +2551,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v72-202611201010';
+const APP_VERSION = 'v73-202611201000';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -3832,6 +3841,7 @@ function openForm(br){
   {const hb=document.getElementById('hs-btn'); if(hb) hb.style.display='none';}
   document.getElementById('f-id').value='';
   ['f-jobno','f-site','f-client','f-val','f-wfm','f-staff','f-dur','f-start','f-finish','f-res','f-project'].forEach(id=>document.getElementById(id).value='');
+  { const b=document.getElementById('f-crew-go'); if(b){ b.style.display='none'; b.dataset.jid=''; } }
   ['chk_quote','chk_folder','chk_arcp','chk_notified','chk_waste','chk_siteapp','chk_clearance'].forEach(id=>{const el=document.getElementById(id);if(el)el.checked=false;});
   const _qv=document.getElementById('chk_quote_val');if(_qv)_qv.value='';
   const _fv=document.getElementById('chk_folder_val');if(_fv)_fv.value='';
@@ -3876,7 +3886,8 @@ function editJob(id){
   document.getElementById('f-branch').value=j.branch||S.branch;
   document.getElementById('f-start').value=j.start||'';
   document.getElementById('f-finish').value=j.finish||'';
-  document.getElementById('f-res').value=j.resource||'';
+  document.getElementById('f-res').value=j.resource||'';   // kept (hidden) so saving the job never drops its crew
+  { const b=document.getElementById('f-crew-go'); if(b){ b.style.display=''; b.dataset.jid=j.id; } }
   document.getElementById('f-project').value=j.project||'';
   // Load schedule pattern
   const sp = j.schedPattern || {type:'full'};
@@ -5282,6 +5293,13 @@ function renderBoard(){
 document.addEventListener('change',e=>{
   if(e.target&&e.target.id==='f-start'){ const f=document.getElementById('f-finish'), v=e.target.value; if(v){ f.min=v; if(!f.value||f.value<v) f.value=v; } }
 });
+// from the job form: open Resources at the job's first week
+function openResForJob(){
+  const id=(document.getElementById('f-crew-go')||{}).dataset?.jid, j=S.jobs.find(x=>x.id===id);
+  closeForm();
+  if(j&&j.start){ BOARD.start=wkMonday(j.start<dsOf(new Date())?dsOf(new Date()):j.start); boardSave(); }
+  showPanel('res');
+}
 function boardNewJob(ds){
   openForm(S.branch);
   const s=document.getElementById('f-start'), f=document.getElementById('f-finish');
