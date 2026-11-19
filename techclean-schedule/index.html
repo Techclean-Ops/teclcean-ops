@@ -1097,6 +1097,24 @@ body.tv .bd-week.dens-c .bd-job{height:34px;font-size:15px}
 body.tv .bd-week.dens-t .bd-job{height:25px;font-size:13px}
 .bd-alert.bd-alert-bad{border-color:rgba(229,57,53,.6);background:rgba(229,57,53,.10);margin-bottom:8px}
 .bd-alert.bd-alert-bad b{color:#FF8A80}
+
+/* v72 — Resources: same layout for every branch (fixed columns, Mon–Sun, weekends narrow) */
+.rs-grid{width:100%;table-layout:fixed}
+.rs-grid col.c-nm{width:128px}
+.rs-grid col.c-we{width:3.4%}
+.rs-side{width:270px!important}
+.rs-grid .nm{padding:0 10px!important}
+.rs-chip{padding:3px 5px!important}
+.rs-grid th{padding:8px 2px!important}
+.rs-grid th{min-width:0!important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rs-grid .nm{min-width:0!important;overflow:hidden;text-overflow:ellipsis}
+.rs-grid td{overflow:hidden}
+.rs-chip{max-width:100%!important}
+.rs-grid td .rs-chip:not(:only-child){font-size:10px;padding:1px 5px;line-height:1.2}
+.rs-grid td .rs-chip+.rs-chip{margin-top:1px}
+.rs-grid td .rs-free{white-space:nowrap}
+.rs-grid th.we,.rs-grid td.we{font-size:10px}
+.rs-grid th.we{color:#7E8084}
 </style>
 <style id="light-css">
 body.light{--c-bg:#E5E6E7;--c-surface:#E0E1E3;--c-panel:#DBDCDE;--c-border:#A3A6AA;--c-border-lt:#9A9EA2;--c-navy:#E5E6E7;--c-muted:#8A8B8E;--c-text:#202020;--c-text-dim:#5F6265;--c-white:#1A1A1A}
@@ -1447,6 +1465,7 @@ body.light .rs-card.rs-bad h4{color:#A30D00}
 body.light .rs-card .rs-item{border-top:1px solid rgba(0,0,0,0.078)}
 body.light .bd-alert.bd-alert-bad{border-color:rgba(229,57,53,0.6);background:rgba(229,57,53,0.1)}
 body.light .bd-alert.bd-alert-bad b{color:#A30D00}
+body.light .rs-grid th.we{color:#87898C}
 body.light{color-scheme:light}
 body.light{--c-bg:#DFE2E6;--c-surface:#E8EBEE;--c-panel:#EEF0F2;background:#DFE2E6}
 body.light #main,body.light .panel{background:#DFE2E6}
@@ -1469,6 +1488,9 @@ body.light #theme-btn{background:#FFFFFF}
 body.light #version-tag{color:#4A5560!important;background:#E4E6E9!important}
 
 </style><!--/light-css-->
+
+
+
 
 
 
@@ -2520,7 +2542,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v71-202611200945';
+const APP_VERSION = 'v72-202611201010';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -5276,13 +5298,9 @@ function renderRes(){
   const _pastDone=(j,d)=>!j.done||d<today;
   const jobs=S.jobs.filter(j=>j.branch===br && !j._del && (!j.done || (j.start && j.start<today)));
 
-  // two weeks: weekdays always, weekend days only if someone is working
+  // two full weeks, Mon–Sun, for every branch (weekends narrow) — same layout everywhere
   const days=[];
-  for(let i=0;i<14;i++){
-    const d=dsOf(addD(start,i));
-    if(isSat(d)||isSun(d)){ if(!jobs.some(j=>_pastDone(j,d) && jobActiveOnDay(j,d) && crewOnDay(j,d)>0)) continue; }
-    days.push(d);
-  }
+  for(let i=0;i<14;i++) days.push(dsOf(addD(start,i)));
   const end=toD(days[days.length-1]);
   document.getElementById('rs-dot').style.background=BRANCH_COLORS[br];
   document.getElementById('rs-title').textContent=br+' Resources';
@@ -5332,10 +5350,12 @@ function renderRes(){
   const _rcl=findClashes(days[0],days[days.length-1]);
   const rcl={}; _rcl.forEach(c=>{ rcl[c.d+'|'+c.key]=c; });
   const wkBreak=d=>(new Date(d+'T00:00:00').getDay()===1)&&d!==days[0];
-  let h=`<table class="rs-grid"><thead><tr class="wk-row"><th class="nm"></th>${wkGroups(days).map((w,i)=>`<th colspan="${w.days.length}" class="${i?'wk':''} ${w.alt?'alt':''} ${w.rel==='This week'?'now':''}">${wkLabelHTML(w)}</th>`).join('')}</tr><tr class="rs-days"><th class="nm">Crew (${roster.length})</th>`;
+  const _cols=`<colgroup><col class="c-nm">${days.map(d=>`<col class="${isSat(d)||isSun(d)?'c-we':'c-wd'}">`).join('')}</colgroup>`;
+  let h=`<table class="rs-grid">${_cols}<thead><tr class="wk-row"><th class="nm"></th>${wkGroups(days).map((w,i)=>`<th colspan="${w.days.length}" class="${i?'wk':''} ${w.alt?'alt':''} ${w.rel==='This week'?'now':''}">${wkLabelHTML(w)}</th>`).join('')}</tr><tr class="rs-days"><th class="nm">Crew (${roster.length})</th>`;
   days.forEach(d=>{
     const dt=toD(d), hol=isHolB(d,br);
-    h+=`<th class="${d===today?'today':''} ${hol?'hol':''} ${wkBreak(d)?'wk':''}" ${hol?`title="${_esc(holNameB(d,br))}"`:''}>${_DOW3[dt.getDay()]} ${dt.getDate()}${hol?' 🎌':''}</th>`;
+    const we=isSat(d)||isSun(d);
+    h+=`<th class="${d===today?'today':''} ${hol?'hol':''} ${wkBreak(d)?'wk':''} ${we?'we':''}" ${hol?`title="${_esc(holNameB(d,br))}"`:''}>${we?_DOW3[dt.getDay()].slice(0,2):_DOW3[dt.getDay()]} ${dt.getDate()}${hol&&!we?' 🎌':''}</th>`;
   });
   h+=`</tr></thead><tbody>`;
   const freeByDay={};
@@ -5385,7 +5405,8 @@ function renderRes(){
   h+=`<tr class="sum"><td class="nm">On ${br} jobs / free</td>`;
   days.forEach(d=>{
     const on=dailyAllocV2(jobs,d), fr=(freeByDay[d]||[]).length;
-    h+=`<td class="${wkBreak(d)?'wk':''} ${on>roster.length?'bad':''}">${on} / <span style="color:#8BC34A">${fr}</span></td>`;
+    const we=isSat(d)||isSun(d);
+    h+=`<td class="${wkBreak(d)?'wk':''} ${on>roster.length?'bad':''} ${we?'we':''}" title="${on} on ${br} jobs · ${fr} free">${we?(on||'–'):`${on} / <span style="color:#8BC34A">${fr}</span>`}</td>`;
   });
   h+=`</tr></tbody></table>`;
   if(!roster.length && !extras.length) h=`<div class="bd-empty">No crew on the ${br} roster yet — add staff in Setup.</div>`;
