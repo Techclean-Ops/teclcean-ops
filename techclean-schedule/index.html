@@ -1076,6 +1076,14 @@ body.tv #version-tag{display:none}
 /* v69 — closed jobs kept on past days in Resources */
 .rs-chip.rs-done{opacity:.5;box-shadow:inset 0 0 0 1px rgba(255,255,255,.25)}
 .rs-chip.rs-done:hover{opacity:.85}
+
+/* v70 — jobs with finish before start */
+.rs-card.rs-bad{border:1px solid rgba(229,57,53,.55);background:rgba(229,57,53,.08)}
+.rs-card.rs-bad h4{color:#FF8A80}
+.rs-card .rs-note{font-size:11.5px;color:var(--c-muted);margin:-2px 0 8px}
+.rs-card .rs-item{padding:7px 0;border-top:1px solid rgba(255,255,255,.06)}
+.rs-card .rs-item b{display:block;font-size:13px}
+.rs-card .rs-item small{font-size:11px;color:var(--c-muted)}
 </style>
 <style id="light-css">
 body.light{--c-bg:#E5E6E7;--c-surface:#E0E1E3;--c-panel:#DBDCDE;--c-border:#A3A6AA;--c-border-lt:#9A9EA2;--c-navy:#E5E6E7;--c-muted:#8A8B8E;--c-text:#202020;--c-text-dim:#5F6265;--c-white:#1A1A1A}
@@ -1421,6 +1429,9 @@ body.light #cal-table tbody td.td-date{background:#EBECED;border-left:1px solid 
 body.light #cal-table tbody td.td-date.td-sat, body.light #cal-table tbody td.td-date.td-sun{background:#F0F1F2}
 body.light #cal-table thead tr.cal-days th b{color:#1D1F21}
 body.light .rs-chip.rs-done{box-shadow:inset 0 0 0 1px rgba(0,0,0,0.225)}
+body.light .rs-card.rs-bad{border:1px solid rgba(229,57,53,0.55);background:rgba(229,57,53,0.08)}
+body.light .rs-card.rs-bad h4{color:#A30D00}
+body.light .rs-card .rs-item{border-top:1px solid rgba(0,0,0,0.078)}
 body.light{color-scheme:light}
 body.light{--c-bg:#DFE2E6;--c-surface:#E8EBEE;--c-panel:#EEF0F2;background:#DFE2E6}
 body.light #main,body.light .panel{background:#DFE2E6}
@@ -1443,6 +1454,7 @@ body.light #theme-btn{background:#FFFFFF}
 body.light #version-tag{color:#4A5560!important;background:#E4E6E9!important}
 
 </style><!--/light-css-->
+
 
 
 
@@ -2492,7 +2504,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v69-202611181630';
+const APP_VERSION = 'v70-202611200930';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -3907,6 +3919,8 @@ function saveJob(){
   const id=document.getElementById('f-id').value;
   const jobno=document.getElementById('f-jobno').value.trim();
   if(!jobno){toast('Job number required','err');return}
+  { const _s=document.getElementById('f-start').value, _f=document.getElementById('f-finish').value;
+    if(_s&&_f&&_f<_s){ toast('Finish date is before the start date — please check the dates','err'); document.getElementById('f-finish').focus(); return; } }
   const job={
     id:id||uid(),jobno,jclass:document.getElementById('f-class').value,
     site:document.getElementById('f-site').value.trim(),
@@ -5221,6 +5235,10 @@ function renderBoard(){
   const keep=sc.scrollTop; sc.innerHTML=html; sc.scrollTop=keep;
 }
 
+// job form: finish can't be before start — moving the start later pulls the finish with it
+document.addEventListener('change',e=>{
+  if(e.target&&e.target.id==='f-start'){ const f=document.getElementById('f-finish'), v=e.target.value; if(v){ f.min=v; if(!f.value||f.value<v) f.value=v; } }
+});
 function boardNewJob(ds){
   openForm(S.branch);
   const s=document.getElementById('f-start'), f=document.getElementById('f-finish');
@@ -5353,7 +5371,14 @@ function renderRes(){
 
   // side panel
   shortJobs.sort((a,b)=>a.shortDays[0].localeCompare(b.shortDays[0]));
-  let side=`<div class="rs-side"><div class="rs-card"><h4>Crew shortfalls <span>${shortJobs.length} job${shortJobs.length!==1?'s':''}</span></h4>`;
+  const _badDates=S.jobs.filter(j=>j.branch===br&&!j._del&&!j.done&&j.start&&j.finish&&j.finish<j.start);
+  let side=`<div class="rs-side">`;
+  if(_badDates.length){
+    side+=`<div class="rs-card rs-bad"><h4>⚠ Dates to fix <span>${_badDates.length} job${_badDates.length!==1?'s':''}</span></h4><div class="rs-note">Finish is before start, so these don't show on the Board, Resources or Gantt.</div>`;
+    _badDates.forEach(j=>{ side+=`<div class="rs-item" onclick="editJob('${j.id}')" style="cursor:pointer"><b>${_esc(j.site||j.jobno||'Job')}</b><small>${_esc(j.jobno||'')} · start ${_fmtD(j.start)} · finish ${_fmtD(j.finish)}</small></div>`; });
+    side+=`</div>`;
+  }
+  side+=`<div class="rs-card"><h4>Crew shortfalls <span>${shortJobs.length} job${shortJobs.length!==1?'s':''}</span></h4>`;
   if(!shortJobs.length) side+=`<div class="rs-ok">✓ Every job in this period has its crew named.</div>`;
   shortJobs.forEach(({j,worst,shortDays})=>{
     const d0=toD(shortDays[0]);
