@@ -1138,6 +1138,12 @@ body.tv .bd-week.dens-t .bd-job{height:25px;font-size:13px}
 .hc-grid b.hc-away{color:#7DD3FC}
 .rs-card.rs-awaycard{border:1px solid rgba(125,211,252,.45);background:rgba(125,211,252,.06)}
 .rs-card.rs-awaycard h4{color:#7DD3FC}
+
+.aw-ico{width:1.15em;height:1.15em;vertical-align:-.2em;flex:none;display:inline-block}
+.rs-chip .rs-aw .aw-ico{width:1.1em;height:1.1em}
+.gt-away .aw-ico{width:14px;height:14px}
+.hc-away .aw-ico,.rs-card h4 .aw-ico{width:16px;height:16px}
+.aw-lg{display:inline-flex;align-items:center;gap:4px}
 </style>
 <style id="light-css">
 body.light{--c-bg:#E5E6E7;--c-surface:#E0E1E3;--c-panel:#DBDCDE;--c-border:#A3A6AA;--c-border-lt:#9A9EA2;--c-navy:#E5E6E7;--c-muted:#8A8B8E;--c-text:#202020;--c-text-dim:#5F6265;--c-white:#1A1A1A}
@@ -1534,6 +1540,7 @@ body.light #version-tag{color:#4A5560!important;background:#E4E6E9!important}
 
 
 
+
 </head>
 <body>
 <script>try{ if(localStorage.getItem('aops_theme')==='light') document.body.classList.add('light'); }catch(e){}</script>
@@ -1692,7 +1699,7 @@ body.light #version-tag{color:#4A5560!important;background:#E4E6E9!important}
         </div>
       </div>
       <div class="stat-row" id="stat-row" style="margin-bottom:8px"></div>
-      <div class="bd-legend gt-legend" style="padding:0 2px 8px"><span>🧳 Away / out of town</span><span><i style="background:#E53935"></i>Class A</span><span><i style="background:#FDD835"></i>Class B</span><span><i style="background:#9E9E9E"></i>Roof</span><span><i style="background:#26C6DA"></i>Meth</span><span><i style="background:#43A047"></i>Mould</span><span><i style="background:#E040FB;border-radius:6px"></i>Under-resourced (crew badge)</span><span><i style="background:#2B2D2F;border-bottom:2px dashed #888"></i>Weekend / holiday inside job</span><span style="color:#FCD34D">Name ⚠ = double-booked</span><span>Hover a bar for details · click a day to change crew</span></div>
+      <div class="bd-legend gt-legend" style="padding:0 2px 8px"><span class="aw-lg">Away / out of town</span><span><i style="background:#E53935"></i>Class A</span><span><i style="background:#FDD835"></i>Class B</span><span><i style="background:#9E9E9E"></i>Roof</span><span><i style="background:#26C6DA"></i>Meth</span><span><i style="background:#43A047"></i>Mould</span><span><i style="background:#E040FB;border-radius:6px"></i>Under-resourced (crew badge)</span><span><i style="background:#2B2D2F;border-bottom:2px dashed #888"></i>Weekend / holiday inside job</span><span style="color:#FCD34D">Name ⚠ = double-booked</span><span>Hover a bar for details · click a day to change crew</span></div>
       </div><!-- end fixed header section -->
       <div class="cal-wrap" style="flex:1;overflow:auto;margin:0 16px 12px;border-radius:var(--r);border:1px solid var(--c-border)">
         <table id="cal-table">
@@ -1740,7 +1747,7 @@ body.light #version-tag{color:#4A5560!important;background:#E4E6E9!important}
         <button class="bd-pill" onclick="openLeaveRange('', '')" style="margin-left:8px">🏖 Book leave</button>
         <button class="bd-pill" onclick="openSecondment('', '')">⇄ Allocate to branch</button>
         <div class="bd-spacer"></div>
-        <div class="bd-legend"><span>🧳 Away / out of town</span><span><i style="background:rgba(192,132,252,.6)"></i>Leave</span><span><i style="background:rgba(252,211,77,.6)"></i>Training</span><span><i style="background:transparent;box-shadow:0 0 0 2px #F59E0B"></i>Double-booked</span><span><i style="background:transparent;outline:2px dashed #EF4444"></i>Schedule error</span><span><em class="rs-h" style="position:static">4h</em> Split hours</span><span style="color:#4CAF50">● Free</span></div>
+        <div class="bd-legend"><span class="aw-lg">Away / out of town</span><span><i style="background:rgba(192,132,252,.6)"></i>Leave</span><span><i style="background:rgba(252,211,77,.6)"></i>Training</span><span><i style="background:transparent;box-shadow:0 0 0 2px #F59E0B"></i>Double-booked</span><span><i style="background:transparent;outline:2px dashed #EF4444"></i>Schedule error</span><span><em class="rs-h" style="position:static">4h</em> Split hours</span><span style="color:#4CAF50">● Free</span></div>
       </div>
       <div class="rs-wrap" id="rs-wrap"></div>
     </div>
@@ -1963,7 +1970,7 @@ body.light #version-tag{color:#4A5560!important;background:#E4E6E9!important}
       </div>
       <div class="field full">
         <label>Away work</label>
-        <div class="aw-row"><label class="aw-tick"><input type="checkbox" id="f-away"> 🧳 Away / out of town <small>(travel + accommodation)</small></label>
+        <div class="aw-row"><label class="aw-tick"><input type="checkbox" id="f-away"> <span class="aw-lg">Away / out of town</span> <small>(travel + accommodation)</small></label>
           <input type="text" id="f-away-note" placeholder="e.g. Staying at Ashburton Motel · 2 vans · leave Sun night"></div>
       </div>
       <div class="field full">
@@ -2583,8 +2590,9 @@ const PRELOAD_JOBS = [];
 const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
+const AW = '<svg class="aw-ico" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(-1 0)"><path d="M5.5 12.6V8.4a4.5 4.5 0 0 1 9 0v4.2"/><rect x="6.6" y="6.9" width="6.8" height="2.2" rx="1.1" fill="currentColor" stroke="none"/><circle cx="10" cy="11.7" r="2.15"/><circle cx="10" cy="11.7" r=".8" fill="currentColor" stroke="none"/><rect x="3.1" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(-28 4.6 12.75)"/><rect x="13.9" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(28 15.4 12.75)"/><path d="M8.1 13.7L10 15.6L11.9 13.7"/><path d="M6.9 15.2C4.3 15.9 3 17.7 3 20.2V22.3M13.1 15.2C15.7 15.9 17 17.7 17 20.2V22.3M10 15.6V22.3"/></g><path d="M13.6 19.4L21.2 2.6"/><path fill-rule="evenodd" fill="currentColor" stroke="none" d="M20.4 5.3c.9.8 2.8 2 3 4 .2 1.8-1 3-2.8 3s-3.2-1.2-3.1-3c.1-2 1.9-3.2 2.9-4zM19.7 8.7a.55.55 0 1 0 0 .01zM21.9 9.6a.55.55 0 1 0 0 .01zM20.6 11.1a.5.5 0 1 0 0 .01z"/><path d="M20.4 5.4l-1.4-.6M20.4 5.4l.8-1.3"/></svg>';   // away / out-of-town: suited worker with a bindle
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v77-202611210930';
+const APP_VERSION = 'v78-202611211000';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -5154,7 +5162,7 @@ function jobColor(j, shortFlag){
   return {bg:'#FFC21A', fg:'#2A1A00'};
 }
 function boardLegend(){
-  const shortLg='<span><i style="background:#E040FB;border-radius:6px"></i>Under-resourced (crew badge)</span><span><i style="background:repeating-linear-gradient(135deg,#E040FB 0 3px,transparent 3px 6px)"></i>No crew named</span><span><i style="background:repeating-linear-gradient(135deg,#55585C 0 3px,#2B2D2F 3px 6px)"></i>On hold</span><span><i style="background:#9E9E9E;opacity:.4"></i>Finished / invoiced</span><span>🧳 Away / out of town</span>';
+  const shortLg='<span><i style="background:#E040FB;border-radius:6px"></i>Under-resourced (crew badge)</span><span><i style="background:repeating-linear-gradient(135deg,#E040FB 0 3px,transparent 3px 6px)"></i>No crew named</span><span><i style="background:repeating-linear-gradient(135deg,#55585C 0 3px,#2B2D2F 3px 6px)"></i>On hold</span><span><i style="background:#9E9E9E;opacity:.4"></i>Finished / invoiced</span><span>'+AW+' Away / out of town</span>';
   if(BOARD.color==='class') return '<span><i style="background:#E53935"></i>Class A</span><span><i style="background:#FDD835"></i>Class B</span><span><i style="background:#9E9E9E"></i>Roof</span><span><i style="background:#26C6DA"></i>Meth</span><span><i style="background:#43A047"></i>Mould</span>'+shortLg;
   if(BOARD.color==='project') return '<span>Same colour = same project</span>';
   return '<span><i style="background:#FF6A1A"></i>On site</span><span><i style="background:#FFC21A"></i>Upcoming</span><span><i style="background:#7B1FA2"></i>Under-resourced</span><span><i style="background:#8D4A12"></i>Past finish – close out</span>'+(BOARD.done?'<span><i style="background:#4A4D50"></i>Done</span>':'');
@@ -5323,7 +5331,7 @@ function renderBoard(){
       const co=closeoutOf(j);
       html+=`<div class="bd-job ${sg.cl?'cont-l':''} ${sg.cr?'cont-r':''} ${sg.short?'short':''} ${sg.short&&sg.crew===0?'nocrew':''} ${j.done?'done':''} ${isHold(j)?'hold':''} ${isAway(j)?'away':''}" style="grid-column:${sg.s+1}/${sg.e+2};grid-row:${sg.lane+2};background:${c.bg};color:${c.fg}" data-jid="${j.id}" onclick="event.stopPropagation();editJob('${j.id}')">
         ${sg.cl?'<span class="bd-arr">‹</span>':''}
-        <div class="bd-txt"><div class="t">${isAway(j)?'🧳 ':''}${label}</div><div class="s2">${j.jobno?`<b>${_esc(j.jobno)}</b> · `:''}${isHold(j)?'⏸ ON HOLD · start TBC':_esc(nmTxt)}</div></div>
+        <div class="bd-txt"><div class="t">${isAway(j)?AW+' ':''}${label}</div><div class="s2">${j.jobno?`<b>${_esc(j.jobno)}</b> · `:''}${isHold(j)?'⏸ ON HOLD · start TBC':_esc(nmTxt)}</div></div>
         ${wfmBadge(j)}${hasClash?'<span class="bd-warn" title="Someone on this job is double-booked">⚠</span>':''}${co==='invoiced'?'<span class="bd-co">$ INV</span>':co==='finished'?'<span class="bd-co">✓ FIN</span>':''}<span class="crew">${WK} ${crewTxt}</span>${sg.cr?'<span class="bd-arr">›</span>':''}
       </div>`;
     }
@@ -5346,6 +5354,7 @@ function openResForJob(){
   if(j&&j.start){ BOARD.start=wkMonday(j.start<dsOf(new Date())?dsOf(new Date()):j.start); boardSave(); }
   showPanel('res');
 }
+document.addEventListener('DOMContentLoaded',()=>document.querySelectorAll('.aw-lg').forEach(e=>{ if(!e.querySelector('svg')) e.insertAdjacentHTML('afterbegin',AW+' '); }));
 function boardNewJob(ds){
   openForm(S.branch);
   const s=document.getElementById('f-start'), f=document.getElementById('f-finish');
@@ -5448,7 +5457,7 @@ function renderRes(){
         if(j.done){ c+=`<span class="rs-chip rs-done" style="background:${col.bg};color:${col.fg}" data-jid="${j.id}" data-day="${d}" onclick="event.stopPropagation();editJob('${j.id}')" title="${_esc((j.jobno?j.jobno+' — ':'')+(j.site||''))} · closed (${closeoutOf(j)==='invoiced'?'invoiced':'finished'}) — click to review">${closeoutOf(j)==='invoiced'?'$ ':'✓ '}${_esc(j.site||j.jobno||'Job')}</span>`; return; }
         const tip=(j.jobno?j.jobno+' — ':'')+(j.site||'')+(hrs!=null?` · ${hrs}h`:'')+(st==='open'?' · DOUBLE-BOOKED — click to split hours or flag':st==='flag'?' · Schedule error: '+jc.note:'');
         const other=j.branch!==br;
-        c+=`<span class="rs-chip ${cls} ${isAway(j)?'away':''}" style="background:${col.bg};color:${col.fg}" data-jid="${j.id}" data-day="${d}" onclick="rsChipClick(event,'${j.id}','${d}','${k.replace(/'/g,"\\'")}')" ondblclick="rsChipDbl(event,'${j.id}')" title="${isAway(j)?'🧳 Away / out of town'+(j.checklist.awayNote?' — '+_esc(j.checklist.awayNote):'')+' · ':''}Click: change / move · Double-click: open job">${isAway(j)?'<em class="rs-aw">🧳</em>':''}${other?`<em class="rs-br" style="background:${BRANCH_COLORS[j.branch]};color:#111">${BR_CODE[j.branch]||j.branch}</em>`:''}${(()=>{ const ru=runOf(j,d,k); return ru?`<em class="rs-run" title="Day run: stop ${ru.n} of ${ru.of}${ru.t?' · start '+_tNice(ru.t):''}${hrs!=null?' · '+hrs+'h':''}">${ru.t?_tNice(ru.t):ru.n}</em>`:''; })()}${hrs!=null&&!runOf(j,d,k)?`<em class="rs-h">${hrs}h</em>`:''}${st==='flag'?'⚑ ':''}${tsTag(j,d)}${_esc(j.site||j.jobno||'Job')}</span>`;
+        c+=`<span class="rs-chip ${cls} ${isAway(j)?'away':''}" style="background:${col.bg};color:${col.fg}" data-jid="${j.id}" data-day="${d}" onclick="rsChipClick(event,'${j.id}','${d}','${k.replace(/'/g,"\\'")}')" ondblclick="rsChipDbl(event,'${j.id}')" title="${isAway(j)?'Away / out of town'+(j.checklist.awayNote?' — '+_esc(j.checklist.awayNote):'')+' · ':''}Click: change / move · Double-click: open job">${isAway(j)?'<em class="rs-aw">'+AW+'</em>':''}${other?`<em class="rs-br" style="background:${BRANCH_COLORS[j.branch]};color:#111">${BR_CODE[j.branch]||j.branch}</em>`:''}${(()=>{ const ru=runOf(j,d,k); return ru?`<em class="rs-run" title="Day run: stop ${ru.n} of ${ru.of}${ru.t?' · start '+_tNice(ru.t):''}${hrs!=null?' · '+hrs+'h':''}">${ru.t?_tNice(ru.t):ru.n}</em>`:''; })()}${hrs!=null&&!runOf(j,d,k)?`<em class="rs-h">${hrs}h</em>`:''}${st==='flag'?'⚑ ':''}${tsTag(j,d)}${_esc(j.site||j.jobno||'Job')}</span>`;
       });
       if(js.length) worked++;
       if(!c){
@@ -5486,7 +5495,7 @@ function renderRes(){
   }
   { const aw=jobs.filter(j=>!j.done&&isAway(j)&&days.some(d=>jobActiveOnDay(j,d)));
     if(aw.length){
-      side+=`<div class="rs-card rs-awaycard"><h4>🧳 Away / out of town <span>${aw.length} job${aw.length!==1?'s':''}</span></h4>`;
+      side+=`<div class="rs-card rs-awaycard"><h4><b class="aw-lg">${AW} Away / out of town</b> <span>${aw.length} job${aw.length!==1?'s':''}</span></h4>`;
       aw.sort((a,b)=>(a.start||'').localeCompare(b.start||'')).forEach(j=>{
         const ds=days.filter(d=>jobActiveOnDay(j,d)); const crew=[...new Set(ds.flatMap(d=>getStaffForDay(j,d).split(',').map(x=>x.trim()).filter(Boolean)))];
         side+=`<div class="rs-item" onclick="editJob('${j.id}')" style="cursor:pointer"><div class="tx"><b>${_esc(j.site||j.jobno)}</b><small>${_fmtD(ds[0])}${ds.length>1?' – '+_fmtD(ds[ds.length-1]):''} · ${crew.length?_esc(crew.join(', ')):'no crew yet'}${j.checklist.awayNote?' · '+_esc(j.checklist.awayNote):''}</small></div></div>`;
@@ -5773,7 +5782,7 @@ function hoverCardHTML(j, day){
     ${j.project?`<div class="hc-sub">Project: ${_esc(j.project)}</div>`:''}
     <div class="hc-grid">
       <span>Client</span><b class="hc-client">${_esc(j.client||'—')}</b>
-      ${isAway(j)?`<span>Away</span><b class="hc-away">🧳 Out of town${j.checklist.awayNote?' — '+_esc(j.checklist.awayNote):''}</b>`:''}
+      ${isAway(j)?`<span>Away</span><b class="hc-away">${AW} Out of town${j.checklist.awayNote?' — '+_esc(j.checklist.awayNote):''}</b>`:''}
       <span>Dates</span><b>${j.start?_fmtD(j.start)+' → '+_fmtD(j.finish):'—'}</b>
       <span>Working days</span><b>${wd||'—'} · ${sp}</b>
       <span>Weekends</span><b>${wk}</b>
@@ -6189,7 +6198,7 @@ function saveJobLists(){
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 // away / out-of-town work (job form tick box) — shown with 🧳 on the Board, Resources, Gantt and hover card
 const isAway = j => !!(j && j.checklist && j.checklist.away);
-const awayTag = (j,cls) => isAway(j) ? `<span class="${cls||'aw-tag'}" title="Away / out of town${j.checklist.awayNote?' — '+_esc(j.checklist.awayNote):''}">🧳</span>` : '';
+const awayTag = (j,cls) => isAway(j) ? `<span class="${cls||'aw-tag'}" title="Away / out of town${j.checklist.awayNote?' — '+_esc(j.checklist.awayNote):''}">${AW}</span>` : '';
 const wfmOf = j => (j && j.checklist && j.checklist.wfm) || null;
 const wfmFlag = j => { const w=wfmOf(j); return w&&!j.done ? (w.flag||'') : ''; };
 function wfmBadge(j, big){
