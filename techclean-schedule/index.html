@@ -1722,7 +1722,7 @@ body.light #version-tag{color:#4A5560!important;background:#E4E6E9!important}
           <option value="2">2 weeks</option><option value="4">4 weeks</option><option value="6">6 weeks</option>
         </select>
         <select class="bd-sel bd-hide-tv bd-hide-m" id="bd-color" onchange="boardSet('color',this.value)" title="Colour bars by">
-          <option value="class">Colour: Class</option><option value="status">Colour: Status</option><option value="project">Colour: Project</option>
+          <option value="class">Colour: Class</option><option value="status">Colour: Status</option><option value="project">Colour: Project</option><option value="away">Colour: Away work</option>
         </select>
         <select class="bd-sel bd-hide-tv bd-hide-m" id="bd-days" onchange="boardSet('days',+this.value)" title="Days shown each week"><option value="5">Mon–Fri</option><option value="6">Mon–Sat</option><option value="7">Mon–Sun</option></select>
         <button class="bd-pill bd-hide-tv" id="bd-done" onclick="boardSet('done',!BOARD.done)" title="Show finished / invoiced jobs">Closed jobs</button>
@@ -2592,7 +2592,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const AW = '<svg class="aw-ico" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(-1 0)"><path d="M5.5 12.6V8.4a4.5 4.5 0 0 1 9 0v4.2"/><rect x="6.6" y="6.9" width="6.8" height="2.2" rx="1.1" fill="currentColor" stroke="none"/><circle cx="10" cy="11.7" r="2.15"/><circle cx="10" cy="11.7" r=".8" fill="currentColor" stroke="none"/><rect x="3.1" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(-28 4.6 12.75)"/><rect x="13.9" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(28 15.4 12.75)"/><path d="M8.1 13.7L10 15.6L11.9 13.7"/><path d="M6.9 15.2C4.3 15.9 3 17.7 3 20.2V22.3M13.1 15.2C15.7 15.9 17 17.7 17 20.2V22.3M10 15.6V22.3"/></g><path d="M13.6 19.4L21.2 2.6"/><path fill-rule="evenodd" fill="currentColor" stroke="none" d="M20.4 5.3c.9.8 2.8 2 3 4 .2 1.8-1 3-2.8 3s-3.2-1.2-3.1-3c.1-2 1.9-3.2 2.9-4zM19.7 8.7a.55.55 0 1 0 0 .01zM21.9 9.6a.55.55 0 1 0 0 .01zM20.6 11.1a.5.5 0 1 0 0 .01z"/><path d="M20.4 5.4l-1.4-.6M20.4 5.4l.8-1.3"/></svg>';   // away / out-of-town: suited worker with a bindle
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v78-202611211000';
+const APP_VERSION = 'v79-202611211015';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -5149,6 +5149,10 @@ function jobColor(j, shortFlag){
     const m=CLASS_COLORS[classKey(j)]||CLASS_COLORS.A;
     return {bg:m[0], fg:m[1]};
   }
+  if(BOARD.color==='away'){
+    if(isAway(j)) return j.done?{bg:'#4F7FB0',fg:'#FFFFFF'}:{bg:'#1E88E5',fg:'#FFFFFF'};
+    return {bg:'#3A3D40',fg:'#9EA2A6'};
+  }
   if(BOARD.color==='project'){
     const p=_PROJ_PAL[_hash(_nm(j.project||j.site||j.id))%_PROJ_PAL.length];
     return {bg:j.done?'#4A4D50':p[0], fg:j.done?'#C9CBCE':p[1]};
@@ -5165,6 +5169,7 @@ function boardLegend(){
   const shortLg='<span><i style="background:#E040FB;border-radius:6px"></i>Under-resourced (crew badge)</span><span><i style="background:repeating-linear-gradient(135deg,#E040FB 0 3px,transparent 3px 6px)"></i>No crew named</span><span><i style="background:repeating-linear-gradient(135deg,#55585C 0 3px,#2B2D2F 3px 6px)"></i>On hold</span><span><i style="background:#9E9E9E;opacity:.4"></i>Finished / invoiced</span><span>'+AW+' Away / out of town</span>';
   if(BOARD.color==='class') return '<span><i style="background:#E53935"></i>Class A</span><span><i style="background:#FDD835"></i>Class B</span><span><i style="background:#9E9E9E"></i>Roof</span><span><i style="background:#26C6DA"></i>Meth</span><span><i style="background:#43A047"></i>Mould</span>'+shortLg;
   if(BOARD.color==='project') return '<span>Same colour = same project</span>';
+  if(BOARD.color==='away') return '<span><i style="background:#1E88E5"></i>'+AW+' Away / out of town</span><span><i style="background:#3A3D40"></i>Local work</span>';
   return '<span><i style="background:#FF6A1A"></i>On site</span><span><i style="background:#FFC21A"></i>Upcoming</span><span><i style="background:#7B1FA2"></i>Under-resourced</span><span><i style="background:#8D4A12"></i>Past finish – close out</span>'+(BOARD.done?'<span><i style="background:#4A4D50"></i>Done</span>':'');
 }
 
