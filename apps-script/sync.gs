@@ -1,4 +1,5 @@
 const SHEET_ID = '1UOabcy7JwNISvqWqFVVWWfEVHfUOogYqVMRZa8ngBIc';
+const MIN_APP_VERSION = 86;   // app versions older than this can read but not save (see doPost)
 
 function doPost(e) {
   // One writer at a time — device syncs and the WorkflowMax import share this lock
@@ -6,7 +7,14 @@ function doPost(e) {
   try {
     lock.waitLock(25000);
     const data = JSON.parse(e.postData.contents);
-    if (data.action === 'sync') return handleSync(data);
+    if (data.action === 'sync') {
+      // v54: out-of-date copies of the app (open in a browser that hasn't been refreshed) are not allowed to save —
+      // on 23 Nov 2026 one overwrote 261 jobs with stale data. They get told to refresh instead.
+      const ver = parseInt(String(data.ver || '').replace(/^v/i, ''), 10) || 0;
+      if (ver < MIN_APP_VERSION) return json({ ok: false, update: true,
+        error: 'This copy of the schedule is out of date — press Ctrl+F5 (or Update now) to load the latest version. Your changes are kept on this device and will save after the update.' });
+      return handleSync(data);
+    }
     throw new Error('Unknown action');
   } catch(err) { return json({ok:false, error:err.message}); }
   finally { try { lock.releaseLock(); } catch(x) {} }
