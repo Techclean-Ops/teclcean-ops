@@ -1080,6 +1080,16 @@ body.tv #version-tag{display:none}
 /* v70 — jobs with finish before start */
 .rs-card.rs-bad{border:1px solid rgba(229,57,53,.55);background:rgba(229,57,53,.08)}
 .rs-card.rs-bad h4{color:#FF8A80}
+.rs-card.rs-dup{border:1px solid rgba(255,152,0,.55);background:rgba(255,152,0,.07)}
+.rs-card.rs-dup h4{color:#FFB74D}
+.rs-dup .dp-g{padding:7px 0;border-top:1px solid rgba(255,255,255,.07)}
+.rs-dup .dp-g:first-of-type{border-top:0}
+.rs-dup .dp-why{font-size:10px;font-weight:700;color:#FFB74D;letter-spacing:.03em}
+.rs-dup .dp-j{display:block;font-size:11px;line-height:1.35;cursor:pointer;padding:2px 0}
+.rs-dup .dp-j:hover{text-decoration:underline}
+.rs-dup .dp-j small{color:#8E9093}
+.rs-dup .dp-ok{margin-top:4px;font-size:10px;background:transparent;border:1px solid rgba(255,255,255,.25);color:#C9CBCE;border-radius:5px;padding:2px 8px;cursor:pointer}
+.wfm-b.dup{background:#7C2D12;color:#FED7AA}
 .rs-card .rs-note{font-size:11.5px;color:var(--c-muted);margin:-2px 0 8px}
 .rs-card .rs-item{padding:7px 0;border-top:1px solid rgba(255,255,255,.06)}
 .rs-card .rs-item b{display:block;font-size:13px}
@@ -1494,6 +1504,13 @@ body.light #cal-table thead tr.cal-days th b{color:#1D1F21}
 body.light .rs-chip.rs-done{box-shadow:inset 0 0 0 1px rgba(0,0,0,0.225)}
 body.light .rs-card.rs-bad{border:1px solid rgba(229,57,53,0.55);background:rgba(229,57,53,0.08)}
 body.light .rs-card.rs-bad h4{color:#A30D00}
+body.light .rs-card.rs-dup{border:1px solid rgba(255,152,0,0.55);background:rgba(255,152,0,0.07)}
+body.light .rs-card.rs-dup h4{color:#A36100}
+body.light .rs-dup .dp-g{border-top:1px solid rgba(0,0,0,0.091)}
+body.light .rs-dup .dp-why{color:#A36100}
+body.light .rs-dup .dp-j small{color:#787A7E}
+body.light .rs-dup .dp-ok{border:1px solid rgba(0,0,0,0.325);color:#404246}
+body.light .wfm-b.dup{background:#F6E5DF}
 body.light .rs-card .rs-item{border-top:1px solid rgba(0,0,0,0.078)}
 body.light .bd-alert.bd-alert-bad{border-color:rgba(229,57,53,0.6);background:rgba(229,57,53,0.1)}
 body.light .bd-alert.bd-alert-bad b{color:#A30D00}
@@ -1531,6 +1548,7 @@ body.light #theme-btn{background:#FFFFFF}
 body.light #version-tag{color:#4A5560!important;background:#E4E6E9!important}
 
 </style><!--/light-css-->
+
 
 
 
@@ -2599,7 +2617,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const AW = '<svg class="aw-ico" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(-1 0)"><path d="M5.5 12.6V8.4a4.5 4.5 0 0 1 9 0v4.2"/><rect x="6.6" y="6.9" width="6.8" height="2.2" rx="1.1" fill="currentColor" stroke="none"/><circle cx="10" cy="11.7" r="2.15"/><circle cx="10" cy="11.7" r=".8" fill="currentColor" stroke="none"/><rect x="3.1" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(-28 4.6 12.75)"/><rect x="13.9" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(28 15.4 12.75)"/><path d="M8.1 13.7L10 15.6L11.9 13.7"/><path d="M6.9 15.2C4.3 15.9 3 17.7 3 20.2V22.3M13.1 15.2C15.7 15.9 17 17.7 17 20.2V22.3M10 15.6V22.3"/></g><path d="M13.6 19.4L21.2 2.6"/><path fill-rule="evenodd" fill="currentColor" stroke="none" d="M20.4 5.3c.9.8 2.8 2 3 4 .2 1.8-1 3-2.8 3s-3.2-1.2-3.1-3c.1-2 1.9-3.2 2.9-4zM19.7 8.7a.55.55 0 1 0 0 .01zM21.9 9.6a.55.55 0 1 0 0 .01zM20.6 11.1a.5.5 0 1 0 0 .01z"/><path d="M20.4 5.4l-1.4-.6M20.4 5.4l.8-1.3"/></svg>';   // away / out-of-town: suited worker with a bindle
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v80-202611230955';
+const APP_VERSION = 'v81-202611231030';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -3922,7 +3940,7 @@ function editJob(id){
   document.getElementById('f-class').value=classKey(j);
   {const w=document.getElementById('f-wknd'); if(w) w.value=j.workSat&&j.workSun?'both':j.workSat?'sat':j.workSun?'sun':'none';}
   {const w=wfmOf(j), el=document.getElementById('f-wfm-note');
-   if(el){ if(w){ el.style.display=''; el.innerHTML=`<div class="wfm-note">🔗 <b>Linked to WorkflowMax</b> (${_esc(w.status||'')}). Job no, site, client, value and class update automatically; dates follow WorkflowMax until someone changes them here, then the schedule's dates are kept. Crew, assessor, contact and everything else are set here.${w.flag==='dates'?`<br><b style="color:#FCD34D">📅 Dates changed in WorkflowMax</b> — was ${_esc(w.oldStart)} → ${_esc(w.oldFinish)}. Check the crew, then Save to clear this.`:''}${w.flag==='wfmdiff'?`<br><b style="color:#FCD34D">📅 WorkflowMax dates differ</b> — WorkflowMax has ${_esc(w.wfmStart||'?')} → ${_esc(w.wfmFinish||'?')}. The schedule's dates are kept; change them here if WorkflowMax is right, then Save to clear this.`:''}${w.flag==='new'?'<br><b style="color:#8AB4F8">📥 New from WorkflowMax</b> — add the crew and any missing details, then Save.':''}</div>`; } else { el.style.display='none'; el.innerHTML=''; } }}
+   if(el){ if(w){ el.style.display=''; el.innerHTML=`<div class="wfm-note">🔗 <b>Linked to WorkflowMax</b> (${_esc(w.status||'')}). Job no, site, client, value and class update automatically; dates follow WorkflowMax until someone changes them here, then the schedule's dates are kept. Crew, assessor, contact and everything else are set here.${w.flag==='dates'?`<br><b style="color:#FCD34D">📅 Dates changed in WorkflowMax</b> — was ${_esc(w.oldStart)} → ${_esc(w.oldFinish)}. Check the crew, then Save to clear this.`:''}${w.flag==='wfmdiff'?`<br><b style="color:#FCD34D">📅 WorkflowMax dates differ</b> — WorkflowMax has ${_esc(w.wfmStart||'?')} → ${_esc(w.wfmFinish||'?')}. The schedule's dates are kept; change them here if WorkflowMax is right, then Save to clear this.`:''}${w.flag==='new'?'<br><b style="color:#8AB4F8">📥 New from WorkflowMax</b> — add the crew and any missing details, then Save.':''}${w.flag==='dupaddr'?`<br><b style="color:#FFB74D">⚠ Possible duplicate</b> — same address as ${_esc(w.dupOf||'')} ${_esc(w.dupSite||'')}. If it's the same job, delete the extra one; if not, add the crew and Save.`:''}</div>`; } else { el.style.display='none'; el.innerHTML=''; } }}
   {const c=j.checklist||{}; document.getElementById('f-away').checked=!!c.away; document.getElementById('f-away-note').value=c.awayNote||'';}
   {const c=j.checklist||{}; document.getElementById('f-scope').value=c.scope||''; document.getElementById('f-contract').value=c.contact||c.contract||'';
    document.getElementById('f-closeout').value=closeoutOf(j);
@@ -5511,6 +5529,14 @@ function renderRes(){
     _badDates.forEach(j=>{ side+=`<div class="rs-item" onclick="editJob('${j.id}')" style="cursor:pointer"><b>${_esc(j.site||j.jobno||'Job')}</b><small>${_esc(j.jobno||'')} · start ${_fmtD(j.start)} · finish ${_fmtD(j.finish)}</small></div>`; });
     side+=`</div>`;
   }
+  { const dp=findDuplicates(br);
+    if(dp.groups.length||dp.bad.length){
+      side+=`<div class="rs-card rs-dup"><h4>⚠ Possible duplicates <span>${dp.groups.length+dp.bad.length} to check</span></h4><div class="rs-note">Open jobs that share a job number or an address on the same dates. Delete the extra one, or tick it off as not a duplicate.</div>`;
+      const ln=j=>`<span class="dp-j" onclick="editJob('${j.id}')"><b>${_esc(j.jobno||'no job no')}</b> · ${_esc(j.site||'(no site)')}<br><small>${j.start?_fmtD(j.start)+(j.finish&&j.finish!==j.start?' – '+_fmtD(j.finish):''):'no dates'} · ${_fmtK(Number(j.val)||0)} · ${j.done?'closed':'open'}${j.resource?' · '+_esc(String(j.resource).slice(0,40)):''}</small></span>`;
+      dp.groups.forEach(g=>{ side+=`<div class="dp-g"><div class="dp-why">${_esc(g.why)}</div>${g.jobs.map(ln).join('')}<button class="dp-ok" onclick="markNotDup(${_esc(JSON.stringify(g.jobs.map(j=>j.id)))})">✓ Not a duplicate</button></div>`; });
+      if(dp.bad.length){ side+=`<div class="dp-g"><div class="dp-why">Job number WorkflowMax can't match (should look like J015727)</div>${dp.bad.map(ln).join('')}</div>`; }
+      side+=`</div>`;
+    } }
   { const aw=jobs.filter(j=>!j.done&&isAway(j)&&days.some(d=>jobActiveOnDay(j,d)));
     if(aw.length){
       side+=`<div class="rs-card rs-awaycard"><h4><b class="aw-lg">${AW} Away / out of town</b> <span>${aw.length} job${aw.length!==1?'s':''}</span></h4>`;
@@ -5529,7 +5555,7 @@ function renderRes(){
   const wf=S.jobs.filter(j=>j.branch===br&&!j._del&&wfmFlag(j)).sort((a,b)=>(a.start||'').localeCompare(b.start||''));
   let wfH=`<div class="rs-card"><h4>From WorkflowMax <span>${wf.length} to check</span></h4>`;
   if(!wf.length) wfH+=`<div class="rs-ok">✓ Nothing new from WorkflowMax.</div>`;
-  wf.slice(0,15).forEach(j=>{ const f=wfmFlag(j), w=wfmOf(j); wfH+=`<div class="rs-item" onclick="editJob('${j.id}')"><span class="sw" style="background:${f==='new'?'#3B82F6':'#F59E0B'}"></span><div class="tx"><b>${_esc(j.site||j.jobno)}</b><small>${_esc(j.jobno||'')} · ${j.start?_fmtD(j.start)+' → '+_fmtD(j.finish):'no dates'}${f==='dates'?' · was '+_esc(w.oldStart||'?'):''}${f==='wfmdiff'?' · WFM has '+(w.wfmStart?_fmtD(w.wfmStart)+' → '+_fmtD(w.wfmFinish):'?'):''}</small></div><span class="gap" style="color:${f==='new'?'#8AB4F8':'#FCD34D'}">${f==='new'?'needs crew':f==='wfmdiff'?'WFM dates differ':'dates moved'}</span></div>`; });
+  wf.slice(0,15).forEach(j=>{ const f=wfmFlag(j), w=wfmOf(j); wfH+=`<div class="rs-item" onclick="editJob('${j.id}')"><span class="sw" style="background:${f==='new'?'#3B82F6':f==='dupaddr'?'#FF9800':'#F59E0B'}"></span><div class="tx"><b>${_esc(j.site||j.jobno)}</b><small>${_esc(j.jobno||'')} · ${j.start?_fmtD(j.start)+' → '+_fmtD(j.finish):'no dates'}${f==='dates'?' · was '+_esc(w.oldStart||'?'):''}${f==='wfmdiff'?' · WFM has '+(w.wfmStart?_fmtD(w.wfmStart)+' → '+_fmtD(w.wfmFinish):'?'):''}</small></div><span class="gap" style="color:${f==='new'?'#8AB4F8':'#FCD34D'}">${f==='new'?'needs crew':f==='wfmdiff'?'WFM dates differ':f==='dupaddr'?'same address as '+_esc(w.dupOf||''):'dates moved'}</span></div>`; });
   wfH+=`</div>`;
   side=side.replace('<div class="rs-side">','<div class="rs-side">'+wfH+tsSideCard(br));
   const _mine=c=>c.jobs.some(j=>j.branch===br)||homeBranch(c.name)===br;   // this branch's jobs or this branch's people
@@ -6219,9 +6245,44 @@ const isAway = j => !!(j && j.checklist && j.checklist.away);
 const awayTag = (j,cls) => isAway(j) ? `<span class="${cls||'aw-tag'}" title="Away / out of town${j.checklist.awayNote?' — '+_esc(j.checklist.awayNote):''}">${AW}</span>` : '';
 const wfmOf = j => (j && j.checklist && j.checklist.wfm) || null;
 const wfmFlag = j => { const w=wfmOf(j); return w&&!j.done ? (w.flag||'') : ''; };
+// ── duplicate check (same job number, same address on overlapping dates, or a job number WorkflowMax can't match)
+const jobNoOk = n => /^J\d{5,7}$/i.test(String(n||'').trim());
+const jobNoKey = n => { const m=String(n||'').toUpperCase().match(/J\s*0*(\d{4,7})/); return m?'J'+m[1]:''; };
+function addrKey(s){
+  let n=String(s||'').toLowerCase().replace(/\(.*?\)/g,' ').replace(/\broad\b/g,'rd').replace(/\bstreet\b/g,'st').replace(/\bavenue\b/g,'ave').replace(/\bplace\b/g,'pl')
+    .replace(/\bdrive\b/g,'dr').replace(/\bcrescent\b/g,'cres').replace(/\bterrace\b/g,'tce').replace(/\bgrove\b/g,'gr').replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+  const m=n.match(/^(\d+[a-z]?(?: \d+[a-z]?)?) ([a-z]+(?: (?:rd|st|ave|pl|dr|cres|tce|gr|lane|way|close|grv))?)/);
+  if(m) return m[1]+' '+m[2];
+  const w=n.split(' ').slice(0,3).join(' '); return w.length>=6?w:'';
+}
+const _notDup=(a,b)=>((a.checklist&&a.checklist.notDup)||[]).includes(b.id)||((b.checklist&&b.checklist.notDup)||[]).includes(a.id);
+const _ovl=(a,b)=>!a.start||!b.start||(a.start<=(b.finish||b.start)&&(a.finish||a.start)>=b.start);
+function findDuplicates(br){
+  const js=S.jobs.filter(j=>j.branch===br&&!j._del);
+  const groups=[], seen=new Set();
+  const push=(why,list)=>{ const live=list.filter(j=>!j.done); if(!live.length||list.length<2) return;
+    const ids=list.map(j=>j.id).sort().join('|'); if(seen.has(ids)) return;
+    if(list.every((a,i)=>list.every((b,k)=>k<=i||_notDup(a,b)))) return;
+    seen.add(ids); groups.push({why,jobs:list.sort((a,b)=>(a.start||'').localeCompare(b.start||''))}); };
+  const byNo={}; js.forEach(j=>{ const k=jobNoKey(j.jobno); if(k)(byNo[k]=byNo[k]||[]).push(j); });
+  Object.values(byNo).forEach(l=>{ if(l.length>1) push('Same job number',l); });
+  const byAd={}; js.forEach(j=>{ const k=addrKey(j.site); if(k)(byAd[k]=byAd[k]||[]).push(j); });
+  Object.values(byAd).forEach(l=>{ if(l.length<2) return;
+    const nos=new Set(l.map(j=>jobNoKey(j.jobno)||j.id)); if(nos.size<2) return;
+    const hit=l.filter(a=>l.some(b=>b!==a&&jobNoKey(b.jobno)!==jobNoKey(a.jobno)&&_ovl(a,b)&&(!a.done||!b.done)&&(!jobNoOk(a.jobno)||!jobNoOk(b.jobno)||!a.start||!b.start||(a.start===b.start))));
+    if(hit.length>1) push('Same address'+(hit.some(j=>!jobNoOk(j.jobno))?' — one has no proper job number':''),hit); });
+  const bad=js.filter(j=>!j.done&&!jobNoOk(j.jobno)&&!groups.some(g=>g.jobs.includes(j)));
+  return {groups,bad};
+}
+async function markNotDup(ids){
+  ids.forEach(id=>{ const j=S.jobs.find(x=>x.id===id); if(!j) return; j.checklist=j.checklist||{};
+    j.checklist.notDup=[...new Set([...(j.checklist.notDup||[]),...ids.filter(x=>x!==id)])]; j.ts=new Date().toISOString(); });
+  save(); renderAll(); try{ await doSync(true); }catch(e){}
+}
 function wfmBadge(j, big){
   const f=wfmFlag(j);
   if(f==='new') return `<span class="wfm-b new" title="New from WorkflowMax — assign crew">📥${big?' From WFM · needs crew':''}</span>`;
+  if(f==='dupaddr'){ const w=wfmOf(j); return `<span class="wfm-b dup" title="New from WorkflowMax — same address as ${_esc(w.dupOf||'')} ${_esc(w.dupSite||'')}. Check it isn't a duplicate, then Save.">⚠${big?' Same address as '+_esc(w.dupOf||''):''}</span>`; }
   if(f==='wfmdiff'){ const w=wfmOf(j); return `<span class="wfm-b dates" title="WorkflowMax has ${_esc(w.wfmStart||'?')} → ${_esc(w.wfmFinish||'?')}. The schedule's dates were set by hand and are kept — change them here if WorkflowMax is right, then Save.">📅${big?' WFM dates differ':''}</span>`; }
   if(f==='dates'){ const w=wfmOf(j); return `<span class="wfm-b dates" title="Dates changed in WorkflowMax (was ${_esc(w.oldStart||'?')} → ${_esc(w.oldFinish||'?')}) — check crew">📅${big?' Dates changed in WFM':''}</span>`; }
   return '';
