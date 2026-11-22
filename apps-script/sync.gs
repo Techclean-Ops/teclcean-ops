@@ -1,5 +1,5 @@
 const SHEET_ID = '1UOabcy7JwNISvqWqFVVWWfEVHfUOogYqVMRZa8ngBIc';
-const MIN_APP_VERSION = 86;   // app versions older than this can read but not save (see doPost)
+const MIN_APP_VERSION = 87;   // app versions older than this can read but not save (see doPost)
 
 function doPost(e) {
   // One writer at a time — device syncs and the WorkflowMax import share this lock

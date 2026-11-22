@@ -2617,7 +2617,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const AW = '<svg class="aw-ico" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(-1 0)"><path d="M5.5 12.6V8.4a4.5 4.5 0 0 1 9 0v4.2"/><rect x="6.6" y="6.9" width="6.8" height="2.2" rx="1.1" fill="currentColor" stroke="none"/><circle cx="10" cy="11.7" r="2.15"/><circle cx="10" cy="11.7" r=".8" fill="currentColor" stroke="none"/><rect x="3.1" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(-28 4.6 12.75)"/><rect x="13.9" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(28 15.4 12.75)"/><path d="M8.1 13.7L10 15.6L11.9 13.7"/><path d="M6.9 15.2C4.3 15.9 3 17.7 3 20.2V22.3M13.1 15.2C15.7 15.9 17 17.7 17 20.2V22.3M10 15.6V22.3"/></g><path d="M13.6 19.4L21.2 2.6"/><path fill-rule="evenodd" fill="currentColor" stroke="none" d="M20.4 5.3c.9.8 2.8 2 3 4 .2 1.8-1 3-2.8 3s-3.2-1.2-3.1-3c.1-2 1.9-3.2 2.9-4zM19.7 8.7a.55.55 0 1 0 0 .01zM21.9 9.6a.55.55 0 1 0 0 .01zM20.6 11.1a.5.5 0 1 0 0 .01z"/><path d="M20.4 5.4l-1.4-.6M20.4 5.4l.8-1.3"/></svg>';   // away / out-of-town: suited worker with a bindle
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v86-202611231200';
+const APP_VERSION = 'v87-202611231230';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -4425,6 +4425,7 @@ async function doSync(silent=false){
     const _syncStart=new Date().toISOString();
     // Deleted jobs ARE sent (flagged _del) so the Sheet removes them — previously they were held back,
     // so a delete only hid the job on this device and it came back everywhere else.
+    migrateNames20261123();
     const _payload={action:'sync',ver:APP_VERSION,jobs:S.jobs,leave:S.leave||{},training:S.training||{},ts:_syncStart};
     try{ _payload.hsFeed=buildHsFeed(); }catch(e){ console.error('hsFeed',e); }
     const _opsSent=_staffOps.length;
@@ -6301,6 +6302,35 @@ function wfmBadge(j, big){
 }
 function wfmLastSync(){ let t=''; S.jobs.forEach(j=>{ const w=wfmOf(j); if(w&&w.syncedAt&&w.syncedAt>t) t=w.syncedAt; }); return t; }
 
+
+// ── One-off (23 Nov 2026): crew renamed to their WorkflowMax names. Convert THIS device's saved copy before it
+// syncs, so an old local copy can't push the short names back (leave/training have no timestamps — last save wins).
+const NAME_FIX_20261123={alfrado:'Alfredo Jr Malabad',charlie:'Charlie Hernandez',hanif:'Hanif Prijanto',kim:'Kim Wong',kirwan:'Kirwan Waa',sam:'Samuel Ilaiu',sani:'Sani Kaumavae',cory:'Corey McCamish',allen:'Kaild Del Rosario',nani:'Onanisita Lei',pani:'Pani Takai',bea:'Pea Afu',adney:'Adney Roebeck',andrew:'Andrew Samuelu',darcy:"D'Arcy Kameta-Brown",jimmy:'Jimmy Alarcon',john:'John Bright',jojo:'Jojo Lim',julio:'Julio Sebastian',meliton:'Meliton De Castro',nate:'Nataniel De Guzman',silao:'Silao Bell',sooula:'Sooula Titi',adam:'Adam Taylor',cody:'Cody Kiesanowski',craig:'Craig Fowler',darren:'Darren Irvine',jamie:'Jamie Carr',johnny:'Johnny Wells',kaleb:'Kaleb Marino',mackai:'Mackai Matthews','matt g':'Matthew Garrett',mitch:'Mitchell McLachlan',nathan:'Nathan King',ngawera:'Ngarewa Reid',rangi:'Rangi Te Amo',stacie:'Stacie Naish','t.k':'Te Kanu Thwaites',tanya:'Tanya Stewart-Whiting','tom w':'Tom Wells',tyler:'Tyler Cooper',corey:'Corey McGregor-Ogier',nic:'Nicholas Pani'};
+function migrateNames20261123(){
+  try{ if(localStorage.getItem('aops_mig_names_20261123')) return; }catch(e){}
+  const M=NAME_FIX_20261123, f=x=>(typeof x==='string'&&M[_nm(x)])||x;
+  const list=str=>{ const out=[]; String(str||'').split(',').map(x=>x.trim()).filter(Boolean).forEach(x=>{ const y=f(x); if(!out.some(z=>_nm(z)===_nm(y))) out.push(y); }); return out.join(', '); };
+  const arr=a=>{ const out=[]; (a||[]).forEach(x=>{ const y=f(x); if(typeof y!=='string'||!out.some(z=>typeof z==='string'&&_nm(z)===_nm(y))) out.push(y); }); return out; };
+  const keys=o=>{ if(!o||typeof o!=='object') return o; const n={}; Object.keys(o).forEach(k=>{ const t=M[k]; n[t?_nm(t):k]=o[k]; }); return n; };
+  (S.jobs||[]).forEach(j=>{   // timestamps left alone: the server copy (already renamed) still wins wherever it's newer
+    if(j.resource) j.resource=list(j.resource);
+    if(j.dayOverrides) Object.keys(j.dayOverrides).forEach(d=>{ const v=j.dayOverrides[d]; if(v&&v!=='__OFF__') j.dayOverrides[d]=list(v); });
+    const ck=j.checklist; if(!ck) return;
+    ['splits','run','dupFlags'].forEach(k=>{ if(ck[k]) Object.keys(ck[k]).forEach(d=>{ ck[k][d]=keys(ck[k][d]); }); });
+    ['tsFill','tsDiff'].forEach(k=>{ if(ck[k]) Object.keys(ck[k]).forEach(d=>{ if(Array.isArray(ck[k][d])) ck[k][d]=arr(ck[k][d]); }); });
+    ['manager','assessor'].forEach(k=>{ if(ck[k]) ck[k]=f(ck[k]); });
+  });
+  ['Auckland','Wellington','Christchurch'].forEach(b=>{
+    [S.leave,S.training].forEach(src=>{ const m=src&&src[b]; if(!m) return; Object.keys(m).forEach(d=>{ const v=m[d]; if(!Array.isArray(v)) return;
+      if(d==='__secondments') m[d]=v.map(o=>o&&typeof o==='object'&&o.name?Object.assign({},o,{name:f(o.name)}):o);
+      else if(d.startsWith('__')) return;
+      else m[d]=arr(v); }); });
+    if(S.staff&&S.staff[b]) S.staff[b]=arr(S.staff[b]).sort();
+  });
+  try{ localStorage.setItem('aops_mig_names_20261123','1'); }catch(e){}
+  try{ save(); }catch(e){}
+}
+
 // One-off (13 Nov 2026): close-out starts from November — every job that finished before
 // 1 Nov 2026 and isn't already closed is treated as invoiced. Runs once per device; safe to repeat.
 function migrateInvoicedBeforeNov2026(){
@@ -6439,6 +6469,7 @@ function appInit() {
   S.year  = _savedView.year  || _bootNow.getFullYear();
   S.month = (_savedView.month != null) ? _savedView.month : _bootNow.getMonth();
   migrateInvoicedBeforeNov2026();
+  migrateNames20261123();
   renderCal();
   showPanel(localStorage.getItem('aops_panel')||'board');
   if(localStorage.getItem('aops_tv')==='1') toggleTV(true);
