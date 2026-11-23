@@ -85,7 +85,8 @@ const WFM = {
   CATEGORY_BRANCH: {             // job Category → branch (lower case; extra names can be added)
     'auckland region': 'Auckland', 'auckland': 'Auckland',
     'wellington region': 'Wellington', 'wellington': 'Wellington',
-    'canterbury region': 'Christchurch', 'canterbury': 'Christchurch', 'christchurch region': 'Christchurch', 'christchurch': 'Christchurch'
+    'canterbury region': 'Christchurch', 'canterbury': 'Christchurch', 'christchurch region': 'Christchurch', 'christchurch': 'Christchurch',
+    'nelson region': 'Christchurch', 'nelson': 'Christchurch'   // Nelson work is run from Christchurch (23 Nov 2026)
   },
   CF_FRIABLE: 'Friable',         // tick box → Class A
   CF_NONFRIABLE: 'Non-Friable',  // tick box → Class B
