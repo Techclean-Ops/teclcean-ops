@@ -91,7 +91,7 @@ const WFM = {
   CF_FRIABLE: 'Friable',         // tick box → Class A
   CF_NONFRIABLE: 'Non-Friable',  // tick box → Class B
   CF_TESTING: 'Asbestos/Mould Testing', // tick box → testing job: class picked by hand in the schedule
-  CF_RESTORATION: 'Restoration/Other',   // tick box → meth / mould work: class left for a manager to pick (Meth or Mould) in the schedule
+  CF_RESTORATION: 'Restoration/Other',   // tick box → meth / mould / needle sweep: class left for a manager to pick in the schedule
   CF_WORKSAFE: 'WorkSafe Notification',   // text → sent to the H&S app
   CF_CLASS:   'Class',           // custom field: A / B / Meth / Mould
   CF_ADDRESS: 'Site Address',    // custom field (optional) — falls back to the job name
@@ -306,6 +306,7 @@ function wfmJobClass_(job) {
   if (wfmTick_(job, WFM.CF_RESTORATION)) {          // meth / mould — picked by hand in the schedule
     if (/^\s*\/?\s*(meth)/i.test(d)) return 'Meth';
     if (/^\s*\/?\s*(mou?ld)/i.test(d)) return 'Mould';
+    if (/^\s*\/?\s*(needle)/i.test(d)) return 'Needle';
     return '';
   }
   const m = /^\s*\/?\s*class\s*([ab])\b/i.exec(d);
@@ -388,7 +389,7 @@ function wfmAudit() {
     if (active && !value) issues.push('No accepted quote / value');
     if (active && value && jv.source !== 'accepted quote') issues.push('Value from ' + jv.source + ' (no accepted quote found)');
     if (active && !cls && wfmTick_(j, WFM.CF_TESTING)) issues.push('Asbestos/Mould Testing — pick the class in the schedule');
-    else if (active && !cls && wfmTick_(j, WFM.CF_RESTORATION)) issues.push('Restoration/Other — pick Meth or Mould in the schedule');
+    else if (active && !cls && wfmTick_(j, WFM.CF_RESTORATION)) issues.push('Restoration/Other — pick Meth, Mould or Needle sweep in the schedule');
     else if (active && !cls) issues.push('Class unknown (Description / Friable ticks)');
     if (r) {
       if (br && f.branch !== br) issues.push('Branch differs: schedule ' + f.branch + ', WFM ' + br);
@@ -552,7 +553,7 @@ function wfmRun_(dryRun) {
       const oldStart = String(row[8] || ''), oldFinish = String(row[9] || '');
 
       set(1, jobNo, 'job no');
-      const handPicked = ['Roof', 'Meth', 'Mould'].indexOf(String(row[2])) >= 0 && prev;   // classes set in the schedule stay
+      const handPicked = ['Roof', 'Meth', 'Mould', 'Needle'].indexOf(String(row[2])) >= 0 && prev;   // classes set in the schedule stay
       if (cls && !handPicked) set(2, cls, 'class');
       if (!prev && !cls && (wfmTick_(j, WFM.CF_TESTING) || wfmTick_(j, WFM.CF_RESTORATION))) w.needClass = wfmTick_(j, WFM.CF_TESTING) ? 'testing' : 'restoration';   // new job only — cleared in the schedule
       set(3, site, 'site');
