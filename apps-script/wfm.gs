@@ -28,6 +28,9 @@
  *     The schedule owns: crew, per-day changes, pattern, weekends, assessor, contact, close-out.
  *     If dates change after crew is assigned, the job is flagged "Dates changed in WFM".
  *
+ * FIRST RUN: before switching the import on, run  wfmAudit  — a full side-by-side check written to a NEW
+ *   spreadsheet in Drive. It changes nothing in the schedule.
+ *
  * SAFEGUARDS (v5)
  *   • Backup: a full copy of the schedule Sheet is saved to Drive (folder "TechClean Schedule backups")
  *     before the very first import and then once a day before the first change of the day. Last 14 kept.
@@ -302,6 +305,118 @@ function wfmClass_(v) {
 function wfmImport() { return wfmRun_(false); }
 /** Dry run — logs what would change, writes nothing. */
 function wfmTest() { const r = wfmRun_(true); Logger.log(JSON.stringify(r, null, 2)); return r; }
+
+/**
+ * FULL CHECK — run once before switching the import on (and any time after). Writes NOTHING to the schedule.
+ * Reads every open WorkflowMax job (+ jobs completed in the last 60 days), compares each with the schedule and
+ * writes the result to a NEW spreadsheet in your Drive ("WorkflowMax check <date>"):
+ *   • WorkflowMax jobs — what the import would do with each one, and any problems (no category, no dates,
+ *     finish before start, no value, class unknown, branch / dates / value / status different, possible duplicate)
+ *   • Schedule only   — open schedule jobs that WorkflowMax doesn't have as open (finished? typo in job number?)
+ *   • Summary
+ * Returns (and logs) the link to the new spreadsheet.
+ */
+function wfmAudit() {
+  const statuses = wfmStatusMap_();
+  const pull = q => { const out = []; for (let page = 1; page <= 50; page++) { const l = wfmList_(wfmGet_(q + '&pageSize=100&page=' + page)); out.push.apply(out, l); if (l.length < 100) break; } return out; };
+  const open = pull('jobs?status=standard&includes=custom-fields&sort=number&order=asc');
+  const since = Utilities.formatDate(new Date(Date.now() - 60 * 86400000), WFM.TZ, 'yyyy-MM-dd');
+  const done = pull('jobs?status=completed&updatedSince=' + since + '&includes=custom-fields&sort=number&order=asc');
+  const seen = {}; const jobs = open.concat(done).filter(j => { if (seen[j.uuid]) return false; seen[j.uuid] = 1; return true; });
+
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  const book = wfmReadBook_(ss);                      // read only
+  const fmt = d => d ? Utilities.formatDate(new Date(d + 'T12:00:00'), WFM.TZ, 'dd/MM/yyyy') : '';
+  const rows = [], wfmNos = {}, wfmDoneNos = {}, matchedIds = {};
+  const tally = { add: 0, update: 0, close: 0, hold: 0, cancel: 0, none: 0, notReady: 0, problems: 0 };
+
+  jobs.forEach(j => {
+    const no = String(j.jobNumber || '').trim(); if (!no) return;
+    const status = statuses[j.jobStatusUUID] || '';
+    const active = wfmIn_(status, WFM.ACTIVE_STATUSES), onHold = wfmIn_(status, WFM.HOLD_STATUSES);
+    const cancelled = wfmIn_(status, WFM.CANCELLED_STATUSES);
+    const closed = wfmIn_(status, WFM.CLOSED_STATUSES) || (!!j.completedDate && !cancelled);
+    if (active || onHold) wfmNos[no.toUpperCase()] = 1; else if (closed) wfmDoneNos[no.toUpperCase()] = 1;
+    const site = wfmCF_(j, WFM.CF_ADDRESS) || j.name || '';
+    const br = wfmBranch_(j), cls = wfmJobClass_(j);
+    const start = wfmDate_(j.startDate), finish = wfmDate_(j.dueDate) || start;
+    const value = [j[WFM.VALUE_FIELD], j.budget, j.estimatedBillings].map(Number).find(n => n > 0) || 0;
+    const f = wfmFind_(book, j.uuid, no, site, br);
+    const r = f ? book[f.branch].rows[f.idx] : null; if (r) matchedIds[String(r[0])] = 1;
+    let ck = {}; if (r) { try { ck = JSON.parse(r[17] || '{}'); } catch (e) {} }
+    const sDone = r && (String(r[13]) === 'Y' || ck.closeout === 'invoiced'), sDel = r && String(r[14]) === 'Y';
+    const issues = [];
+    if (!br) issues.push('Category "' + (wfmCategory_(j) || 'blank') + '" is not a branch');
+    if (active && !start) issues.push('No start date');
+    if (active && !j.dueDate) issues.push('No due date');
+    if (start && finish && finish < start) issues.push('Due date before start date');
+    if (active && !value) issues.push('No value (Budget / Estimated Billings)');
+    if (active && !cls) issues.push('Class unknown (Description / Friable ticks)');
+    if (r) {
+      if (br && f.branch !== br) issues.push('Branch differs: schedule ' + f.branch + ', WFM ' + br);
+      if (active && start && String(r[8]) && String(r[8]) !== start) issues.push('Start differs: schedule ' + fmt(String(r[8])) + ', WFM ' + fmt(start));
+      if (active && finish && String(r[9]) && String(r[9]) !== finish) issues.push('Finish differs: schedule ' + fmt(String(r[9])) + ', WFM ' + fmt(finish));
+      if (active && value && Math.abs((Number(r[4]) || 0) - value) > 1) issues.push('Value differs: schedule $' + Math.round(Number(r[4]) || 0) + ', WFM $' + Math.round(value));
+      if (active && sDone) issues.push('Closed in schedule but ' + status + ' in WFM');
+      if (f.how === 'address') issues.push('Matched by ADDRESS to schedule job "' + (r[1] || 'no job no') + '" — check it is the same job');
+    } else if (active && br) {
+      const twin = wfmAddressTwin_(book, br, site, no, start, finish);
+      if (twin) issues.push('Possible duplicate: same address as ' + twin.no + ' ' + twin.site);
+    }
+    let action;
+    if (cancelled) action = r && !sDel ? 'Take off schedule (cancelled)' : 'Nothing';
+    else if (onHold) action = r && !ck.closeout ? 'Set On hold' : (r ? 'Nothing' : 'Nothing (not on schedule)');
+    else if (closed && !active) action = r && !sDone ? 'Mark $ Invoiced' : 'Nothing';
+    else if (!active) action = 'Nothing (' + (status || 'no status') + ')';
+    else if (!br) action = 'Skip — no branch';
+    else if (!r) action = 'ADD to ' + br;
+    else action = sDone ? 'Nothing (re-opened for wages)' : 'Link / keep schedule dates';
+    const key = action.startsWith('ADD') ? 'add' : action.startsWith('Mark') ? 'close' : action.startsWith('Set On') ? 'hold' : action.startsWith('Take') ? 'cancel' : action.startsWith('Link') ? 'update' : action.startsWith('Nothing (') && !r ? 'notReady' : 'none';
+    tally[key]++; if (issues.length) tally.problems++;
+    rows.push([no, status, wfmCategory_(j), br || '', site, fmt(start), fmt(finish), Math.round(value), cls,
+               r ? f.branch : '', r ? String(r[1] || '') : '', r ? String(r[3] || '') : '', r ? fmt(String(r[8] || '')) : '', r ? fmt(String(r[9] || '')) : '',
+               r ? Math.round(Number(r[4]) || 0) : '', r ? (sDel ? 'deleted' : sDone ? 'closed' : ck.closeout || 'open') : '', r ? String(r[10] || '') : '',
+               action, issues.join(' · ')]);
+  });
+
+  // schedule jobs WorkflowMax doesn't have open
+  const onlyRows = [];
+  WFM.BRANCHES.forEach(b => book[b].rows.forEach(r => {
+    if (String(r[13]) === 'Y' || String(r[14]) === 'Y') return;
+    let ck = {}; try { ck = JSON.parse(r[17] || '{}'); } catch (e) {}
+    if (ck.closeout === 'invoiced') return;
+    const no = String(r[1] || '').trim().toUpperCase();
+    if (wfmInternal_(no)) return;
+    if (no && wfmNos[no]) return;
+    if (matchedIds[String(r[0])] && !(no && wfmDoneNos[no])) return;   // matched to a WFM job (e.g. by address) — shown on the first tab
+    onlyRows.push([b, String(r[1] || ''), String(r[3] || ''), fmt(String(r[8] || '')), fmt(String(r[9] || '')), Math.round(Number(r[4]) || 0), String(r[10] || ''),
+      wfmDoneNos[no] ? 'Completed in WorkflowMax — the import will mark it $ Invoiced' : !no ? 'No job number' : !/^J\d{5,7}$/i.test(no) ? 'Job number not in WFM format' : 'Not open in WorkflowMax — finished, on another status, or job number typo?']);
+  }));
+
+  // write the report to a NEW spreadsheet (never the schedule)
+  const out = SpreadsheetApp.create('WorkflowMax check ' + Utilities.formatDate(new Date(), WFM.TZ, 'yyyy-MM-dd HHmm'));
+  const head = (sh, h) => { sh.getRange(1, 1, 1, h.length).setValues([h]).setFontWeight('bold').setBackground('#2B2D2F').setFontColor('#A8C800'); sh.setFrozenRows(1); };
+  const s1 = out.getSheets()[0]; s1.setName('WorkflowMax jobs');
+  const h1 = ['WFM job no', 'WFM status', 'Category', 'Branch', 'Site', 'WFM start', 'WFM due', 'WFM value', 'Class', 'Sched branch', 'Sched job no', 'Sched site', 'Sched start', 'Sched finish', 'Sched value', 'Sched state', 'Crew', 'What the import would do', 'Problems to check'];
+  head(s1, h1); if (rows.length) s1.getRange(2, 1, rows.length, h1.length).setValues(rows);
+  const s2 = out.insertSheet('Schedule only');
+  const h2 = ['Branch', 'Job no', 'Site', 'Start', 'Finish', 'Value', 'Crew', 'Why it is listed'];
+  head(s2, h2); if (onlyRows.length) s2.getRange(2, 1, onlyRows.length, h2.length).setValues(onlyRows);
+  const s3 = out.insertSheet('Summary');
+  s3.getRange(1, 1, 11, 2).setValues([
+    ['WorkflowMax check — nothing in the schedule was changed', ''],
+    ['Checked', new Date()], ['WorkflowMax jobs read', rows.length],
+    ['Would ADD to the schedule', tally.add], ['Would link to an existing schedule job', tally.update],
+    ['Would mark $ Invoiced', tally.close], ['Would set On hold', tally.hold], ['Would take off (cancelled)', tally.cancel],
+    ['WorkflowMax jobs with a problem to check', tally.problems], ['Open schedule jobs not open in WorkflowMax', onlyRows.length],
+    ['Report', out.getUrl()]]);
+  s3.getRange(1, 1).setFontWeight('bold');
+  [s1, s2, s3].forEach(sh => sh.autoResizeColumns(1, sh.getLastColumn()));
+  wfmLog_('Full check run — report: ' + out.getUrl() + ' (nothing changed)');
+  Logger.log('WorkflowMax check report: ' + out.getUrl());
+  return out.getUrl();
+}
+
 
 function wfmRun_(dryRun) {
   const lock = LockService.getScriptLock();
