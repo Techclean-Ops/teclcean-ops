@@ -710,6 +710,9 @@ body.tv #hovercard{display:none}
 .rm-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
 .rm-short{margin-left:auto;font-size:9px;background:#E040FB;color:#fff;border-radius:6px;padding:0 5px}
 .rm-btns{display:flex;gap:6px;margin-top:4px}
+#rs-menu .rm-line{border-top:2px solid #4A4D51;margin:8px 4px 0}
+#rs-menu .rm-sec.oth{border-top:0;color:#9AA0A6}
+.rm-when{margin-left:auto;font-size:9px;color:#8E9093;font-family:var(--font-mono);flex-shrink:0}
 #rs-menu .rm-btns button,.rs-side .rm-btns button{background:transparent;cursor:pointer;font-family:inherit;display:inline-block;width:auto;font-size:10px;padding:3px 9px;border:1px solid #3A3D40;border-radius:12px;color:#C9CBCE}
 #rs-menu .rm-btns button:hover,.rs-side .rm-btns button:hover{border-color:var(--c-lime);color:var(--c-lime);background:transparent}
 #rs-menu button{display:block;width:100%;text-align:left;background:transparent;border:none;color:#E8E8E8;font-family:var(--font-head);font-size:12px;padding:7px 8px;border-radius:6px;cursor:pointer}
@@ -2617,7 +2620,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const AW = '<svg class="aw-ico" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(-1 0)"><path d="M5.5 12.6V8.4a4.5 4.5 0 0 1 9 0v4.2"/><rect x="6.6" y="6.9" width="6.8" height="2.2" rx="1.1" fill="currentColor" stroke="none"/><circle cx="10" cy="11.7" r="2.15"/><circle cx="10" cy="11.7" r=".8" fill="currentColor" stroke="none"/><rect x="3.1" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(-28 4.6 12.75)"/><rect x="13.9" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(28 15.4 12.75)"/><path d="M8.1 13.7L10 15.6L11.9 13.7"/><path d="M6.9 15.2C4.3 15.9 3 17.7 3 20.2V22.3M13.1 15.2C15.7 15.9 17 17.7 17 20.2V22.3M10 15.6V22.3"/></g><path d="M13.6 19.4L21.2 2.6"/><path fill-rule="evenodd" fill="currentColor" stroke="none" d="M20.4 5.3c.9.8 2.8 2 3 4 .2 1.8-1 3-2.8 3s-3.2-1.2-3.1-3c.1-2 1.9-3.2 2.9-4zM19.7 8.7a.55.55 0 1 0 0 .01zM21.9 9.6a.55.55 0 1 0 0 .01zM20.6 11.1a.5.5 0 1 0 0 .01z"/><path d="M20.4 5.4l-1.4-.6M20.4 5.4l.8-1.3"/></svg>';   // away / out-of-town: suited worker with a bindle
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v88-202611231245';
+const APP_VERSION = 'v89-202611232100';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -5910,7 +5913,15 @@ function rsCellMenu(ev, ds, key){
     <div class="rm-job"><div class="rm-jt"><span class="rm-dot" style="background:${CLASS_COLORS[classKey(j)][0]}"></span>${j.branch!==br?`<em class="rs-br">${BR_CODE[j.branch]}</em>`:''}${_esc((j.site||j.jobno||'').split(',')[0])}${short?`<b class="rm-short">${need>0?'−'+need:'short'}</b>`:''}</div>
     <div class="rm-btns"><button onclick="rsAddToJob('${j.id}','${ds}','${k2}',false)">This day</button>${_restBtn(j,ds,name,`rsAddToJob('${j.id}','${ds}','${k2}',true)`)}</div></div>`)
     :`<div class="rm-sec">No jobs running on ${_fmtD(ds)}</div>`;
-  m.innerHTML=`<div class="rm-h">${_esc(name)} · ${_fmtD(ds)}</div>${addHtml}<button onclick="openDayRun('${k2}','${ds}')">🗺 Plan a day run (several jobs)…</button><div class="rm-sec">Leave / training</div>
+  // ── other jobs (this branch) NOT running that day — nearest first. Move the job here, or stretch it to take in this day.
+  const _dd=x=>Math.round((toD(x)-toD(ds))/86400000);
+  const othJobs=S.jobs.filter(j=>!j._del&&!j.done&&j.branch===br&&!busyOn.has(j.id)&&!dayJobs.some(o=>o.j.id===j.id)&&!jobActiveOnDay(j,ds))
+    .map(j=>({j,dist:j.start?Math.min(Math.abs(_dd(j.start)),Math.abs(_dd(j.finish||j.start))):999}))
+    .filter(o=>o.dist<=45||o.dist===999).sort((a,b)=>a.dist-b.dist||String(a.j.site).localeCompare(String(b.j.site))).slice(0,8);
+  const othHtml=othJobs.length?`<div class="rm-line"></div><div class="rm-sec oth">Other jobs — move or stretch to ${_fmtD(ds)}</div>`+othJobs.map(({j})=>`
+    <div class="rm-job"><div class="rm-jt"><span class="rm-dot" style="background:${CLASS_COLORS[classKey(j)][0]}"></span>${_esc((j.site||j.jobno||'').split(',')[0])}<span class="rm-when">${j.start?_fmtD(j.start).split(' ').slice(1).join(' ')+(j.finish&&j.finish!==j.start?'–'+_fmtD(j.finish).split(' ').slice(1).join(' '):''):'no dates'}</span></div>
+    <div class="rm-btns"><button title="Shift the whole job so it starts ${_fmtD(ds)} (same number of working days) and put ${_esc(name.split(' ')[0])} on it" onclick="rsMoveJobHere('${j.id}','${ds}','${k2}')">Move job here</button>${j.start?`<button title="Keep the job where it is but stretch its dates to include ${_fmtD(ds)}, with ${_esc(name.split(' ')[0])} on that day" onclick="rsStretchJob('${j.id}','${ds}','${k2}')">Add this day</button>`:''}</div></div>`).join(''):'';
+  m.innerHTML=`<div class="rm-h">${_esc(name)} · ${_fmtD(ds)}</div>${addHtml}${othHtml}<button onclick="openDayRun('${k2}','${ds}')">🗺 Plan a day run (several jobs)…</button><div class="rm-sec">Leave / training</div>
     <button onclick="rsQuick('leave','${ds}','${key.replace(/'/g,"\\'")}',${!onLv})">${onLv?'✕ Remove leave':'🏖 On leave'}</button>
     <button onclick="rsQuick('training','${ds}','${key.replace(/'/g,"\\'")}',${!onTr})">${onTr?'✕ Remove training':'📋 Training / compliance'}</button>
     <button onclick="openLeaveRange('${key.replace(/'/g,"\\'")}','${ds}')">📅 Book a date range…</button>
@@ -6005,6 +6016,51 @@ function _restBtn(j,ds,name,onclick){
   const lbl=r.until?`Until ${_fmtD(r.until)}`:'Rest of job';
   return `<button onclick="${onclick}" title="${r.days.length} day${r.days.length!==1?'s':''}${r.until?' — to the end of their allocation':''} (skips leave / days allocated elsewhere)">${lbl}</button>`;
 }
+// ── Move a job so it starts on another day (keeps its number of working days; per-day crew / splits move with it)
+function _jobDays(j){ const out=[]; if(!j.start||!j.finish) return out; for(let d=toD(j.start); d<=toD(j.finish); d=addD(d,1)){ const x=dsOf(d); if(jobActiveOnDay(j,x)) out.push(x); } return out; }
+function shiftJobToStart(j, newStart){
+  const oldDays=_jobDays(j);
+  const n=Math.max(1, oldDays.length || Number(j.dur) || 1);
+  const tmp=Object.assign({}, j, {dayOverrides:{}, start:newStart, finish:'2099-12-31'});
+  const newDays=[]; for(let d=toD(newStart); newDays.length<n && newDays.length<400; d=addD(d,1)){ const x=dsOf(d); if(jobActiveOnDay(tmp,x)) newDays.push(x); }
+  if(!newDays.length || newDays[0]!==newStart){ newDays.unshift(newStart); newDays.length=Math.min(newDays.length,n); }   // they picked a weekend / holiday on purpose — work it, same total days
+  const map={}; oldDays.forEach((d,i)=>{ if(newDays[i]) map[d]=newDays[i]; });
+  const ov={}; Object.entries(j.dayOverrides||{}).forEach(([d,v])=>{ if(map[d]) ov[map[d]]=v; });
+  if(newDays[0]===newStart && !jobActiveOnDay(tmp,newStart) && ov[newStart]===undefined) ov[newStart]=getStaffForDay(j,oldDays[0]||j.start||newStart)||(j.resource||'');
+  j.dayOverrides=ov;
+  const ck=j.checklist||{}; ['splits','run','dupFlags'].forEach(k=>{ if(ck[k]){ const o={}; Object.entries(ck[k]).forEach(([d,v])=>{ if(map[d]) o[map[d]]=v; }); ck[k]=o; } });
+  j.start=newStart; j.finish=newDays[newDays.length-1]; if(!j.dur) j.dur=n;
+}
+function _putOnDay(j, ds, name){
+  if(!j.dayOverrides) j.dayOverrides={};
+  const cur=getStaffForDay(j,ds).split(',').map(x=>x.trim()).filter(Boolean);
+  if(!cur.some(x=>_nm(x)===_nm(name))) cur.push(name);
+  j.dayOverrides[ds]=cur.join(', ');
+}
+function rsMoveJobHere(jobId, ds, key){
+  const j=S.jobs.find(x=>x.id===jobId); if(!j) return;
+  const name=_personName(key); document.getElementById('rs-menu').style.display='none';
+  const was=j.start?`${_fmtD(j.start)}${j.finish&&j.finish!==j.start?' – '+_fmtD(j.finish):''}`:'no dates';
+  const probe=JSON.parse(JSON.stringify(j)); shiftJobToStart(probe, ds);
+  const to=`${_fmtD(probe.start)}${probe.finish!==probe.start?' – '+_fmtD(probe.finish):''}`;
+  if(!confirm(`Move ${(j.site||j.jobno||'job').split(',')[0]}\n\nfrom  ${was}\nto      ${to}\n\nand put ${name} on it from ${_fmtD(ds)}?\n(Any day-by-day crew moves with the job.)`)) return;
+  shiftJobToStart(j, ds); _putOnDay(j, ds, name);
+  j.ts=new Date().toISOString(); save(); if(S.gsUrl) autoSync(); renderAll();
+  toast(`${(j.site||'Job').split(',')[0]} moved to ${to} · ${name.split(' ')[0]} on ${_fmtD(ds)} ✓`);
+  setTimeout(()=>{ const cl=findClashes(j.start,j.finish).filter(c=>c.status==='open'); if(cl.length) showDupModal(cl.slice(0,1)); },300);
+}
+function rsStretchJob(jobId, ds, key){
+  const j=S.jobs.find(x=>x.id===jobId); if(!j||!j.start) return;
+  const name=_personName(key); document.getElementById('rs-menu').style.display='none';
+  const oldS=j.start, oldF=j.finish||j.start;
+  if(ds<oldS) j.start=ds; if(ds>oldF) j.finish=ds;
+  if(!jobActiveOnDay(j,ds)){ if(!j.dayOverrides) j.dayOverrides={}; j.dayOverrides[ds]=''; }   // weekend / holiday picked on purpose — make it a work day
+  _putOnDay(j, ds, name);
+  // days that the stretch pulled in between the old dates and the new one stay as normal working days (default crew)
+  j.ts=new Date().toISOString(); save(); if(S.gsUrl) autoSync(); renderAll();
+  toast(`${(j.site||'Job').split(',')[0]} now ${_fmtD(j.start)} – ${_fmtD(j.finish)} · ${name.split(' ')[0]} on ${_fmtD(ds)} ✓`);
+}
+
 // Add a free person to a job from the Resources grid — one day, or that day onwards
 function rsAddToJob(jobId, ds, key, rest){
   const j=S.jobs.find(x=>x.id===jobId); if(!j) return;
