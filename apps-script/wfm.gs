@@ -90,6 +90,7 @@ const WFM = {
   },
   CF_FRIABLE: 'Friable',         // tick box → Class A
   CF_NONFRIABLE: 'Non-Friable',  // tick box → Class B
+  CF_TESTING: 'Asbestos/Mould Testing', // tick box → testing job: class picked by hand in the schedule
   CF_RESTORATION: 'Restoration/Other',   // tick box → meth / mould work: class left for a manager to pick (Meth or Mould) in the schedule
   CF_WORKSAFE: 'WorkSafe Notification',   // text → sent to the H&S app
   CF_CLASS:   'Class',           // custom field: A / B / Meth / Mould
@@ -301,6 +302,7 @@ function wfmBranch_(job) {
 /** Class: "Class B - …" at the start of the description, then Friable / Non-Friable ticks, then a Class custom field. */
 function wfmJobClass_(job) {
   const d = String(job.description || '');
+  if (wfmTick_(job, WFM.CF_TESTING)) return '';      // asbestos / mould testing — class picked by hand in the schedule
   if (wfmTick_(job, WFM.CF_RESTORATION)) {          // meth / mould — picked by hand in the schedule
     if (/^\s*\/?\s*(meth)/i.test(d)) return 'Meth';
     if (/^\s*\/?\s*(mou?ld)/i.test(d)) return 'Mould';
@@ -385,7 +387,8 @@ function wfmAudit() {
     if (start && finish && finish < start) issues.push('Due date before start date');
     if (active && !value) issues.push('No accepted quote / value');
     if (active && value && jv.source !== 'accepted quote') issues.push('Value from ' + jv.source + ' (no accepted quote found)');
-    if (active && !cls && wfmTick_(j, WFM.CF_RESTORATION)) issues.push('Restoration/Other — pick Meth or Mould in the schedule');
+    if (active && !cls && wfmTick_(j, WFM.CF_TESTING)) issues.push('Asbestos/Mould Testing — pick the class in the schedule');
+    else if (active && !cls && wfmTick_(j, WFM.CF_RESTORATION)) issues.push('Restoration/Other — pick Meth or Mould in the schedule');
     else if (active && !cls) issues.push('Class unknown (Description / Friable ticks)');
     if (r) {
       if (br && f.branch !== br) issues.push('Branch differs: schedule ' + f.branch + ', WFM ' + br);
@@ -551,7 +554,7 @@ function wfmRun_(dryRun) {
       set(1, jobNo, 'job no');
       const handPicked = ['Roof', 'Meth', 'Mould'].indexOf(String(row[2])) >= 0 && prev;   // classes set in the schedule stay
       if (cls && !handPicked) set(2, cls, 'class');
-      if (wfmTick_(j, WFM.CF_RESTORATION) && !cls && ['Meth', 'Mould'].indexOf(String(row[2])) < 0) w.needClass = true; else delete w.needClass;
+      if (!prev && !cls && (wfmTick_(j, WFM.CF_TESTING) || wfmTick_(j, WFM.CF_RESTORATION))) w.needClass = wfmTick_(j, WFM.CF_TESTING) ? 'testing' : 'restoration';   // new job only — cleared in the schedule
       set(3, site, 'site');
       set(4, value || '', 'value');
       // ── dates: the schedule wins once someone has set them by hand.
