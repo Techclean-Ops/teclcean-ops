@@ -75,7 +75,7 @@ const WFM = {
   SCOPE: 'openid profile email workflowmax offline_access',
 
   // TechClean WorkflowMax statuses: Planned · Open Wages · On Hold · Completed · Cancelled
-  ACTIVE_STATUSES: ['Planned'],                 // → add / update in schedule ('Planned' = quote approved; can stay Planned while worked)
+  ACTIVE_STATUSES: ['Planned', 'In Progress'],                 // → add / update in schedule ('Planned' = quote approved; can stay Planned while worked)
   HOLD_STATUSES: ['On Hold'],                   // → job shown On hold in the schedule (cleared when it goes back to Planned)
   CLOSED_STATUSES: ['Completed', 'Open Wages'], // → marked $ Invoiced / closed in the schedule. 'Open Wages' = already invoiced,
                                                 //   re-opened only so final wages can go in — never brought back into the schedule
@@ -93,7 +93,8 @@ const WFM = {
   CF_CLASS:   'Class',           // custom field: A / B / Meth / Mould
   CF_ADDRESS: 'Site Address',    // custom field (optional) — falls back to the job name
 
-  VALUE_FIELD: 'budget',         // 'budget' or 'estimatedBillings'
+  VALUE_FIELD: 'budget',         // only used if the job has no accepted quote (TechClean leaves Budget blank)
+  // Job value = the job's ACCEPTED (current) quote, amount EXCLUDING GST — e.g. J015688 → Q017482 $9,708 ex GST
   LOOKBACK_DAYS: 1,
   MONTHLY_SHEET: 'WFM_Monthly',  // per-branch, per-month invoiced $ and timesheet hours
   MONTHLY_REFRESH_MONTHS: 2,     // daily refresh re-totals this month + last month
@@ -245,6 +246,31 @@ function wfmTick_(job, name) {
   return v === true || /^(true|yes|1|y|ticked|checked)$/i.test(String(v || '').trim());
 }
 /** Job category name — the API may give it as an object, a name, or a UUID to look up. */
+/** Job value = the accepted (current) quote's amount EXCLUDING GST. Cached 6 h per job. Falls back to Budget /
+ *  Estimated Billings only if no accepted quote is found. Returns { value, source }. */
+function wfmJobValue_(j) {
+  const num = v => { const n = Number(String(v == null ? '' : v).replace(/[^0-9.\-]/g, '')); return isFinite(n) ? n : 0; };
+  const exTax = q => { for (const k of ['amountExcludingTax', 'amountExTax', 'amountExcludingGST', 'totalExcludingTax', 'subTotal', 'subtotal', 'amount', 'total']) { const n = num(q[k]); if (n > 0) return n; } return 0; };
+  // 1) quote details on the job itself, if the API includes them
+  const own = j.quotes || j.quote || (j.currentQuote ? [j.currentQuote] : null);
+  const cache = CacheService.getScriptCache(), key = 'wfm_qv_' + j.uuid;
+  let quotes = Array.isArray(own) ? own : own ? [own] : null;
+  if (!quotes) {
+    const hit = cache.get(key); if (hit) { try { return JSON.parse(hit); } catch (e) {} }
+    quotes = [];
+    for (const q of ['quotes?jobUUID=' + j.uuid, 'jobs/' + j.uuid + '/quotes']) {
+      try { const l = wfmList_(wfmGet_(q)); if (l.length) { quotes = l; break; } } catch (e) { /* try the next form */ }
+    }
+  }
+  const st = q => String((q.status && (q.status.name || q.status)) || q.quoteStatus || q.state || '').toLowerCase();
+  const acc = quotes.filter(q => (!q.jobUUID || q.jobUUID === j.uuid) && /accept/.test(st(q)));
+  const cur = acc.find(q => q.isCurrent || q.current) || acc.sort((a, b) => String(b.date || b.createdDate || '').localeCompare(String(a.date || a.createdDate || '')))[0];
+  let out;
+  if (cur && exTax(cur) > 0) out = { value: Math.round(exTax(cur) * 100) / 100, source: 'accepted quote', quote: cur.quoteNumber || cur.number || '' };
+  else { const fb = [j[WFM.VALUE_FIELD], j.budget, j.estimatedBillings].map(num).find(n => n > 0) || 0; out = { value: fb, source: fb ? 'Budget / Estimated Billings' : 'none' }; }
+  try { cache.put(key, JSON.stringify(out), 21600); } catch (e) {}
+  return out;
+}
 function wfmCategory_(job) {
   const c = job.category;
   if (c && typeof c === 'object') return String(c.name || '').trim();
@@ -340,7 +366,7 @@ function wfmAudit() {
     const site = wfmCF_(j, WFM.CF_ADDRESS) || j.name || '';
     const br = wfmBranch_(j), cls = wfmJobClass_(j);
     const start = wfmDate_(j.startDate), finish = wfmDate_(j.dueDate) || start;
-    const value = [j[WFM.VALUE_FIELD], j.budget, j.estimatedBillings].map(Number).find(n => n > 0) || 0;
+    const jv = wfmJobValue_(j), value = jv.value;
     const f = wfmFind_(book, j.uuid, no, site, br);
     const r = f ? book[f.branch].rows[f.idx] : null; if (r) matchedIds[String(r[0])] = 1;
     let ck = {}; if (r) { try { ck = JSON.parse(r[17] || '{}'); } catch (e) {} }
@@ -350,7 +376,8 @@ function wfmAudit() {
     if (active && !start) issues.push('No start date');
     if (active && !j.dueDate) issues.push('No due date');
     if (start && finish && finish < start) issues.push('Due date before start date');
-    if (active && !value) issues.push('No value (Budget / Estimated Billings)');
+    if (active && !value) issues.push('No accepted quote / value');
+    if (active && value && jv.source !== 'accepted quote') issues.push('Value from ' + jv.source + ' (no accepted quote found)');
     if (active && !cls) issues.push('Class unknown (Description / Friable ticks)');
     if (r) {
       if (br && f.branch !== br) issues.push('Branch differs: schedule ' + f.branch + ', WFM ' + br);
@@ -376,7 +403,7 @@ function wfmAudit() {
     rows.push([no, status, wfmCategory_(j), br || '', site, fmt(start), fmt(finish), Math.round(value), cls,
                r ? f.branch : '', r ? String(r[1] || '') : '', r ? String(r[3] || '') : '', r ? fmt(String(r[8] || '')) : '', r ? fmt(String(r[9] || '')) : '',
                r ? Math.round(Number(r[4]) || 0) : '', r ? (sDel ? 'deleted' : sDone ? 'closed' : ck.closeout || 'open') : '', r ? String(r[10] || '') : '',
-               action, issues.join(' · ')]);
+               action, issues.join(' · '), jv.source + (jv.quote ? ' ' + jv.quote : '')]);
   });
 
   // schedule jobs WorkflowMax doesn't have open
@@ -397,7 +424,7 @@ function wfmAudit() {
   const out = SpreadsheetApp.create('WorkflowMax check ' + Utilities.formatDate(new Date(), WFM.TZ, 'yyyy-MM-dd HHmm'));
   const head = (sh, h) => { sh.getRange(1, 1, 1, h.length).setValues([h]).setFontWeight('bold').setBackground('#2B2D2F').setFontColor('#A8C800'); sh.setFrozenRows(1); };
   const s1 = out.getSheets()[0]; s1.setName('WorkflowMax jobs');
-  const h1 = ['WFM job no', 'WFM status', 'Category', 'Branch', 'Site', 'WFM start', 'WFM due', 'WFM value', 'Class', 'Sched branch', 'Sched job no', 'Sched site', 'Sched start', 'Sched finish', 'Sched value', 'Sched state', 'Crew', 'What the import would do', 'Problems to check'];
+  const h1 = ['WFM job no', 'WFM status', 'Category', 'Branch', 'Site', 'WFM start', 'WFM due', 'WFM value', 'Class', 'Sched branch', 'Sched job no', 'Sched site', 'Sched start', 'Sched finish', 'Sched value', 'Sched state', 'Crew', 'What the import would do', 'Problems to check', 'Value from'];
   head(s1, h1); if (rows.length) s1.getRange(2, 1, rows.length, h1.length).setValues(rows);
   const s2 = out.insertSheet('Schedule only');
   const h2 = ['Branch', 'Job no', 'Site', 'Start', 'Finish', 'Value', 'Crew', 'Why it is listed'];
@@ -510,7 +537,7 @@ function wfmRun_(dryRun) {
       const site = wfmCF_(j, WFM.CF_ADDRESS) || j.name || '';
       const cls = wfmJobClass_(j);
       const start = wfmDate_(j.startDate), finish = wfmDate_(j.dueDate) || start;
-      const value = [j[WFM.VALUE_FIELD], j.budget, j.estimatedBillings].map(Number).find(n => n > 0) || 0;   // Budget is often blank on new jobs
+      const value = wfmJobValue_(j).value;   // accepted quote ex GST (Budget / Estimated Billings only as a fallback)
       const oldStart = String(row[8] || ''), oldFinish = String(row[9] || '');
 
       set(1, jobNo, 'job no');
