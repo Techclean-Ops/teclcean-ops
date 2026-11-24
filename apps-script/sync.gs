@@ -1,5 +1,5 @@
 const SHEET_ID = '1UOabcy7JwNISvqWqFVVWWfEVHfUOogYqVMRZa8ngBIc';
-const MIN_APP_VERSION = 91;   // v56: serves WFM_Invoices + WFM_Jobs to Admin → Work vs invoicing · v55: app v91+ only sends the leave/training/allocation entries it changed — older copies put back stale allocations
+const MIN_APP_VERSION = 93;   // v57: absence dates kept as yyyy-mm-dd text (Sheets was turning them into dates) · v56: serves WFM_Invoices + WFM_Jobs to Admin → Work vs invoicing · v55: app v91+ only sends the leave/training/allocation entries it changed — older copies put back stale allocations
 
 function doPost(e) {
   // One writer at a time — device syncs and the WorkflowMax import share this lock
@@ -165,8 +165,14 @@ function handleSync(data) {
     const absData = absSheet.getDataRange().getValues();
     for (let i = 1; i < absData.length; i++) {
       const row = absData[i];
-      const key = String(row[0]||'')+'|'+String(row[1]||'')+'|'+String(row[2]||'');
-      if (key !== '||') existingAbs[key] = row;
+      const d = absDate_(row[2]);
+      const key = String(row[0]||'')+'|'+String(row[1]||'')+'|'+d;
+      if (key === '||') continue;
+      if (existingAbs[key]) {                       // same day stored twice (date + text) → one row, names combined
+        let a = [], b = []; try { a = JSON.parse(existingAbs[key][3] || '[]'); } catch (e) {} try { b = JSON.parse(row[3] || '[]'); } catch (e) {}
+        if (Array.isArray(a) && Array.isArray(b)) b.forEach(n => { if (a.indexOf(n) < 0) a.push(n); });
+        existingAbs[key] = [row[0], row[1], d, JSON.stringify(a), row[4]];
+      } else existingAbs[key] = [row[0], row[1], d, row[3], row[4]];
     }
 
     // Merge incoming leave and training
@@ -175,9 +181,9 @@ function handleSync(data) {
       for (const br of ['Auckland','Wellington','Christchurch']) {
         const brData = incoming[br] || {};
         for (const [date, staff] of Object.entries(brData)) {
-          const key = br+'|'+type+'|'+date;
+          const key = br+'|'+type+'|'+absDate_(date);
           if (staff && staff.length > 0) {
-            existingAbs[key] = [br, type, date, JSON.stringify(staff), new Date().toISOString()];
+            existingAbs[key] = [br, type, absDate_(date), JSON.stringify(staff), new Date().toISOString()];
           } else {
             delete existingAbs[key]; // cleared by device — remove from sheet
           }
@@ -190,7 +196,7 @@ function handleSync(data) {
     absSheet.getRange(1,1,1,5).setValues([absHeaders])
             .setFontWeight('bold').setBackground('#2B2D2F').setFontColor('#A8C800');
     const absRows = Object.values(existingAbs);
-    if (absRows.length > 0) absSheet.getRange(2,1,absRows.length,5).setValues(absRows);
+    if (absRows.length > 0) { absSheet.getRange(2,3,absRows.length,1).setNumberFormat('@'); absSheet.getRange(2,1,absRows.length,5).setValues(absRows); }
   }
 
   // Log
@@ -275,12 +281,12 @@ function handleGetJobs() {
       const row   = absData[i];
       const br    = String(row[0]||'').trim();
       const type  = String(row[1]||'').trim();
-      const date  = String(row[2]||'').trim();
+      const date  = absDate_(row[2]);
       let   names = [];
       try { names = JSON.parse(row[3]||'[]'); } catch(e) {}
       if (br && type && date && names.length) {
-        if (type === 'leave'    && leave[br])    leave[br][date]    = names;
-        if (type === 'training' && training[br]) training[br][date] = names;
+        const tgt = type === 'leave' ? leave[br] : type === 'training' ? training[br] : null;
+        if (tgt) { if (tgt[date] && Array.isArray(tgt[date]) && Array.isArray(names)) names.forEach(n => { if (tgt[date].indexOf(n) < 0) tgt[date].push(n); }); else tgt[date] = names; }
       }
     }
   }
@@ -589,4 +595,14 @@ function m365Test() {
   const from = PropertiesService.getScriptProperties().getProperty('M365_FROM');
   const ok = m365Send_({to: from, subject: 'TechClean schedule — Microsoft 365 test', htmlBody: '<p style="font-family:Arial">If you can read this, the schedule can send email through Microsoft 365. ✓</p>'});
   Logger.log(ok ? 'Sent ✓ — check the ' + from + ' inbox and Sent Items' : 'Not sent — see the error above');
+}
+
+/** Absence date key → 'yyyy-MM-dd' (Sheets may have stored it as a date, or as 'Mon Dec 01 2026 00:00:00 GMT…').
+ *  Special keys such as '__secondments' / '__mgrEmails' pass through unchanged. */
+function absDate_(v) {
+  if (v instanceof Date) return Utilities.formatDate(v, 'Pacific/Auckland', 'yyyy-MM-dd');
+  const s = String(v || '').trim();
+  if (!s || s.indexOf('__') === 0 || /^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const d = new Date(s.replace(/\s*\(.*\)\s*$/, ''));
+  return isNaN(d) ? s : Utilities.formatDate(d, 'Pacific/Auckland', 'yyyy-MM-dd');
 }
