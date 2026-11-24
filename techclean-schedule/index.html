@@ -1611,6 +1611,7 @@ body.light #version-tag{color:#4A5560!important;background:#E4E6E9!important}
 
 
 
+
 </head>
 <body>
 <script>try{ if(localStorage.getItem('aops_theme')==='light') document.body.classList.add('light'); }catch(e){}</script>
@@ -2668,7 +2669,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const AW = '<svg class="aw-ico" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(-1 0)"><path d="M5.5 12.6V8.4a4.5 4.5 0 0 1 9 0v4.2"/><rect x="6.6" y="6.9" width="6.8" height="2.2" rx="1.1" fill="currentColor" stroke="none"/><circle cx="10" cy="11.7" r="2.15"/><circle cx="10" cy="11.7" r=".8" fill="currentColor" stroke="none"/><rect x="3.1" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(-28 4.6 12.75)"/><rect x="13.9" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(28 15.4 12.75)"/><path d="M8.1 13.7L10 15.6L11.9 13.7"/><path d="M6.9 15.2C4.3 15.9 3 17.7 3 20.2V22.3M13.1 15.2C15.7 15.9 17 17.7 17 20.2V22.3M10 15.6V22.3"/></g><path d="M13.6 19.4L21.2 2.6"/><path fill-rule="evenodd" fill="currentColor" stroke="none" d="M20.4 5.3c.9.8 2.8 2 3 4 .2 1.8-1 3-2.8 3s-3.2-1.2-3.1-3c.1-2 1.9-3.2 2.9-4zM19.7 8.7a.55.55 0 1 0 0 .01zM21.9 9.6a.55.55 0 1 0 0 .01zM20.6 11.1a.5.5 0 1 0 0 .01z"/><path d="M20.4 5.4l-1.4-.6M20.4 5.4l.8-1.3"/></svg>';   // away / out-of-town: suited worker with a bindle
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v98-202611252100';
+const APP_VERSION = 'v99-202611252100';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -3803,6 +3804,50 @@ function ivExport(){
 // ── Admin → Leave & sick: days off per person (annual leave, sick, training), by branch and company-wide
 let LV={p:'ytd', q:''};
 function lvSet(k,v){ LV[k]=v; renderMgmt(); }
+// ── Leave balances. Each person: start date (anniversary) + opening balances as at a date (from payroll).
+// From then on: +20 days annual leave and +10 days sick leave on every work anniversary (sick capped at 20 —
+// NZ carry-over limit), less the annual / sick days booked in the schedule after the as-at date.
+// Stored in S.training.Auckland.__leaveBal = [{name, start, al, sl, asAt}] so it rides the Absences sync.
+const LV_AL_YEAR=20, LV_SL_YEAR=10, LV_SL_CAP=20;
+function lvBalList(){ const v=S.training&&S.training.Auckland&&S.training.Auckland.__leaveBal; return Array.isArray(v)?v:[]; }
+function lvBalOf(name){ const k=_nm(name); return lvBalList().find(x=>x&&_nm(x.name)===k)||null; }
+function _lvDaysOf(name){   // every annual / sick day booked for this person (any branch)
+  const k=_nm(name), out=[];
+  ['Auckland','Wellington','Christchurch'].forEach(b=>{ const m=(S.leave&&S.leave[b])||{};
+    Object.keys(m).forEach(d=>{ if(!/^\d{4}-\d{2}-\d{2}$/.test(d)) return; if((m[d]||[]).some(n=>typeof n==='string'&&_nm(n)===k)) out.push({d,sick:isSick(name,d)}); }); });
+  return out.sort((a,b)=>a.d.localeCompare(b.d));
+}
+function _lvAnnivs(start, from, to){   // anniversaries in (from, to]
+  const out=[]; if(!start) return out; const sm=+start.slice(5,7), sd=+start.slice(8,10);
+  for(let y=+from.slice(0,4); y<=+to.slice(0,4); y++){ const dd=new Date(y,sm-1,sd); if(dd.getMonth()!==sm-1) dd.setDate(0); const x=dsOf(dd); if(x>from&&x<=to&&x>start) out.push(x); }
+  return out;
+}
+// balance for one person at date `at` (default today); counts bookings after asAt up to `at` (and `ahead` = booked after `at`)
+function lvBalance(name, at, extra){
+  const B=lvBalOf(name); if(!B||!B.asAt) return null;
+  at=at||dsOf(new Date());
+  const days=_lvDaysOf(name).concat(extra||[]).filter(x=>x.d>B.asAt);
+  const ev=[]; _lvAnnivs(B.start,B.asAt,'2100-01-01'>at?at:at).forEach(d=>ev.push({d,t:'ann'}));
+  days.filter(x=>x.d<=at).forEach(x=>ev.push({d:x.d,t:x.sick?'s':'a'}));
+  ev.sort((a,b)=>a.d.localeCompare(b.d)||(a.t==='ann'?-1:1));
+  let al=Number(B.al)||0, sl=Number(B.sl)||0;
+  ev.forEach(e=>{ if(e.t==='ann'){ al+=LV_AL_YEAR; sl=Math.min(LV_SL_CAP,sl+LV_SL_YEAR); } else if(e.t==='a') al--; else sl--; });
+  const later=days.filter(x=>x.d>at), aheadA=later.filter(x=>!x.sick).length, aheadS=later.filter(x=>x.sick).length;
+  const nextAnn=_lvAnnivs(B.start,at,dsOf(addD(toD(at),370)))[0]||'';
+  return {al,sl,aheadA,aheadS,alAfter:al-aheadA,nextAnn,start:B.start,asAt:B.asAt};
+}
+// lowest balance reached if these extra days were booked (for the warning when scheduling)
+function lvCheckBooking(name, dates, sick){
+  if(!lvBalOf(name)||!dates.length) return null;
+  const extra=dates.filter(d=>!_lvDaysOf(name).some(x=>x.d===d)).map(d=>({d,sick:!!sick})); if(!extra.length) return null;
+  const all=_lvDaysOf(name).concat(extra).map(x=>x.d).filter((d,i,a)=>a.indexOf(d)===i).sort();
+  let low=null; all.forEach(d=>{ const b=lvBalance(name,d,extra); if(!b) return; const v=sick?b.sl:b.al; if(low===null||v<low.v) low={v,d}; });
+  return low;
+}
+function lvWarnText(name, low, sick){
+  if(!low||low.v>=0) return '';
+  return `⚠ ${name.split(' ')[0]} has no ${sick?'sick':'annual'} leave left for this — ${Math.abs(low.v)} day${Math.abs(low.v)!==1?'s':''} over by ${_fmtD(low.d)}. Check with the manager / payroll (leave in advance or unpaid).`;
+}
 function _lvRange(){
   const now=new Date(), t=dsOf(now), y=now.getFullYear(), m=now.getMonth();
   const fyS=m>=3?y:y-1;                                                          // NZ financial year 1 Apr – 31 Mar
@@ -3844,6 +3889,8 @@ function renderMgmtLeave(el){
       ${tile('Training / compliance',tr+' days',`${(tr/ppl).toFixed(1)} per person`)}
       ${tile('Total days off',head+sick+tr+' days','leave + sick + training')}
       ${tile('Leave booked ahead',sum(rows,'ahead')+' days',`from tomorrow · ${rows.filter(p=>p.ahead).length} people`,'inv')}
+      ${(()=>{ const neg=[]; (br==='All'?MG_BR:[br]).forEach(b=>(S.staff[b]||[]).forEach(n=>{ const x=lvBalance(n); if(x&&(x.alAfter<0||x.sl<0)) neg.push(n.split(' ')[0]+' '+(x.alAfter<0?x.alAfter+' AL':x.sl+' SL')); }));
+        return tile('No leave left',neg.length,neg.slice(0,4).join(' · ')||(lvBalList().length?'everyone has leave ✓':'balances not entered yet'),neg.length?'bad':'ok'); })()}
       ${tile('Most sick days',sickers.length?_esc(sickers[0].name.split(' ')[0])+' · '+sickers[0].sick:'—',sickers.slice(1,4).map(p=>_esc(p.name.split(' ')[0])+' '+p.sick).join(' · ')||'none',sickers.length&&sickers[0].sick>=5?'bad':'')}
     </div>`;
   // by branch + company
@@ -3860,8 +3907,62 @@ function renderMgmtLeave(el){
     if(br==='All') h+=`<tr><td colspan="8" style="color:${BRANCH_COLORS[b]};font-weight:700;padding-top:10px">${b}</td></tr>`;
     r.forEach(p=>{ const last=p.days.sort().slice(-4).reverse().map(x=>`${_fmtD(x.slice(0,10)).split(' ').slice(1).join(' ')}${x.endsWith('S')?' 🤒':x.endsWith('T')?' 📋':''}`).join(', ');
       h+=`<tr><td>${_esc(p.name)}</td><td>${BR_CODE[p.br]||p.br}</td><td class="n">${p.leave||'—'}</td><td class="n">${p.sick?`<span class="iv-flag ${p.sick>=5?'bad':'warn'}">${p.sick}</span>`:'—'}</td><td class="n">${p.train||'—'}</td><td class="n"><b>${p.leave+p.sick+p.train||'—'}</b></td><td class="n">${p.ahead||'—'}</td><td style="color:var(--c-muted);font-size:11px">${last}</td></tr>`; }); });
-  h+=`</tbody></table><div class="iv-note" style="margin-top:8px">Counts the days booked in the schedule (one entry = one day; weekends only if they were booked). Sick = days booked as 🤒 Sick leave from 25 Nov 2026 — earlier sick days were booked as plain leave. People are grouped by their home branch.</div></div>`;
+  h+=`</tbody></table>`+lvBalancesHtml(br==='All'?MG_BR:[br])+`<div class="iv-note" style="margin-top:8px">Counts the days booked in the schedule (one entry = one day; weekends only if they were booked). Sick = days booked as 🤒 Sick leave from 25 Nov 2026 — earlier sick days were booked as plain leave. People are grouped by their home branch.</div></div>`;
   el.innerHTML=h;
+}
+function lvBalancesHtml(brs){
+  const ppl=[]; brs.forEach(b=>(S.staff[b]||[]).forEach(n=>ppl.push({n,b})));
+  const have=ppl.filter(p=>lvBalOf(p.n)), today=dsOf(new Date());
+  let h=`<h3 style="margin:18px 0 4px;font-size:13px">Leave balances <span class="mg-sub">${LV_AL_YEAR} days annual + ${LV_SL_YEAR} days sick a year on each work anniversary (sick carries over to max ${LV_SL_CAP})</span>
+    <button class="bd-pill" style="margin-left:8px" onclick="lvBalEdit()">✎ Enter / update balances</button></h3>`;
+  if(!have.length) return h+`<div class="iv-note">No balances yet — click "Enter / update balances" and add each person's start date and leave left (from payroll).</div>`;
+  h+=`<table class="iv-tbl"><thead><tr><th>Name</th><th>Branch</th><th>Start date</th><th class="n">Annual left</th><th class="n">Booked ahead</th><th class="n">Annual after bookings</th><th class="n">Sick left</th><th>Next anniversary</th><th>Balances as at</th></tr></thead><tbody>`;
+  ppl.forEach(p=>{ const x=lvBalance(p.n); if(!x) return; const red=v=>v<0?'color:#F87171;font-weight:700':v<=2?'color:#FDD835':'';
+    h+=`<tr><td>${_esc(p.n)}</td><td>${BR_CODE[p.b]||p.b}</td><td>${x.start?_fmtD(x.start):'—'}</td><td class="n" style="${red(x.al)}">${x.al}</td><td class="n">${x.aheadA||'—'}</td><td class="n" style="${red(x.alAfter)}">${x.alAfter}${x.alAfter<0?' ⚠':''}</td><td class="n" style="${red(x.sl)}">${x.sl}</td><td>${x.nextAnn?_fmtD(x.nextAnn):'—'}</td><td style="color:var(--c-muted)">${_fmtD(x.asAt)}</td></tr>`; });
+  const miss=ppl.filter(p=>!lvBalOf(p.n));
+  return h+`</tbody></table>${miss.length?`<div class="iv-note">${miss.length} without a balance yet: ${miss.slice(0,12).map(p=>_esc(p.n)).join(', ')}${miss.length>12?'…':''}</div>`:''}`;
+}
+function lvBalEdit(){
+  const br=MG.br==='All'?MG_BR:[MG.br], today=dsOf(new Date());
+  let o=document.getElementById('lv-bal-ov'); if(!o){ o=document.createElement('div'); o.id='lv-bal-ov'; o.className='overlay'; document.body.appendChild(o); }
+  const rows=[]; br.forEach(b=>(S.staff[b]||[]).slice().sort().forEach(n=>rows.push({n,b,x:lvBalOf(n)||{}})));
+  o.innerHTML=`<div class="modal" style="max-width:860px;width:96vw"><div class="modal-head"><h3>Leave balances — ${MG.br==='All'?'all branches':_esc(MG.br)}</h3><button onclick="document.getElementById('lv-bal-ov').classList.remove('open')">✕</button></div>
+    <div style="padding:12px 18px">
+      <div class="iv-note">Enter each person's start date (their anniversary) and the days left <b>as at</b> the date the balances are from (e.g. today's payroll report). From then on the schedule takes off leave as it's booked and adds ${LV_AL_YEAR} annual / ${LV_SL_YEAR} sick each anniversary.</div>
+      <details style="margin:6px 0 10px"><summary style="cursor:pointer;font-size:12px">Paste from payroll / Excel</summary>
+        <div class="iv-note">One person per line: <code>Name, start date, annual left, sick left</code> (tabs or commas; dates dd/mm/yyyy). Names are matched to the roster.</div>
+        <textarea id="lv-paste" rows="5" style="width:100%;font-family:var(--font-mono);font-size:11px" placeholder="Jojo Lim	14/03/2022	12.5	6"></textarea>
+        <button class="btn btn-ghost btn-sm" onclick="lvBalPaste()">Fill the table from this</button></details>
+      <div class="lv-row"><label>Balances as at</label><input type="date" id="lv-asat" value="${today}"></div>
+      <div style="max-height:52vh;overflow:auto"><table class="iv-tbl" id="lv-bal-tbl"><thead><tr><th>Name</th><th>Branch</th><th>Start date</th><th class="n">Annual left</th><th class="n">Sick left</th><th>Current as at</th></tr></thead><tbody>
+      ${rows.map(r=>`<tr data-name="${_esc(r.n)}"><td>${_esc(r.n)}</td><td>${BR_CODE[r.b]}</td><td><input type="date" class="lb-st" value="${r.x.start||''}"></td><td class="n"><input type="number" step="0.5" class="lb-al" value="${r.x.al!=null?r.x.al:''}" style="width:80px"></td><td class="n"><input type="number" step="0.5" class="lb-sl" value="${r.x.sl!=null?r.x.sl:''}" style="width:80px"></td><td style="color:var(--c-muted);font-size:11px">${r.x.asAt?_fmtD(r.x.asAt):'—'}</td></tr>`).join('')}
+      </tbody></table></div>
+      <div class="dup-btns" style="margin-top:10px"><button class="btn btn-primary" onclick="lvBalSave()">✓ Save balances</button><span style="flex:1"></span><button class="btn btn-ghost" onclick="document.getElementById('lv-bal-ov').classList.remove('open')">Cancel</button></div>
+    </div></div>`;
+  o.classList.add('open');
+}
+function lvBalPaste(){
+  const t=document.getElementById('lv-paste').value, rows=[...document.querySelectorAll('#lv-bal-tbl tbody tr')]; let hit=0, miss=[];
+  const dt=v=>{ v=String(v||'').trim(); let m=v.match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})$/); if(m){ const y=m[3].length===2?'20'+m[3]:m[3]; return y+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'); } return /^\d{4}-\d{2}-\d{2}$/.test(v)?v:''; };
+  t.split(/\n/).map(l=>l.trim()).filter(Boolean).forEach(l=>{ const p=l.split(/\t|,|;/).map(x=>x.trim()); if(p.length<3) return;
+    const r=rows.find(r=>_nm(r.dataset.name)===_nm(p[0]))||rows.find(r=>_nm(r.dataset.name).split(' ')[0]===_nm(p[0]).split(' ')[0]&&_nm(r.dataset.name).split(' ').pop()===_nm(p[0]).split(' ').pop());
+    if(!r){ miss.push(p[0]); return; } hit++;
+    const st=dt(p[1]); if(st) r.querySelector('.lb-st').value=st;
+    if(p[2]!==''&&!isNaN(+p[2])) r.querySelector('.lb-al').value=+p[2];
+    if(p[3]!=null&&p[3]!==''&&!isNaN(+p[3])) r.querySelector('.lb-sl').value=+p[3]; });
+  toast(`${hit} filled${miss.length?' · not on the roster: '+miss.slice(0,4).join(', '):''} — check, then Save`, miss.length?'err':undefined);
+}
+function lvBalSave(){
+  const asAt=document.getElementById('lv-asat').value||dsOf(new Date()); const list=lvBalList().slice(); let n=0;
+  document.querySelectorAll('#lv-bal-tbl tbody tr').forEach(r=>{ const name=r.dataset.name, st=r.querySelector('.lb-st').value, al=r.querySelector('.lb-al').value, sl=r.querySelector('.lb-sl').value;
+    if(al===''&&sl===''&&!st) return;
+    const i=list.findIndex(x=>_nm(x.name)===_nm(name)), old=i>=0?list[i]:null;
+    const changed=!old||old.start!==st||String(old.al)!==String(al)||String(old.sl)!==String(sl);
+    if(!changed) return;
+    const rec={name, start:st, al:al===''?0:+al, sl:sl===''?0:+sl, asAt}; if(i>=0) list[i]=rec; else list.push(rec); n++; });
+  if(!S.training.Auckland) S.training.Auckland={};
+  S.training.Auckland.__leaveBal=list; save(); if(S.gsUrl) autoSync();
+  document.getElementById('lv-bal-ov').classList.remove('open'); renderAll(); toast(n+' balance'+(n!==1?'s':'')+' saved ✓');
 }
 function lvEmailOpen(b){
   const [from,to,lbl]=_lvRange(), r=_lvData([b]).sort((x,y)=>(y.leave+y.sick+y.train)-(x.leave+x.sick+x.train)||x.name.localeCompare(y.name)), mg=_ivMgrs(b);
@@ -3871,6 +3972,8 @@ function lvEmailOpen(b){
     `  Annual leave: ${sum('leave')} days · Sick: ${sum('sick')} days · Training: ${sum('train')} days · Total: ${sum('leave')+sum('sick')+sum('train')} days\n\n`+
     (off.length?`  ${pad('Name',24)}${pad('Leave',7)}${pad('Sick',6)}${pad('Train',7)}Total\n`+off.map(p=>`  ${pad(p.name,24)}${pad(p.leave,7)}${pad(p.sick,6)}${pad(p.train,7)}${p.leave+p.sick+p.train}`).join('\n'):'  No leave, sick or training days booked.')+
     (r.some(p=>p.ahead)?`\n\nLeave already booked ahead: `+r.filter(p=>p.ahead).map(p=>`${p.name.split(' ')[0]} ${p.ahead}d`).join(', '):'')+
+    (()=>{ const bl=r.map(p=>({p,x:lvBalance(p.name)})).filter(o=>o.x); if(!bl.length) return '';
+      return `\n\nLeave balances today (annual left after bookings / sick left):\n`+bl.map(o=>`  ${pad(o.p.name,24)}${pad(o.x.alAfter+(o.x.alAfter<0?' ⚠':''),8)}${o.x.sl}`).join('\n'); })()+
     `\n\nPlease check it matches what you know — any sick days booked as plain leave, or days missing, update in the schedule (Resources → click the day).\n\nThanks,\n`;
   _mailOpen(`Email ${b} — leave & sick, ${lbl}`, mg, `${b} — leave & sick summary, ${lbl}`, body, b);
 }
@@ -5967,7 +6070,8 @@ function renderRes(){
       const _sec=secondedOn(nm,d), _secAway=_sec&&_sec.to!==br, _notYet=!isExtra&&secInfo[k]&&homeBranch(nm)!==br&&!(_sec&&_sec.to===br);
       const clash=(js.length+(onLv?1:0)+(onTr?1:0))>1;
       let c='';
-      if(onLv) c+=isSick(nm,d)?`<span class="rs-chip rs-leave rs-sick ${clash?'rs-clash':''}">🤒 Sick</span>`:`<span class="rs-chip rs-leave ${clash?'rs-clash':''}">🏖 Leave</span>`;
+      if(onLv){ const _sk=isSick(nm,d), _b=lvBalOf(nm)?lvBalance(nm,d):null, _neg=_b&&(_sk?_b.sl:_b.al)<0;
+        c+=`<span class="rs-chip rs-leave ${_sk?'rs-sick':''} ${clash?'rs-clash':''}" ${_neg?`style="outline:2px solid #EF4444" title="No ${_sk?'sick':'annual'} leave left — ${_sk?_b.sl:_b.al} days"`:''}>${_sk?'🤒 Sick':'🏖 Leave'}${_neg?' ⚠':''}</span>`; }
       if(onTr) c+=`<span class="rs-chip rs-train ${clash?'rs-clash':''}">📋 Training</span>`;
       if(_secAway&&!js.length) c+=`<span class="rs-chip rs-sec" title="Allocated to ${_sec.to} ${_fmtD(_sec.start)} – ${_fmtD(_sec.end)}">⇄ ${BR_CODE[_sec.to]||_sec.to}</span>`;
       if(_notYet&&!js.length) c+=`<span class="rs-free" style="color:#5A5D61" title="Not allocated to ${br} this day">· ${BR_CODE[homeBranch(nm)]||''}</span>`;
@@ -6660,7 +6764,9 @@ function removeSecondment(to,id){
 
 function rsQuick(type, ds, key, on){
   const br=S.branch, name=(S.staff[br]||[]).find(n=>_nm(n)===key)||key;
+  const _w=on&&(type==='leave'||type==='sick')?lvWarnText(name,lvCheckBooking(name,[ds],type==='sick'),type==='sick'):'';
   _absSet(type,br,ds,name,on);
+  if(_w) setTimeout(()=>toast(_w,'err'),2600);
   document.getElementById('rs-menu').style.display='none';
   save(); if(S.gsUrl) autoSync(); renderAll();
   toast(on?`${name.split(' ')[0]} ${type==='sick'?'off sick':type==='leave'?'on leave':'on training'} ${_fmtD(ds)} ✓`:'Removed');
@@ -6678,6 +6784,7 @@ function openLeaveRange(key, ds){
     <div class="lv-row"><label>From</label><input type="date" id="lv-from" value="${d0}"></div>
     <div class="lv-row"><label>To</label><input type="date" id="lv-to" value="${d0}"></div>
     <label class="dup-all"><input type="checkbox" id="lv-wknd"> Include weekends &amp; public holidays</label>
+    <div id="lv-bal" style="font-size:11.5px;margin:4px 0 2px;color:#C9CBCE"></div>
     <div id="lv-warn" class="dup-note flag" style="display:none"></div>
     <div class="dup-btns">
       <button class="btn btn-primary" onclick="saveLeaveRange(true)">✓ Book</button>
@@ -6686,12 +6793,15 @@ function openLeaveRange(key, ds){
       <button class="btn btn-ghost" onclick="document.getElementById('lv-overlay').classList.remove('open')">Cancel</button>
     </div>`;
   document.getElementById('lv-overlay').classList.add('open');
+  ['lv-who','lv-type','lv-from','lv-to','lv-wknd'].forEach(id=>{ const e=document.getElementById(id); if(e) e.addEventListener('change',lvRangeHint); });
+  lvRangeHint();
 }
 function saveLeaveRange(on){
   const br=S.branch, name=document.getElementById('lv-who').value, type=document.getElementById('lv-type').value;
   const f=document.getElementById('lv-from').value, t=document.getElementById('lv-to').value, wk=document.getElementById('lv-wknd').checked;
   if(!name||!f||!t||t<f){ const w=document.getElementById('lv-warn'); w.style.display='block'; w.textContent='Pick a staff member and a valid date range.'; return; }
   let cur=toD(f), n=0; const end=toD(t); const onJobs=new Set();
+  let _w=''; if(on&&(type==='leave'||type==='sick')){ const ds0=[]; let c0=toD(f); while(c0<=end){ const x=dsOf(c0); if(wk||!(isSat(x)||isSun(x)||isHolB(x,br))) ds0.push(x); c0=addD(c0,1); } _w=lvWarnText(name,lvCheckBooking(name,ds0,type==='sick'),type==='sick'); }
   while(cur<=end){
     const ds=dsOf(cur);
     if(wk || !(isSat(ds)||isSun(ds)||isHolB(ds,br))){
@@ -6704,6 +6814,17 @@ function saveLeaveRange(on){
   save(); if(S.gsUrl) autoSync(); renderAll();
   toast(on?`${name.split(' ')[0]}: ${n} day${n!==1?'s':''} ${type==='sick'?'sick leave':type==='leave'?'leave':'training'} booked ✓`:`${n} day${n!==1?'s':''} cleared`);
   if(on&&onJobs.size) setTimeout(()=>toast(`⚠ ${name.split(' ')[0]} is also rostered on ${[...onJobs].slice(0,2).join(', ')} those days — check the job crew`,'err'),3100);
+  if(_w) setTimeout(()=>toast(_w,'err'),onJobs.size?6200:2600);
+}
+// live balance line in the Book leave dialog
+function lvRangeHint(){
+  const el=document.getElementById('lv-bal'); if(!el) return;
+  const name=document.getElementById('lv-who').value, type=document.getElementById('lv-type').value, f=document.getElementById('lv-from').value, t=document.getElementById('lv-to').value, wk=document.getElementById('lv-wknd').checked, br=S.branch;
+  const b=lvBalance(name); if(!b){ el.innerHTML='<span style="color:var(--c-muted)">No leave balance on file for '+_esc(name)+' (Admin → Leave &amp; sick → Leave balances)</span>'; return; }
+  let txt=`Annual leave ${b.al} days left${b.aheadA?` (${b.aheadA} already booked ahead → ${b.alAfter})`:''} · Sick ${b.sl} days${b.nextAnn?` · +${LV_AL_YEAR} / +${LV_SL_YEAR} on ${_fmtD(b.nextAnn)}`:''}`;
+  if((type==='leave'||type==='sick')&&f&&t&&t>=f){ const ds=[]; let c=toD(f); while(c<=toD(t)){ const x=dsOf(c); if(wk||!(isSat(x)||isSun(x)||isHolB(x,br))) ds.push(x); c=addD(c,1); }
+    const w=lvWarnText(name,lvCheckBooking(name,ds,type==='sick'),type==='sick'); if(w) txt+=`<div style="color:#F87171;margin-top:3px">${_esc(w)}</div>`; }
+  el.innerHTML=txt;
 }
 
 // ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
