@@ -1608,6 +1608,7 @@ body.light #version-tag{color:#4A5560!important;background:#E4E6E9!important}
 
 
 
+
 </head>
 <body>
 <script>try{ if(localStorage.getItem('aops_theme')==='light') document.body.classList.add('light'); }catch(e){}</script>
@@ -2665,7 +2666,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const AW = '<svg class="aw-ico" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(-1 0)"><path d="M5.5 12.6V8.4a4.5 4.5 0 0 1 9 0v4.2"/><rect x="6.6" y="6.9" width="6.8" height="2.2" rx="1.1" fill="currentColor" stroke="none"/><circle cx="10" cy="11.7" r="2.15"/><circle cx="10" cy="11.7" r=".8" fill="currentColor" stroke="none"/><rect x="3.1" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(-28 4.6 12.75)"/><rect x="13.9" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(28 15.4 12.75)"/><path d="M8.1 13.7L10 15.6L11.9 13.7"/><path d="M6.9 15.2C4.3 15.9 3 17.7 3 20.2V22.3M13.1 15.2C15.7 15.9 17 17.7 17 20.2V22.3M10 15.6V22.3"/></g><path d="M13.6 19.4L21.2 2.6"/><path fill-rule="evenodd" fill="currentColor" stroke="none" d="M20.4 5.3c.9.8 2.8 2 3 4 .2 1.8-1 3-2.8 3s-3.2-1.2-3.1-3c.1-2 1.9-3.2 2.9-4zM19.7 8.7a.55.55 0 1 0 0 .01zM21.9 9.6a.55.55 0 1 0 0 .01zM20.6 11.1a.5.5 0 1 0 0 .01z"/><path d="M20.4 5.4l-1.4-.6M20.4 5.4l.8-1.3"/></svg>';   // away / out-of-town: suited worker with a bindle
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v95-202611251130';
+const APP_VERSION = 'v96-202611252100';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -3600,7 +3601,21 @@ function _ivData(brs,ym){
   const schedOnly=wj.length?Object.values(byKey).filter(g=>{ const j=g.j, co=closeoutOf(j); if(co==='invoiced'||co==='finished'||j.done) return false;
     if(!/\d/.test(String(j.jobno||''))) return false;                       // internal entries ("J tom", leave blocks) aren't WorkflowMax jobs
     const u=j.checklist&&j.checklist.wfm&&j.checklist.wfm.uuid; return !(u&&wU.has(u))&&!wN.has(g.k); }):[];
-  return {rows,unm,invs,ym,mS,mE,wfmOnly,schedOnly,hasJobs:wj.length>0};
+  // Estimated invoicing for the month = invoiced so far (WorkflowMax) + still to invoice:
+  //   progress-claim jobs → this month's claim / share of what's left, less anything already invoiced this month
+  //   other jobs finishing this month → job value less anything invoiced to date
+  //   (current month only) jobs done earlier but not invoiced yet → expected to be billed now
+  // Past months show the actual invoiced. Values ex GST.
+  const curYm=dsOf(new Date()).slice(0,7), y=+ym.slice(0,4), mo=+ym.slice(5,7)-1;
+  const invTot=rows.reduce((a,o)=>a+o.g.invM,0)+unm.reduce((a,x)=>a+x.amt,0);
+  let toInv=0; const toInvRows=[];
+  if(ym>=curYm) rows.forEach(o=>{ const g=o.g, j=o.j; if(o.co==='hold'||(o.co==='invoiced'&&!Object.keys(jobClaims(j)).length)) return; let v=0;   // '$ Invoiced' in the schedule = already billed
+    if(Object.keys(jobClaims(j)).length) v=Math.max(0,pipelineMonthVal(j,y,mo)-g.invM);
+    else if(g.finish>=mS&&g.finish<=mE) v=Math.max(0,g.val-g.invAll);
+    else if(ym===curYm&&o.done&&g.finish<mS&&o.co!=='invoiced'&&!g.invAll) v=g.val;
+    if(v>0){ toInv+=v; toInvRows.push({o,v}); } });
+  const est={past:ym<curYm, inv:invTot, toInv, total:ym<curYm?invTot:invTot+toInv, rows:toInvRows};
+  return {rows,unm,invs,ym,mS,mE,wfmOnly,schedOnly,hasJobs:wj.length>0,est};
 }
 function renderMgmtInv(el){
   const now=new Date(), br=MG.br, brs=br==='All'?MG_BR:[br];
@@ -3619,6 +3634,7 @@ function renderMgmtInv(el){
   if(!has) h+=`<div class="iv-note" style="color:#FDD835">⚠ No WorkflowMax invoices yet — the invoice side fills in once WorkflowMax is connected (Apps Script → wfm.gs v7). Schedule figures below are live.</div>`;
   else { const upd=(S.wfmInvoices||[]).reduce((a,x)=>a>x.d?a:x.d,''); h+=`<div class="iv-note">Invoices from WorkflowMax (approved + paid) up to ${_fmtD(upd)} · matched to schedule jobs by WorkflowMax job, then job number.</div>`; }
   h+=`<div class="mg-tiles">
+    ${tile('Est. invoicing · '+MONTHS[md.getMonth()].slice(0,3),_fmtK(D.est.total),D.est.past?'actual invoiced (month closed)':(has?`${_fmtK(D.est.inv)} invoiced + ${_fmtK(D.est.toInv)} to invoice (${D.est.rows.length} jobs)`:`${D.est.rows.length} jobs to invoice · schedule only`),'inv','est')}
     ${tile('Completed in '+MONTHS[md.getMonth()].slice(0,3),_fmtK(sum(finished,o=>o.comp)),finished.length+' jobs · pro rata (schedule)','', 'all')}
     ${tile('Invoiced in '+MONTHS[md.getMonth()].slice(0,3),has?_fmtK(invM):'—',has?`${R.filter(o=>o.g.invM).length} schedule jobs + ${D.unm.length} other`:'needs WorkflowMax','inv','all')}
     ${tile('Done — not invoiced',has?_fmtK(sum(dni,o=>o.g.val)):'—',has?dni.length+' jobs':'needs WorkflowMax',dni.length&&has?'bad':'ok','dni')}
@@ -3631,16 +3647,16 @@ function renderMgmtInv(el){
   </div>`;
   // per-branch summary (All)
   if(br==='All'){
-    h+=`<div class="tr-card"><div class="tr-head"><h3>By branch · ${mn}</h3></div><table class="iv-tbl"><thead><tr><th>Branch</th><th class="n">Completed (pro rata)</th><th class="n">Invoiced</th><th class="n">…on schedule jobs</th><th class="n">…not on schedule</th><th class="n">Done — not invoiced</th><th class="n">Past finish, not closed</th><th></th></tr></thead><tbody>`;
+    h+=`<div class="tr-card"><div class="tr-head"><h3>By branch · ${mn}</h3></div><table class="iv-tbl"><thead><tr><th>Branch</th><th class="n">Est. invoicing</th><th class="n">Completed (pro rata)</th><th class="n">Invoiced</th><th class="n">…on schedule jobs</th><th class="n">…not on schedule</th><th class="n">Done — not invoiced</th><th class="n">Past finish, not closed</th><th></th></tr></thead><tbody>`;
     MG_BR.forEach(b=>{ const d=_ivData([b],ym), r=d.rows; const fi=r.filter(o=>o.comp>0), dn=r.filter(o=>o.chk==='Done — not invoiced');
       const on=sum(r,o=>o.g.invM), off=sum(d.unm.filter(x=>x.brx===b),x=>x.amt);
-      h+=`<tr><td><b style="color:${BRANCH_COLORS[b]}">${b}</b></td><td class="n">${_fmtK(sum(fi,o=>o.comp))}</td><td class="n">${has?_fmtK(on+off):'—'}</td><td class="n">${has?_fmtK(on):'—'}</td><td class="n">${has?_fmtK(off):'—'}</td><td class="n">${has?`${dn.length} · ${_fmtK(sum(dn,o=>o.g.val))}`:'—'}</td><td class="n">${r.filter(o=>o.pastOpen).length}</td><td class="n"><button class="bd-pill" style="padding:2px 8px" onclick="ivEmailOpen('${b}')">✉ Email manager</button></td></tr>`; });
+      h+=`<tr><td><b style="color:${BRANCH_COLORS[b]}">${b}</b></td><td class="n"><b>${_fmtK(d.est.total)}</b></td><td class="n">${_fmtK(sum(fi,o=>o.comp))}</td><td class="n">${has?_fmtK(on+off):'—'}</td><td class="n">${has?_fmtK(on):'—'}</td><td class="n">${has?_fmtK(off):'—'}</td><td class="n">${has?`${dn.length} · ${_fmtK(sum(dn,o=>o.g.val))}`:'—'}</td><td class="n">${r.filter(o=>o.pastOpen).length}</td><td class="n"><button class="bd-pill" style="padding:2px 8px" onclick="ivEmailOpen('${b}')">✉ Email manager</button></td></tr>`; });
     h+=`</tbody></table></div>`;
   }
   // job table
-  const F={issues:o=>!['OK','Not complete','Invoiced earlier'].includes(o.chk), all:()=>true, dni:o=>o.chk==='Done — not invoiced', bef:o=>o.chk==='Invoiced before done'||o.chk==='Progress claim', diff:o=>/Invoiced (under|over)/.test(o.chk), past:o=>o.pastOpen, notc:o=>o.chk==='Not complete'};
+  const F={issues:o=>!['OK','Not complete','Invoiced earlier'].includes(o.chk), all:()=>true, dni:o=>o.chk==='Done — not invoiced', bef:o=>o.chk==='Invoiced before done'||o.chk==='Progress claim', diff:o=>/Invoiced (under|over)/.test(o.chk), past:o=>o.pastOpen, notc:o=>o.chk==='Not complete', est:o=>(D.est.rows||[]).some(x=>x.o===o)};
   const fl=F[IV.f]?IV.f:'issues', shown=R.filter(F[fl]||F.all).sort((a,b)=>a.j.branch.localeCompare(b.j.branch)||String(a.g.finish).localeCompare(b.g.finish));
-  const lbl={issues:'Needs a look',all:'All jobs',dni:'Done — not invoiced',bef:'Invoiced before done',diff:'Invoice ≠ value',past:'Past finish, not closed',notc:'Not complete',unm:'Invoices not on schedule',wfmonly:'Jobs: WorkflowMax ⇄ schedule'};
+  const lbl={issues:'Needs a look',all:'All jobs',dni:'Done — not invoiced',bef:'Invoiced before done',diff:'Invoice ≠ value',past:'Past finish, not closed',est:'To invoice this month',notc:'Not complete',unm:'Invoices not on schedule',wfmonly:'Jobs: WorkflowMax ⇄ schedule'};
   h+=`<div class="tr-card"><div class="tr-head"><h3>Schedule jobs · ${mn}</h3><span style="margin-left:auto;display:flex;gap:6px"><button class="bd-pill" onclick="ivPrint()">🖨 Print / PDF</button>${br!=='All'?`<button class="bd-pill" onclick="ivEmailOpen('${br}')">✉ Email ${BR_CODE[br]} manager</button>`:''}<button class="bd-pill" onclick="ivExport()">⬇ Download (Excel)</button></span></div>
     <div class="iv-chips">${Object.keys(lbl).map(k=>`<button class="${k===(['unm','wfmonly'].includes(IV.f)?IV.f:fl)?'on':''}" onclick="ivSet('f','${k}')">${lbl[k]}</button>`).join('')}</div>`;
   if(IV.f==='wfmonly'){
@@ -3655,8 +3671,8 @@ function renderMgmtInv(el){
     h+=`<table class="iv-tbl"><thead><tr><th>Invoice</th><th>Date</th><th>Branch</th><th>WFM job</th><th>Client</th><th class="n">Ex GST</th><th>Status</th></tr></thead><tbody>`+
       (D.unm.sort((a,b)=>b.amt-a.amt).map(x=>`<tr><td>${_esc(x.no)}</td><td>${_fmtD(x.d)}</td><td>${_esc(x.brx)}</td><td class="site">${_esc((x.jn?x.jn+' — ':'')+(x.nm||''))}</td><td>${_esc(x.cl||'')}</td><td class="n">${_fmtK(x.amt)}</td><td>${_esc(x.st||'')}</td></tr>`).join('')||`<tr><td colspan="7" style="color:var(--c-muted)">${has?'None — every invoice matches a schedule job ✓':'Waiting for WorkflowMax'}</td></tr>`)+`</tbody></table>`;
   } else {
-    h+=`<table class="iv-tbl"><thead><tr><th>Job</th><th>Branch</th><th>Site</th><th class="n">Job value</th><th class="n">Completed ${MONTHS[md.getMonth()].slice(0,3)}</th><th>Start</th><th>Finish</th><th>Schedule</th><th class="n">Invoiced ${MONTHS[md.getMonth()].slice(0,3)}</th><th class="n">Invoiced to date</th><th>Check</th></tr></thead><tbody>`+
-      (shown.map(o=>`<tr onclick="editJob('${o.j.id}')" style="cursor:pointer"><td>${_esc(o.j.jobno||'—')}</td><td>${BR_CODE[o.j.branch]||o.j.branch}</td><td class="site">${_esc(o.j.site||'')}</td><td class="n">${_fmtK(o.g.val)}</td><td class="n">${o.comp?_fmtK(o.comp):'—'}</td><td>${_fmtD(o.g.start)}</td><td>${_fmtD(o.g.finish)}</td><td>${o.co==='invoiced'?'$ Invoiced':o.co==='finished'?'Finished':o.co==='hold'?'On hold':'Open'}${o.pastOpen?' <span class="iv-flag warn">past finish</span>':''}</td><td class="n">${has?(o.g.invM?_fmtK(o.g.invM):'—'):''}</td><td class="n">${has?(o.g.invAll?_fmtK(o.g.invAll):'—'):''}</td><td>${has||!/nvoic/.test(o.chk)?`<span class="iv-flag ${o.cls}">${o.chk}</span>`:''}</td></tr>`).join('')||`<tr><td colspan="11" style="color:var(--c-muted)">Nothing here ✓</td></tr>`)+`</tbody></table>`;
+    h+=`<table class="iv-tbl"><thead><tr><th>Job</th><th>Branch</th><th>Site</th><th class="n">Job value</th><th class="n">Completed ${MONTHS[md.getMonth()].slice(0,3)}</th><th>Start</th><th>Finish</th><th>Schedule</th><th class="n">Invoiced ${MONTHS[md.getMonth()].slice(0,3)}</th><th class="n">Invoiced to date</th>${fl==='est'?'<th class="n">To invoice</th>':''}<th>Check</th></tr></thead><tbody>`+
+      (shown.map(o=>`<tr onclick="editJob('${o.j.id}')" style="cursor:pointer"><td>${_esc(o.j.jobno||'—')}</td><td>${BR_CODE[o.j.branch]||o.j.branch}</td><td class="site">${_esc(o.j.site||'')}</td><td class="n">${_fmtK(o.g.val)}</td><td class="n">${o.comp?_fmtK(o.comp):'—'}</td><td>${_fmtD(o.g.start)}</td><td>${_fmtD(o.g.finish)}</td><td>${o.co==='invoiced'?'$ Invoiced':o.co==='finished'?'Finished':o.co==='hold'?'On hold':'Open'}${o.pastOpen?' <span class="iv-flag warn">past finish</span>':''}</td><td class="n">${has?(o.g.invM?_fmtK(o.g.invM):'—'):''}</td><td class="n">${has?(o.g.invAll?_fmtK(o.g.invAll):'—'):''}</td>${fl==='est'?`<td class="n"><b>${_fmtK((D.est.rows.find(x=>x.o===o)||{}).v||0)}</b></td>`:''}<td>${has||!/nvoic/.test(o.chk)?`<span class="iv-flag ${o.cls}">${o.chk}</span>`:''}</td></tr>`).join('')||`<tr><td colspan="11" style="color:var(--c-muted)">Nothing here ✓</td></tr>`)+`</tbody></table>`;
   }
   h+=`<div class="iv-note" style="margin-top:8px">Completed = the month's share of a done job's working days (or progress claims made that month). Done = closed off (Finished / $ Invoiced) or finish date passed. Invoiced to date = WorkflowMax invoices of the last 4 months. Click a job to open it.</div></div>`;
   el.innerHTML=h;
@@ -3716,7 +3732,7 @@ function ivPrint(){
     const comp=sum(R,o=>o.comp), invOn=sum(R,o=>o.g.invM), invOff=sum(D.unm,x=>x.amt);
     return `<section><h1><span style="color:${BRANCH_COLORS[b]}">■</span> ${esc(b)} — work vs invoicing · ${esc(mn)}</h1>
       <div class="sub">Printed ${_fmtD(dsOf(new Date()))} · values ex GST · TechClean Operations Schedule</div>
-      <table class="k"><tr><td><b>${_fmtK(comp)}</b>Completed (pro rata)</td><td><b>${A.has?_fmtK(invOn+invOff):'—'}</b>Invoiced in month</td><td><b>${A.has?_fmtK(invOff):'—'}</b>Invoiced, not on schedule</td><td><b>${R.filter(o=>o.pastOpen).length}</b>Past finish, not closed</td><td><b>${A.has?R.filter(o=>o.chk==='Done — not invoiced').length:'—'}</b>Done, not invoiced</td></tr></table>
+      <table class="k"><tr><td><b>${_fmtK(D.est.total)}</b>Est. invoicing${D.est.past?' (actual)':''}</td><td><b>${_fmtK(comp)}</b>Completed (pro rata)</td><td><b>${A.has?_fmtK(invOn+invOff):'—'}</b>Invoiced in month</td><td><b>${A.has?_fmtK(invOff):'—'}</b>Invoiced, not on schedule</td><td><b>${R.filter(o=>o.pastOpen).length}</b>Past finish, not closed</td><td><b>${A.has?R.filter(o=>o.chk==='Done — not invoiced').length:'—'}</b>Done, not invoiced</td></tr></table>
       <div class="note"><b>Action:</b> for each job below, either <b>update the finish date</b> in the schedule (still going) or <b>close it off and invoice</b> in WorkflowMax.</div>
       ${A.groups.map(g=>`<h2>${esc(g.t)} (${g.items.length})</h2><div class="a">${esc(g.a)}</div><ul>${g.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`).join('')||'<p>Nothing outstanding ✓</p>'}
       ${A.has&&D.unm.length?`<h2>Invoiced in WorkflowMax — not on the schedule (${D.unm.length})</h2><ul>${D.unm.sort((a,b)=>b.amt-a.amt).map(x=>`<li>${esc(x.no)} · ${_fmtD(x.d)} · ${esc((x.jn?x.jn+' — ':'')+(x.nm||''))} · ${_fmtK(x.amt)}</li>`).join('')}</ul>`:''}
@@ -3728,7 +3744,7 @@ function ivPrint(){
     section{page-break-after:always}section:last-child{page-break-after:auto}
     h1{font-size:16pt;margin:0 0 2px}h2{font-size:11.5pt;margin:14px 0 2px;border-bottom:1px solid #ccc;padding-bottom:2px}
     .sub{color:#666;font-size:9pt;margin-bottom:10px}.a{color:#555;font-size:9.5pt;margin:2px 0 4px}
-    table.k{width:100%;border-collapse:collapse;margin:6px 0 10px}table.k td{border:1px solid #ccc;padding:6px 8px;font-size:9pt;color:#555;width:20%}
+    table.k{width:100%;border-collapse:collapse;margin:6px 0 10px}table.k td{border:1px solid #ccc;padding:6px 8px;font-size:9pt;color:#555;width:16%}
     table.k b{display:block;font-size:14pt;color:#111}
     .note{background:#FFF8D6;border:1px solid #E8D77A;padding:7px 10px;font-size:10pt}
     ul{margin:4px 0 0 16px;padding:0}li{font-size:10pt;margin:2px 0}
@@ -3738,7 +3754,7 @@ function ivPrint(){
 function ivExport(){
   const now=new Date(), md=new Date(now.getFullYear(),now.getMonth()+IV.off,1), ym=md.getFullYear()+'-'+String(md.getMonth()+1).padStart(2,'0');
   const brs=MG.br==='All'?MG_BR:[MG.br], D=_ivData(brs,ym), q=v=>{ v=v==null?'':String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
-  let csv='Schedule jobs '+ym+'\nJob,Branch,Site,Job value,Completed in month,Start,Finish,Schedule status,Invoiced in month,Invoiced to date,Check\n';
+  let csv='Estimated invoicing '+ym+','+Math.round(D.est.total)+',invoiced so far,'+Math.round(D.est.inv)+',still to invoice,'+Math.round(D.est.toInv)+'\n\nSchedule jobs '+ym+'\nJob,Branch,Site,Job value,Completed in month,Start,Finish,Schedule status,Invoiced in month,Invoiced to date,Check\n';
   D.rows.forEach(o=>{ csv+=[o.j.jobno,o.j.branch,o.j.site,Math.round(o.g.val),Math.round(o.comp),o.g.start,o.g.finish,o.co||'open',Math.round(o.g.invM*100)/100,Math.round(o.g.invAll*100)/100,o.chk].map(q).join(',')+'\n'; });
   csv+='\nInvoices not on the schedule\nInvoice,Date,Branch,WFM job no,WFM job,Client,Ex GST,Status\n';
   const _wj=D.wfmOnly, _so=D.schedOnly;
