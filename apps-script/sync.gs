@@ -1,5 +1,5 @@
 const SHEET_ID = '1UOabcy7JwNISvqWqFVVWWfEVHfUOogYqVMRZa8ngBIc';
-const MIN_APP_VERSION = 91;   // v55: app v91+ only sends the leave/training/allocation entries it changed — older copies put back stale allocations
+const MIN_APP_VERSION = 91;   // v56: serves WFM_Invoices to Admin → Work vs invoicing · v55: app v91+ only sends the leave/training/allocation entries it changed — older copies put back stale allocations
 
 function doPost(e) {
   // One writer at a time — device syncs and the WorkflowMax import share this lock
@@ -299,6 +299,14 @@ function handleGetJobs() {
     wfmMonthly.updated = String(wmSheet.getRange(2, wmCols >= 8 ? 8 : 7).getValue() || '');
   }
 
+  // WorkflowMax invoices, last 4 months (filled by the wfm script v7+) — Admin → Work vs invoicing
+  const wfmInvoices = [];
+  const ivSheet = ss.getSheetByName('WFM_Invoices');
+  if (ivSheet && ivSheet.getLastRow() > 1) ivSheet.getRange(2, 1, ivSheet.getLastRow() - 1, 10).getValues().forEach(function(r) {
+    const d = r[1] instanceof Date ? Utilities.formatDate(r[1], 'Pacific/Auckland', 'yyyy-MM-dd') : String(r[1] || '').slice(0, 10);
+    if (r[0] && d) wfmInvoices.push({no: String(r[0]), d: d, u: String(r[2] || ''), jn: String(r[3] || ''), nm: String(r[4] || ''), cl: String(r[5] || ''), amt: Number(r[6]) || 0, st: String(r[7] || ''), ty: String(r[8] || ''), br: String(r[9] || '')});
+  });
+
   // WorkflowMax timesheet names that didn't match anyone on the roster (Setup → WorkflowMax staff names)
   const wfmUnmatched = [];
   const unSheet = ss.getSheetByName('WFM_Unmatched');
@@ -317,7 +325,7 @@ function handleGetJobs() {
     });
   }
 
-  return json({ok:true, jobs:allJobs, staff:staff, leave:leave, training:training, wfmMonthly:wfmMonthly, wfmUnmatched:wfmUnmatched, hsStatus:hsStatus, count:allJobs.length});
+  return json({ok:true, jobs:allJobs, staff:staff, leave:leave, training:training, wfmMonthly:wfmMonthly, wfmInvoices:wfmInvoices, wfmUnmatched:wfmUnmatched, hsStatus:hsStatus, count:allJobs.length});
 }
 
 function json(obj) {

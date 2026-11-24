@@ -1,5 +1,7 @@
 /**
- * TechClean — WorkflowMax → Schedule import  (v6, 25 Nov 2026 — progress claims from invoices)
+ * TechClean — WorkflowMax → Schedule import  (v7, 25 Nov 2026 — invoice list for Admin → Work vs invoicing)
+ *   v7: every approved/paid invoice of the last 4 months is listed in the WFM_Invoices sheet (one row per job),
+ *       which the schedule's Admin → Work vs invoicing report reads. Read-only, as always.
  *   v6: each job's approved/paid invoices (ex GST, by invoice month) are copied into the schedule as
  *       progress claims, so staged jobs like 320 Remuera show claimed-to-date and what is left to claim.
  * ─────────────────────────────────────────────────────────────────────────────
@@ -102,6 +104,8 @@ const WFM = {
   // Job value = the job's ACCEPTED (current) quote, amount EXCLUDING GST — e.g. J015688 → Q017482 $9,708 ex GST
   LOOKBACK_DAYS: 1,
   MONTHLY_SHEET: 'WFM_Monthly',  // per-branch, per-month invoiced $ and timesheet hours
+  INVOICE_SHEET: 'WFM_Invoices', // every approved/paid invoice, last 4 months — Admin → Work vs invoicing
+  INVOICE_MONTHS: 4,
   MONTHLY_REFRESH_MONTHS: 2,     // daily refresh re-totals this month + last month
   FILL_LOOKBACK_DAYS: 21,        // timesheet crew fill-in looks back this many days (to yesterday)              // re-check jobs updated since (last run − this many days)
   BRANCHES: ['Auckland', 'Wellington', 'Christchurch'],
@@ -283,7 +287,8 @@ function wfmClaimsMap_() {
   const cache = CacheService.getScriptCache(), hit = cache.get('wfm_claims');
   if (hit) { try { return JSON.parse(hit); } catch (e) {} }
   const cf = Utilities.formatDate(new Date(Date.now() - 548 * 86400000), WFM.TZ, 'yyyy-MM-dd');
-  const map = {}, seen = {};
+  const map = {}, seen = {}, rows = [];
+  const keepFrom = (() => { const n = new Date(); return Utilities.formatDate(new Date(n.getFullYear(), n.getMonth() - (WFM.INVOICE_MONTHS - 1), 1), WFM.TZ, 'yyyy-MM-dd'); })();
   const take = iv => {
     const id = iv.uuid || iv.invoiceNumber || iv.id; if (id && seen[id]) return; if (id) seen[id] = 1;
     const st = String((iv.status && (iv.status.name || iv.status)) || '').toLowerCase();
@@ -293,6 +298,10 @@ function wfmClaimsMap_() {
     const jobs = (iv.jobs || (iv.job ? [iv.job] : [])).filter(j => j && j.uuid); if (!jobs.length) return;
     const ym = d.slice(0, 7);
     jobs.forEach(j => { const m = map[j.uuid] || (map[j.uuid] = {}); m[ym] = Math.round(((m[ym] || 0) + amt / jobs.length) * 100) / 100; });
+    if (d >= keepFrom) jobs.forEach(j => rows.push([
+      String(iv.invoiceNumber || iv.number || iv.id || ''), d, j.uuid, String(j.jobNumber || j.number || ''), String(j.name || ''),
+      String((iv.client && (iv.client.name || iv.client)) || iv.clientName || ''), Math.round(amt / jobs.length * 100) / 100,
+      st.indexOf('paid') >= 0 ? 'Paid' : 'Approved', String(iv.type || iv.billingType || '')]));
   };
   ['approved', 'paid'].forEach(stat => {
     for (let page = 1; page <= 50; page++) {
@@ -302,8 +311,24 @@ function wfmClaimsMap_() {
     }
   });
   try { cache.put('wfm_claims', JSON.stringify(map), 1800); } catch (e) { /* too big to cache — fine */ }
+  try { wfmWriteInvoices_(rows); } catch (e) { wfmLog_('Invoice list: ' + e.message); }
   return map;
 }
+/** Writes the WFM_Invoices sheet: Invoice | Date | Job UUID | Job no | Job name | Client | Ex GST | Status | Type | Branch | Updated.
+ *  Branch comes from the schedule (linked jobs) or the WorkflowMax job's Category. Rows sorted newest first. */
+const WFM_INVOICE_HEADERS = ['Invoice', 'Date', 'Job UUID', 'Job no', 'Job name', 'Client', 'Ex GST', 'Status', 'Type', 'Branch', 'Updated'];
+function wfmWriteInvoices_(rows) {
+  if (!rows || !rows.length) return;
+  const branchOf = wfmJobBranchMap_(), now = new Date();
+  const out = rows.map(r => r.concat([branchOf(r[2]) || 'Unassigned', now])).sort((a, b) => String(b[1]).localeCompare(String(a[1])) || String(b[0]).localeCompare(String(a[0])));
+  const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName(WFM.INVOICE_SHEET) || SpreadsheetApp.openById(SHEET_ID).insertSheet(WFM.INVOICE_SHEET);
+  sh.clearContents();
+  sh.getRange(1, 1, 1, WFM_INVOICE_HEADERS.length).setValues([WFM_INVOICE_HEADERS]).setFontWeight('bold');
+  sh.getRange(2, 2, out.length, 1).setNumberFormat('@');            // keep dates as yyyy-MM-dd text
+  sh.getRange(2, 1, out.length, WFM_INVOICE_HEADERS.length).setValues(out);
+}
+/** Run by hand to (re)build the invoice list now. */
+function wfmInvoicesNow() { CacheService.getScriptCache().remove('wfm_claims'); const m = wfmClaimsMap_(); Logger.log('Jobs with invoices: ' + Object.keys(m).length); }
 /** Copies a job's claims onto its schedule record (ck.wfm.claims). Returns true if they changed. */
 function wfmSetClaims_(w, claims) {
   const a = JSON.stringify(w.claims || {}), b = JSON.stringify(claims || {});
