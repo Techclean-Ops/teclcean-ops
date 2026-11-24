@@ -1,5 +1,7 @@
 /**
- * TechClean — WorkflowMax → Schedule import  (v5, 23 Nov 2026 — safeguards + duplicate check)
+ * TechClean — WorkflowMax → Schedule import  (v6, 25 Nov 2026 — progress claims from invoices)
+ *   v6: each job's approved/paid invoices (ex GST, by invoice month) are copied into the schedule as
+ *       progress claims, so staged jobs like 320 Remuera show claimed-to-date and what is left to claim.
  * ─────────────────────────────────────────────────────────────────────────────
  * Add this as a SECOND file in the same Apps Script project as the schedule sync
  * (Extensions → Apps Script → ＋ → Script → name it "wfm").
@@ -274,6 +276,41 @@ function wfmJobValue_(j) {
   try { cache.put(key, JSON.stringify(out), 21600); } catch (e) {}
   return out;
 }
+/** Progress claims: every approved or paid invoice (ex GST) per job, by invoice month 'yyyy-MM'.
+ *  One pull per run (invoices created in the last 18 months), cached 30 min. Read-only.
+ *  Returns { jobUUID: { 'yyyy-MM': amount } }. A multi-job invoice is split evenly across its jobs. */
+function wfmClaimsMap_() {
+  const cache = CacheService.getScriptCache(), hit = cache.get('wfm_claims');
+  if (hit) { try { return JSON.parse(hit); } catch (e) {} }
+  const cf = Utilities.formatDate(new Date(Date.now() - 548 * 86400000), WFM.TZ, 'yyyy-MM-dd');
+  const map = {}, seen = {};
+  const take = iv => {
+    const id = iv.uuid || iv.invoiceNumber || iv.id; if (id && seen[id]) return; if (id) seen[id] = 1;
+    const st = String((iv.status && (iv.status.name || iv.status)) || '').toLowerCase();
+    if (st && !/approv|paid/.test(st)) return;                      // drafts and cancelled invoices don't count
+    const d = String(iv.date || '').slice(0, 10); if (!d) return;
+    const amt = Number(iv.amountExTax != null ? iv.amountExTax : iv.amountExcludingTax) || 0; if (!amt) return;
+    const jobs = (iv.jobs || (iv.job ? [iv.job] : [])).filter(j => j && j.uuid); if (!jobs.length) return;
+    const ym = d.slice(0, 7);
+    jobs.forEach(j => { const m = map[j.uuid] || (map[j.uuid] = {}); m[ym] = Math.round(((m[ym] || 0) + amt / jobs.length) * 100) / 100; });
+  };
+  ['approved', 'paid'].forEach(stat => {
+    for (let page = 1; page <= 50; page++) {
+      let list; try { list = wfmList_(wfmGet_('invoices?status=' + stat + '&includes=jobs&createdFrom=' + cf + '&pagesize=1000&page=' + page)); }
+      catch (e) { wfmLog_('Claims (' + stat + ' invoices): ' + e.message); break; }
+      list.forEach(take); if (list.length < 1000) break;
+    }
+  });
+  try { cache.put('wfm_claims', JSON.stringify(map), 1800); } catch (e) { /* too big to cache — fine */ }
+  return map;
+}
+/** Copies a job's claims onto its schedule record (ck.wfm.claims). Returns true if they changed. */
+function wfmSetClaims_(w, claims) {
+  const a = JSON.stringify(w.claims || {}), b = JSON.stringify(claims || {});
+  if (a === b) return false;
+  if (claims && Object.keys(claims).length) w.claims = claims; else delete w.claims;
+  return true;
+}
 function wfmCategory_(job) {
   const c = job.category;
   if (c && typeof c === 'object') return String(c.name || '').trim();
@@ -355,6 +392,7 @@ function wfmTest() { const r = wfmRun_(true); Logger.log(JSON.stringify(r, null,
 function wfmAudit() {
   const statuses = wfmStatusMap_();
   const pull = q => { const out = []; for (let page = 1; page <= 50; page++) { const l = wfmList_(wfmGet_(q + '&pageSize=100&page=' + page)); out.push.apply(out, l); if (l.length < 100) break; } return out; };
+  const claimsMap = wfmClaimsMap_();
   const open = pull('jobs?status=standard&includes=custom-fields&sort=number&order=asc');
   const since = Utilities.formatDate(new Date(Date.now() - 60 * 86400000), WFM.TZ, 'yyyy-MM-dd');
   const done = pull('jobs?status=completed&updatedSince=' + since + '&includes=custom-fields&sort=number&order=asc');
@@ -415,7 +453,9 @@ function wfmAudit() {
     rows.push([no, status, wfmCategory_(j), br || '', site, fmt(start), fmt(finish), Math.round(value), cls,
                r ? f.branch : '', r ? String(r[1] || '') : '', r ? String(r[3] || '') : '', r ? fmt(String(r[8] || '')) : '', r ? fmt(String(r[9] || '')) : '',
                r ? Math.round(Number(r[4]) || 0) : '', r ? (sDel ? 'deleted' : sDone ? 'closed' : ck.closeout || 'open') : '', r ? String(r[10] || '') : '',
-               action, issues.join(' · '), jv.source + (jv.quote ? ' ' + jv.quote : '')]);
+               action, issues.join(' · '), jv.source + (jv.quote ? ' ' + jv.quote : ''),
+               (() => { const c = claimsMap[j.uuid] || {}; const t = Object.keys(c).reduce((a, k) => a + c[k], 0); return t ? Math.round(t) : ''; })(),
+               (() => { const c = claimsMap[j.uuid] || {}; return Object.keys(c).sort().map(k => k + ' $' + Math.round(c[k]).toLocaleString()).join(' · '); })()]);
   });
 
   // schedule jobs WorkflowMax doesn't have open
@@ -436,7 +476,7 @@ function wfmAudit() {
   const out = SpreadsheetApp.create('WorkflowMax check ' + Utilities.formatDate(new Date(), WFM.TZ, 'yyyy-MM-dd HHmm'));
   const head = (sh, h) => { sh.getRange(1, 1, 1, h.length).setValues([h]).setFontWeight('bold').setBackground('#2B2D2F').setFontColor('#A8C800'); sh.setFrozenRows(1); };
   const s1 = out.getSheets()[0]; s1.setName('WorkflowMax jobs');
-  const h1 = ['WFM job no', 'WFM status', 'Category', 'Branch', 'Site', 'WFM start', 'WFM due', 'WFM value', 'Class', 'Sched branch', 'Sched job no', 'Sched site', 'Sched start', 'Sched finish', 'Sched value', 'Sched state', 'Crew', 'What the import would do', 'Problems to check', 'Value from'];
+  const h1 = ['WFM job no', 'WFM status', 'Category', 'Branch', 'Site', 'WFM start', 'WFM due', 'WFM value', 'Class', 'Sched branch', 'Sched job no', 'Sched site', 'Sched start', 'Sched finish', 'Sched value', 'Sched state', 'Crew', 'What the import would do', 'Problems to check', 'Value from', 'Claimed to date (ex GST)', 'Claims by month'];
   head(s1, h1); if (rows.length) s1.getRange(2, 1, rows.length, h1.length).setValues(rows);
   const s2 = out.insertSheet('Schedule only');
   const h2 = ['Branch', 'Job no', 'Site', 'Start', 'Finish', 'Value', 'Crew', 'Why it is listed'];
@@ -468,6 +508,7 @@ function wfmRun_(dryRun) {
     const since = last ? new Date(Number(last) - WFM.LOOKBACK_DAYS * 86400000) : new Date(Date.now() - 30 * 86400000);
     const sinceStr = Utilities.formatDate(since, WFM.TZ, 'yyyy-MM-dd');
     const statuses = wfmStatusMap_();
+    const claimsMap = wfmClaimsMap_();
 
     // pull changed jobs (standard + completed types), page through
     const jobs = [];
@@ -531,11 +572,16 @@ function wfmRun_(dryRun) {
       if (closed && !active) {
         if (prev && ck.closeout !== 'invoiced') {
           ck.closeout = 'invoiced'; ck.closedAt = now; row[13] = 'Y';
+          wfmSetClaims_(w, claimsMap[j.uuid]);
           ck.wfm = Object.assign(w, { uuid: j.uuid, status: status, syncedAt: now });
           row[17] = JSON.stringify(ck); row[20] = now;
           if (found.branch !== branch) branch = found.branch;
           summary.closed.push(jobNo);
           if (!dryRun) book[found.branch].rows[found.idx] = row;
+        }
+        else if (prev && wfmSetClaims_(w, claimsMap[j.uuid])) {   // a late invoice on a job already closed
+          ck.wfm = Object.assign(w, { syncedAt: now }); row[17] = JSON.stringify(ck); row[20] = now;
+          summary.updated.push(jobNo + ' (claims)'); if (!dryRun) book[found.branch].rows[found.idx] = row;
         }
         continue;
       }
@@ -570,6 +616,7 @@ function wfmRun_(dryRun) {
       } else if (w.flag === 'wfmdiff' && start === oldStart && finish === oldFinish) { delete w.flag; delete w.wfmStart; delete w.wfmFinish; changes.push('dates agree'); }
       if (wfmMoved && start) { w.start = start; w.finish = finish; if (!changes.length) changes.push('WFM dates noted'); }
       set(16, wfmName_('client', j.clientUUID), 'client');
+      if (wfmSetClaims_(w, claimsMap[j.uuid])) changes.push('progress claims');
 
       // scope / manager: fill from WFM unless someone changed them in the schedule
       const desc = wfmScope_(j.description);
@@ -605,6 +652,17 @@ function wfmRun_(dryRun) {
         else { book[branch].rows.push(row); wfmIndex_(book, branch); }
       }
     }
+
+    // ── claims sweep: an invoice doesn't always touch the job's "updated" date, so check every linked job
+    const doneUuid = {}; jobs.forEach(j => { doneUuid[j.uuid] = 1; });
+    WFM.BRANCHES.forEach(b => (book[b] ? book[b].rows : []).forEach((r, i) => {
+      let ck; try { ck = JSON.parse(r[17] || '{}'); } catch (e) { return; }
+      const w = ck.wfm; if (!w || !w.uuid || doneUuid[w.uuid] || String(r[14]) === 'Y') return;
+      if (!wfmSetClaims_(w, claimsMap[w.uuid])) return;
+      const row = r.slice(); row[17] = JSON.stringify(ck); row[20] = now;
+      summary.updated.push(String(r[1] || w.uuid) + ' (claims)');
+      if (!dryRun) book[b].rows[i] = row;
+    }));
 
     // ── stop check: never write a run that looks like it would wipe or mass-close the schedule
     const liveAfter = wfmLiveCounts_(book);
