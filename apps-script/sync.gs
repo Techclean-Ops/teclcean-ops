@@ -1,5 +1,5 @@
 const SHEET_ID = '1UOabcy7JwNISvqWqFVVWWfEVHfUOogYqVMRZa8ngBIc';
-const MIN_APP_VERSION = 91;   // v56: serves WFM_Invoices to Admin → Work vs invoicing · v55: app v91+ only sends the leave/training/allocation entries it changed — older copies put back stale allocations
+const MIN_APP_VERSION = 91;   // v56: serves WFM_Invoices + WFM_Jobs to Admin → Work vs invoicing · v55: app v91+ only sends the leave/training/allocation entries it changed — older copies put back stale allocations
 
 function doPost(e) {
   // One writer at a time — device syncs and the WorkflowMax import share this lock
@@ -307,6 +307,14 @@ function handleGetJobs() {
     if (r[0] && d) wfmInvoices.push({no: String(r[0]), d: d, u: String(r[2] || ''), jn: String(r[3] || ''), nm: String(r[4] || ''), cl: String(r[5] || ''), amt: Number(r[6]) || 0, st: String(r[7] || ''), ty: String(r[8] || ''), br: String(r[9] || '')});
   });
 
+  // Open WorkflowMax jobs (wfm script v7+, every 6 h) — check for jobs missing from the schedule
+  const wfmJobs = [];
+  const wjSheet = ss.getSheetByName('WFM_Jobs');
+  if (wjSheet && wjSheet.getLastRow() > 1) wjSheet.getRange(2, 1, wjSheet.getLastRow() - 1, 10).getValues().forEach(function(r) {
+    const f = v => v instanceof Date ? Utilities.formatDate(v, 'Pacific/Auckland', 'yyyy-MM-dd') : String(v || '').slice(0, 10);
+    if (r[0]) wfmJobs.push({no: String(r[0]), u: String(r[1] || ''), nm: String(r[2] || ''), st: String(r[3] || ''), br: String(r[4] || ''), s: f(r[6]), d: f(r[7]), cl: String(r[8] || ''), at: r[9] instanceof Date ? r[9].toISOString() : String(r[9] || '')});
+  });
+
   // WorkflowMax timesheet names that didn't match anyone on the roster (Setup → WorkflowMax staff names)
   const wfmUnmatched = [];
   const unSheet = ss.getSheetByName('WFM_Unmatched');
@@ -325,7 +333,7 @@ function handleGetJobs() {
     });
   }
 
-  return json({ok:true, jobs:allJobs, staff:staff, leave:leave, training:training, wfmMonthly:wfmMonthly, wfmInvoices:wfmInvoices, wfmUnmatched:wfmUnmatched, hsStatus:hsStatus, count:allJobs.length});
+  return json({ok:true, jobs:allJobs, staff:staff, leave:leave, training:training, wfmMonthly:wfmMonthly, wfmInvoices:wfmInvoices, wfmJobs:wfmJobs, wfmUnmatched:wfmUnmatched, hsStatus:hsStatus, count:allJobs.length});
 }
 
 function json(obj) {

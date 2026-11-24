@@ -2,6 +2,8 @@
  * TechClean — WorkflowMax → Schedule import  (v7, 25 Nov 2026 — invoice list for Admin → Work vs invoicing)
  *   v7: every approved/paid invoice of the last 4 months is listed in the WFM_Invoices sheet (one row per job),
  *       which the schedule's Admin → Work vs invoicing report reads. Read-only, as always.
+ *       Open WorkflowMax jobs are listed in WFM_Jobs every 6 h, so the report can show jobs in WorkflowMax that
+ *       aren't on the schedule (and the reverse).
  *   v6: each job's approved/paid invoices (ex GST, by invoice month) are copied into the schedule as
  *       progress claims, so staged jobs like 320 Remuera show claimed-to-date and what is left to claim.
  * ─────────────────────────────────────────────────────────────────────────────
@@ -106,6 +108,7 @@ const WFM = {
   MONTHLY_SHEET: 'WFM_Monthly',  // per-branch, per-month invoiced $ and timesheet hours
   INVOICE_SHEET: 'WFM_Invoices', // every approved/paid invoice, last 4 months — Admin → Work vs invoicing
   INVOICE_MONTHS: 4,
+  JOBS_SHEET: 'WFM_Jobs',        // open WorkflowMax jobs (refreshed every 6 h) — check for jobs missing from the schedule
   MONTHLY_REFRESH_MONTHS: 2,     // daily refresh re-totals this month + last month
   FILL_LOOKBACK_DAYS: 21,        // timesheet crew fill-in looks back this many days (to yesterday)              // re-check jobs updated since (last run − this many days)
   BRANCHES: ['Auckland', 'Wellington', 'Christchurch'],
@@ -400,7 +403,35 @@ function wfmClass_(v) {
 // Import
 // ═════════════════════════════════════════════════════════════════════════════
 /** Main entry — run by the 5-minute trigger. */
-function wfmImport() { return wfmRun_(false); }
+function wfmImport() {
+  const r = wfmRun_(false);
+  try { const pr = wfmProps_(), last = Number(pr.getProperty('WFM_JOBS_LIST') || 0);
+        if (Date.now() - last > 6 * 3600000) { wfmJobsList(); pr.setProperty('WFM_JOBS_LIST', String(Date.now())); } }
+  catch (e) { wfmLog_('Jobs list: ' + e.message); }
+  return r;
+}
+/** WFM_Jobs sheet: every open WorkflowMax job (standard jobs) — Job no | UUID | Name | Status | Branch | Category | Start | Due | Client | Updated.
+ *  Read-only. Run by hand any time; the import refreshes it every 6 hours. */
+function wfmJobsList() {
+  const statuses = wfmStatusMap_(), out = [], now = new Date();
+  for (let page = 1; page <= 50; page++) {
+    const l = wfmList_(wfmGet_('jobs?status=standard&includes=custom-fields&sort=number&order=asc&pageSize=100&page=' + page));
+    l.forEach(j => {
+      const no = String(j.jobNumber || '').trim(); if (!no) return;
+      const st = statuses[j.jobStatusUUID] || '';
+      if (wfmIn_(st, WFM.CANCELLED_STATUSES)) return;
+      out.push([no, j.uuid, wfmCF_(j, WFM.CF_ADDRESS) || j.name || '', st, wfmBranch_(j) || 'Unassigned', wfmCategory_(j),
+                wfmDate_(j.startDate) || '', wfmDate_(j.dueDate) || '', wfmName_('client', j.clientUUID) || '', now]);
+    });
+    if (l.length < 100) break;
+  }
+  const ss = SpreadsheetApp.openById(SHEET_ID), sh = ss.getSheetByName(WFM.JOBS_SHEET) || ss.insertSheet(WFM.JOBS_SHEET);
+  sh.clearContents();
+  sh.getRange(1, 1, 1, 10).setValues([['Job no', 'UUID', 'Name / site', 'Status', 'Branch', 'Category', 'Start', 'Due', 'Client', 'Updated']]).setFontWeight('bold');
+  if (out.length) { sh.getRange(2, 7, out.length, 2).setNumberFormat('@'); sh.getRange(2, 1, out.length, 10).setValues(out); }
+  wfmLog_('Jobs list: ' + out.length + ' open WorkflowMax jobs');
+  return out.length;
+}
 /** Dry run — logs what would change, writes nothing. */
 function wfmTest() { const r = wfmRun_(true); Logger.log(JSON.stringify(r, null, 2)); return r; }
 
