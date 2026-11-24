@@ -1018,6 +1018,18 @@ body.tv #version-tag{display:none}
 .mg-views{display:inline-flex;border:1px solid var(--c-border);border-radius:8px;overflow:hidden;margin-bottom:14px}
 .mg-views button{background:none;border:none;color:var(--c-muted);font-size:12px;padding:7px 14px;cursor:pointer;font-family:inherit}
 .mg-views button.on{background:rgba(255,255,255,.1);color:var(--c-white)}
+.iv-tbl{width:100%;border-collapse:collapse;font-size:11.5px;margin-top:6px}
+.iv-tbl th,.iv-tbl td{padding:5px 6px;border-top:1px solid var(--c-border);text-align:left;white-space:nowrap}
+.iv-tbl thead th{color:var(--c-muted);font-weight:600;border-top:none;font-family:var(--font-mono);font-size:10px;text-transform:uppercase;letter-spacing:.04em;cursor:pointer}
+.iv-tbl td.n,.iv-tbl th.n{text-align:right;font-family:var(--font-mono)}
+.iv-tbl td.site{white-space:normal;min-width:180px}
+.iv-tbl tr:hover td{background:rgba(255,255,255,.03)}
+.iv-flag{display:inline-block;padding:1px 7px;border-radius:9px;font-size:10.5px;font-weight:600}
+.iv-flag.bad{background:rgba(239,68,68,.18);color:#F87171}.iv-flag.warn{background:rgba(253,216,53,.16);color:#FDD835}
+.iv-flag.ok{background:rgba(168,200,0,.14);color:#A8C800}.iv-flag.mut{background:rgba(255,255,255,.07);color:var(--c-muted)}
+.iv-chips{display:flex;gap:6px;flex-wrap:wrap;margin:6px 0 2px}.iv-chips button{background:none;border:1px solid var(--c-border);color:var(--c-muted);border-radius:14px;padding:3px 10px;font-size:11px;cursor:pointer;font-family:inherit}
+.iv-chips button.on{background:rgba(255,255,255,.1);color:var(--c-white);border-color:rgba(255,255,255,.3)}
+.iv-note{font-size:11px;color:var(--c-muted);margin:4px 0 10px}
 .mg-hs-tog{font-size:12px;color:var(--c-text);display:flex;align-items:center;gap:6px;margin-right:auto;margin-left:12px}
 .mg-hs-frame{width:100%;height:calc(100vh - 260px);min-height:520px;border:1px solid var(--c-border);border-radius:8px;background:#fff;margin-top:8px}
 #rs-menu .rm-more{width:100%;text-align:left;font-size:11px;color:#8AB4F8;background:none;border:none;border-top:1px solid rgba(255,255,255,.08);padding:7px 8px;cursor:pointer;font-family:inherit}
@@ -1485,6 +1497,12 @@ body.light .mg-heat td{border:1px solid var(--c-bg,#DEDFE1)}
 body.light .hc-hs-sum{color:#1A1A1A}
 body.light .hc-hs-none{color:#5F6265}
 body.light .mg-views button.on{background:rgba(0,0,0,0.09)}
+body.light .iv-tbl tr:hover td{background:rgba(0,0,0,0.027)}
+body.light .iv-flag.bad{background:rgba(239,68,68,0.18);color:#9C0808}
+body.light .iv-flag.warn{background:rgba(253,216,53,0.16);color:#A28402}
+body.light .iv-flag.ok{background:rgba(168,200,0,0.14);color:#89A300}
+body.light .iv-flag.mut{background:rgba(0,0,0,0.063)}
+body.light .iv-chips button.on{background:rgba(0,0,0,0.09);border-color:rgba(0,0,0,0.39)}
 body.light .mg-hs-frame{background:#FFFFFF}
 body.light #rs-menu .rm-more{color:#09409A;border-top:1px solid rgba(0,0,0,0.104)}
 body.light #rs-menu .rm-more:hover{background:rgba(0,0,0,0.045)}
@@ -1559,6 +1577,9 @@ body.light #theme-btn{background:#FFFFFF}
 body.light #version-tag{color:#4A5560!important;background:#E4E6E9!important}
 
 </style><!--/light-css-->
+
+
+
 
 
 
@@ -2637,7 +2658,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const AW = '<svg class="aw-ico" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(-1 0)"><path d="M5.5 12.6V8.4a4.5 4.5 0 0 1 9 0v4.2"/><rect x="6.6" y="6.9" width="6.8" height="2.2" rx="1.1" fill="currentColor" stroke="none"/><circle cx="10" cy="11.7" r="2.15"/><circle cx="10" cy="11.7" r=".8" fill="currentColor" stroke="none"/><rect x="3.1" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(-28 4.6 12.75)"/><rect x="13.9" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(28 15.4 12.75)"/><path d="M8.1 13.7L10 15.6L11.9 13.7"/><path d="M6.9 15.2C4.3 15.9 3 17.7 3 20.2V22.3M13.1 15.2C15.7 15.9 17 17.7 17 20.2V22.3M10 15.6V22.3"/></g><path d="M13.6 19.4L21.2 2.6"/><path fill-rule="evenodd" fill="currentColor" stroke="none" d="M20.4 5.3c.9.8 2.8 2 3 4 .2 1.8-1 3-2.8 3s-3.2-1.2-3.1-3c.1-2 1.9-3.2 2.9-4zM19.7 8.7a.55.55 0 1 0 0 .01zM21.9 9.6a.55.55 0 1 0 0 .01zM20.6 11.1a.5.5 0 1 0 0 .01z"/><path d="M20.4 5.4l-1.4-.6M20.4 5.4l.8-1.3"/></svg>';   // away / out-of-town: suited worker with a bindle
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v91-202611251040';
+const APP_VERSION = 'v92-202611252100';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -2694,6 +2715,8 @@ function load(){
   }
   try{ S.wfmMonthly=JSON.parse(localStorage.getItem('aops_wfm_monthly')||'null'); }catch(e){ S.wfmMonthly=null; }
   try{ S.wfmUnmatched=JSON.parse(localStorage.getItem('aops_wfm_unmatched')||'[]'); }catch(e){ S.wfmUnmatched=[]; }
+  try{ S.wfmInvoices=JSON.parse(localStorage.getItem('aops_wfm_invoices')||'[]'); }catch(e){ S.wfmInvoices=[]; }
+  try{ S.wfmJobs=JSON.parse(localStorage.getItem('aops_wfm_jobs')||'[]'); }catch(e){ S.wfmJobs=[]; }
   try{ S.hsStatus=JSON.parse(localStorage.getItem('aops_hs_status')||'{}'); }catch(e){ S.hsStatus={}; }
   applyClientMap();   // restore client field that GAS doesn't store
   applyProjectMap();  // restore intentionally-cleared project values
@@ -3510,7 +3533,210 @@ function mgSet(k,v){
 }
 function hsTestToggle(on){ try{ localStorage.setItem('aops_hs_test',on?'1':'0'); }catch(e){} renderMgmt(); toast(on?'H&S link switched on for this device (testing)':'H&S link switched off'); }
 function mgViewBar(){
-  return `<div class="mg-views"><button class="${MG.view==='setup'?'on':''}" onclick="mgSet('view','setup')">⚙ Setup</button><button class="${MG.view==='overview'?'on':''}" onclick="mgSet('view','overview')">📈 Overview</button><button class="${MG.view==='opt'?'on':''}" onclick="mgSet('view','opt')">📊 Staff optimisation</button><button class="${MG.view==='hs'?'on':''}" onclick="mgSet('view','hs')">🦺 H&amp;S <span class="hc-hs-tag">testing</span></button></div>`;
+  return `<div class="mg-views"><button class="${MG.view==='setup'?'on':''}" onclick="mgSet('view','setup')">⚙ Setup</button><button class="${MG.view==='overview'?'on':''}" onclick="mgSet('view','overview')">📈 Overview</button><button class="${MG.view==='opt'?'on':''}" onclick="mgSet('view','opt')">📊 Staff optimisation</button><button class="${MG.view==='inv'?'on':''}" onclick="mgSet('view','inv')">🧾 Work vs invoicing</button><button class="${MG.view==='hs'?'on':''}" onclick="mgSet('view','hs')">🦺 H&amp;S <span class="hc-hs-tag">testing</span></button></div>`;
+}
+// ── Admin → Work vs invoicing: schedule jobs (finished / not complete) against WorkflowMax invoices for a month.
+// Invoices come from the WFM_Invoices sheet (WorkflowMax import v7+), matched to schedule jobs by WorkflowMax job
+// UUID, then job number. Values ex GST. Read-only — nothing here changes the schedule.
+let IV={off:0, f:'issues'};
+function ivSet(k,v){ if(k==='off') IV.off+=v; else IV[k]=v; renderMgmt(); }
+function _ivData(brs,ym){
+  const today=dsOf(new Date()), mS=ym+'-01', mE=dsOf(new Date(+ym.slice(0,4),+ym.slice(5,7),0));
+  const invs=(S.wfmInvoices||[]).filter(x=>x&&x.d);
+  // schedule jobs, one per job number (split / copied rows folded together)
+  const byKey={}, byU={}, byNo={};
+  S.jobs.filter(j=>!j._del&&brs.includes(j.branch)).forEach(j=>{
+    const k=String(j.jobno||'').trim().toUpperCase()||('#'+j.id); const g=byKey[k];
+    if(!g){ byKey[k]={k,j,val:Number(j.val)||0,start:j.start||'',finish:j.finish||'',rows:[j]}; }
+    else { g.rows.push(j); if(!g.val&&Number(j.val)) { g.val=Number(j.val); g.j=j; } if(j.start&&(!g.start||j.start<g.start)) g.start=j.start; if(j.finish&&j.finish>g.finish) g.finish=j.finish; }
+  });
+  Object.values(byKey).forEach(g=>{ g.rows.forEach(j=>{ const u=j.checklist&&j.checklist.wfm&&j.checklist.wfm.uuid; if(u) byU[u]=g; }); if(!g.k.startsWith('#')) byNo[g.k]=g; });
+  const allG={}; S.jobs.filter(j=>!j._del).forEach(j=>{ const k=String(j.jobno||'').trim().toUpperCase(); const u=j.checklist&&j.checklist.wfm&&j.checklist.wfm.uuid; if(k) allG[k]=j.branch; if(u) allG['u:'+u]=j.branch; });
+  const unm=[];
+  Object.values(byKey).forEach(g=>{ g.invM=0; g.invAll=0; g.inv=[]; });
+  invs.forEach(x=>{
+    const g=(x.u&&byU[x.u])||(x.jn&&byNo[String(x.jn).toUpperCase()]);
+    if(g){ g.invAll+=x.amt; if(x.d.slice(0,7)===ym){ g.invM+=x.amt; g.inv.push(x); } return; }
+    if(x.d.slice(0,7)!==ym) return;
+    const br=allG['u:'+x.u]||allG[String(x.jn||'').toUpperCase()]||x.br||'Unassigned';
+    if(brs.includes(br)||(brs.length===3&&!MG_BR.includes(br))) unm.push(Object.assign({brx:br},x));
+  });
+  const rows=[];
+  Object.values(byKey).forEach(g=>{
+    const j=g.j, co=closeoutOf(j), inMonth=g.start&&g.finish&&g.start<=mE&&g.finish>=mS;
+    if(!inMonth&&!g.invM) return;
+    const hold=co==='hold', closed=co==='finished'||co==='invoiced', done=!hold&&(closed||(g.finish&&g.finish<today));
+    const tol=Math.max(50,g.val*0.05);
+    let chk, cls;
+    if(hold){ chk='On hold'; cls='mut'; }
+    else if(done&&!g.invAll&&co!=='invoiced'){ chk='Done — not invoiced'; cls='bad'; }
+    else if(done&&!g.invM){ chk='Invoiced earlier'; cls='mut'; }
+    else if(!done&&g.invM){ chk=claimedTotal(j)>0||g.invAll<g.val-tol?'Progress claim':'Invoiced before done'; cls='warn'; }
+    else if(done&&g.invAll&&Math.abs(g.invAll-g.val)>tol){ chk=g.invAll<g.val?'Invoiced under value':'Invoiced over value'; cls='warn'; }
+    else if(!done){ chk='Not complete'; cls='mut'; }
+    else { chk='OK'; cls='ok'; }
+    const pastOpen=!hold&&!closed&&g.finish&&g.finish<today;
+    // completed value this month — same rule as the board's Completed tile: progress claims made this month,
+    // otherwise the job's share of its working days that fall in the month (only once it's done)
+    let comp=0;
+    if(claimedTotal(j)>0) comp=Number(jobClaims(j)[ym])||0;
+    else if(done&&inMonth){ let all=0,inM=0; for(let d=toD(g.start); d<=toD(g.finish); d=addD(d,1)){ const x=dsOf(d); if(!jobActiveOnDay(j,x)) continue; all++; if(x.slice(0,7)===ym) inM++; } comp=g.val*(all?inM/all:(g.finish.slice(0,7)===ym?1:0)); }
+    rows.push({g,j,co,done,chk,cls,pastOpen,comp});
+  });
+  // WorkflowMax open jobs vs schedule (both ways) — independent of the month
+  const wj=(S.wfmJobs||[]).filter(x=>x&&x.no), live=S.jobs.filter(j=>!j._del);
+  const sU=new Set(), sN=new Set(); live.forEach(j=>{ const u=j.checklist&&j.checklist.wfm&&j.checklist.wfm.uuid; if(u) sU.add(u); if(j.jobno) sN.add(String(j.jobno).trim().toUpperCase()); });
+  const wfmOnly=wj.filter(x=>!sU.has(x.u)&&!sN.has(String(x.no).toUpperCase())&&(brs.includes(x.br)||(brs.length===3&&!MG_BR.includes(x.br))));
+  const wU=new Set(wj.map(x=>x.u)), wN=new Set(wj.map(x=>String(x.no).toUpperCase()));
+  const schedOnly=wj.length?Object.values(byKey).filter(g=>{ const j=g.j, co=closeoutOf(j); if(co==='invoiced'||co==='finished'||j.done) return false;
+    if(!/\d/.test(String(j.jobno||''))) return false;                       // internal entries ("J tom", leave blocks) aren't WorkflowMax jobs
+    const u=j.checklist&&j.checklist.wfm&&j.checklist.wfm.uuid; return !(u&&wU.has(u))&&!wN.has(g.k); }):[];
+  return {rows,unm,invs,ym,mS,mE,wfmOnly,schedOnly,hasJobs:wj.length>0};
+}
+function renderMgmtInv(el){
+  const now=new Date(), br=MG.br, brs=br==='All'?MG_BR:[br];
+  const md=new Date(now.getFullYear(),now.getMonth()+IV.off,1), ym=md.getFullYear()+'-'+String(md.getMonth()+1).padStart(2,'0');
+  const D=_ivData(brs,ym), R=D.rows, has=(S.wfmInvoices||[]).length>0;
+  const sum=(a,f)=>a.reduce((t,x)=>t+(f(x)||0),0);
+  const invM=sum(R,o=>o.g.invM)+sum(D.unm,x=>x.amt);
+  const dni=R.filter(o=>o.chk==='Done — not invoiced'), bef=R.filter(o=>o.chk==='Invoiced before done'||o.chk==='Progress claim');
+  const diff=R.filter(o=>/Invoiced (under|over)/.test(o.chk)), notc=R.filter(o=>o.chk==='Not complete'), past=R.filter(o=>o.pastOpen);
+  const finished=R.filter(o=>o.comp>0);
+  const tile=(l,v,sub,cls,f)=>`<div class="mg-tile ${cls||''}" ${f?`style="cursor:pointer" onclick="ivSet('f','${f}')"`:''}><div class="l">${l}</div><div class="v">${v}</div><div class="s">${sub||''}</div></div>`;
+  const mn=MONTHS[md.getMonth()]+' '+md.getFullYear();
+  let h=mgViewBar()+`<div class="mg-head"><h2>Work vs invoicing</h2><span class="mg-sub">${br==='All'?'All branches':br} · ${mn} · ex GST</span>
+    <div class="tr-yr" style="margin-left:12px"><button onclick="ivSet('off',-1)">‹</button>${mn}<button onclick="ivSet('off',1)">›</button></div>
+    <div class="tr-seg" style="margin-left:auto">${['All'].concat(MG_BR).map(b=>`<button class="${b===br?'on':''}" onclick="mgSet('br','${b}')">${b==='All'?'All':BR_CODE[b]}</button>`).join('')}</div></div>`;
+  if(!has) h+=`<div class="iv-note" style="color:#FDD835">⚠ No WorkflowMax invoices yet — the invoice side fills in once WorkflowMax is connected (Apps Script → wfm.gs v7). Schedule figures below are live.</div>`;
+  else { const upd=(S.wfmInvoices||[]).reduce((a,x)=>a>x.d?a:x.d,''); h+=`<div class="iv-note">Invoices from WorkflowMax (approved + paid) up to ${_fmtD(upd)} · matched to schedule jobs by WorkflowMax job, then job number.</div>`; }
+  h+=`<div class="mg-tiles">
+    ${tile('Completed in '+MONTHS[md.getMonth()].slice(0,3),_fmtK(sum(finished,o=>o.comp)),finished.length+' jobs · pro rata (schedule)','', 'all')}
+    ${tile('Invoiced in '+MONTHS[md.getMonth()].slice(0,3),has?_fmtK(invM):'—',has?`${R.filter(o=>o.g.invM).length} schedule jobs + ${D.unm.length} other`:'needs WorkflowMax','inv','all')}
+    ${tile('Done — not invoiced',has?_fmtK(sum(dni,o=>o.g.val)):'—',has?dni.length+' jobs':'needs WorkflowMax',dni.length&&has?'bad':'ok','dni')}
+    ${tile('Invoiced — not on schedule',has?_fmtK(sum(D.unm,x=>x.amt)):'—',has?D.unm.length+' invoices':'needs WorkflowMax',D.unm.length?'warn':'ok','unm')}
+    ${tile('Invoiced before done',has?_fmtK(sum(bef,o=>o.g.invM)):'—',has?bef.length+' jobs (incl. progress claims)':'needs WorkflowMax',bef.length?'warn':'','bef')}
+    ${tile('Invoice ≠ job value',has?diff.length:'—',has?(v=>(v<0?'−':'+')+_fmtK(Math.abs(v)))(sum(diff,o=>o.g.invAll-o.g.val))+' net vs job values':'needs WorkflowMax',diff.length?'warn':'ok','diff')}
+    ${tile('Past finish — not closed off',past.length,_fmtK(sum(past,o=>o.g.val))+' · close off or move dates',past.length?'warn':'ok','past')}
+    ${tile('In WorkflowMax — not on schedule',D.hasJobs?D.wfmOnly.length:'—',D.hasJobs?(D.schedOnly.length?D.schedOnly.length+' open schedule jobs not in WorkflowMax':'all schedule jobs found in WorkflowMax ✓'):'needs WorkflowMax',D.hasJobs&&(D.wfmOnly.length||D.schedOnly.length)?'warn':'ok','wfmonly')}
+    ${tile('Not complete',notc.length,_fmtK(sum(notc,o=>o.g.val))+' still running in '+MONTHS[md.getMonth()].slice(0,3),'','notc')}
+  </div>`;
+  // per-branch summary (All)
+  if(br==='All'){
+    h+=`<div class="tr-card"><div class="tr-head"><h3>By branch · ${mn}</h3></div><table class="iv-tbl"><thead><tr><th>Branch</th><th class="n">Completed (pro rata)</th><th class="n">Invoiced</th><th class="n">…on schedule jobs</th><th class="n">…not on schedule</th><th class="n">Done — not invoiced</th><th class="n">Past finish, not closed</th><th></th></tr></thead><tbody>`;
+    MG_BR.forEach(b=>{ const d=_ivData([b],ym), r=d.rows; const fi=r.filter(o=>o.comp>0), dn=r.filter(o=>o.chk==='Done — not invoiced');
+      const on=sum(r,o=>o.g.invM), off=sum(d.unm.filter(x=>x.brx===b),x=>x.amt);
+      h+=`<tr><td><b style="color:${BRANCH_COLORS[b]}">${b}</b></td><td class="n">${_fmtK(sum(fi,o=>o.comp))}</td><td class="n">${has?_fmtK(on+off):'—'}</td><td class="n">${has?_fmtK(on):'—'}</td><td class="n">${has?_fmtK(off):'—'}</td><td class="n">${has?`${dn.length} · ${_fmtK(sum(dn,o=>o.g.val))}`:'—'}</td><td class="n">${r.filter(o=>o.pastOpen).length}</td><td class="n"><button class="bd-pill" style="padding:2px 8px" onclick="ivEmailOpen('${b}')">✉ Email manager</button></td></tr>`; });
+    h+=`</tbody></table></div>`;
+  }
+  // job table
+  const F={issues:o=>!['OK','Not complete','Invoiced earlier'].includes(o.chk), all:()=>true, dni:o=>o.chk==='Done — not invoiced', bef:o=>o.chk==='Invoiced before done'||o.chk==='Progress claim', diff:o=>/Invoiced (under|over)/.test(o.chk), past:o=>o.pastOpen, notc:o=>o.chk==='Not complete'};
+  const fl=F[IV.f]?IV.f:'issues', shown=R.filter(F[fl]||F.all).sort((a,b)=>a.j.branch.localeCompare(b.j.branch)||String(a.g.finish).localeCompare(b.g.finish));
+  const lbl={issues:'Needs a look',all:'All jobs',dni:'Done — not invoiced',bef:'Invoiced before done',diff:'Invoice ≠ value',past:'Past finish, not closed',notc:'Not complete',unm:'Invoices not on schedule',wfmonly:'Jobs: WorkflowMax ⇄ schedule'};
+  h+=`<div class="tr-card"><div class="tr-head"><h3>Schedule jobs · ${mn}</h3><span style="margin-left:auto;display:flex;gap:6px"><button class="bd-pill" onclick="ivPrint()">🖨 Print / PDF</button>${br!=='All'?`<button class="bd-pill" onclick="ivEmailOpen('${br}')">✉ Email ${BR_CODE[br]} manager</button>`:''}<button class="bd-pill" onclick="ivExport()">⬇ Download (Excel)</button></span></div>
+    <div class="iv-chips">${Object.keys(lbl).map(k=>`<button class="${k===(['unm','wfmonly'].includes(IV.f)?IV.f:fl)?'on':''}" onclick="ivSet('f','${k}')">${lbl[k]}</button>`).join('')}</div>`;
+  if(IV.f==='wfmonly'){
+    const upd=(S.wfmJobs||[]).reduce((a,x)=>a>(x.at||'')?a:(x.at||''),'');
+    h+=`<div class="iv-note">Open WorkflowMax jobs${upd?` (list refreshed ${_esc(upd.slice(0,16).replace('T',' '))})`:''} with no schedule job — matched by WorkflowMax job, then job number. The import adds Planned / In Progress jobs that have a branch, so anything here usually has no branch (Category), another status, or a job number typed differently in the schedule.</div>
+      <table class="iv-tbl"><thead><tr><th>WFM job</th><th>Status</th><th>Branch</th><th>Name / site</th><th>Client</th><th>Start</th><th>Due</th></tr></thead><tbody>`+
+      (D.wfmOnly.map(x=>`<tr><td>${_esc(x.no)}</td><td>${_esc(x.st)}</td><td>${_esc(x.br)}</td><td class="site">${_esc(x.nm)}</td><td>${_esc(x.cl||'')}</td><td>${x.s?_fmtD(x.s):''}</td><td>${x.d?_fmtD(x.d):''}</td></tr>`).join('')||`<tr><td colspan="7" style="color:var(--c-muted)">${D.hasJobs?'None — every open WorkflowMax job is on the schedule ✓':'Waiting for WorkflowMax'}</td></tr>`)+`</tbody></table>`;
+    if(D.hasJobs) h+=`<h3 style="margin:16px 0 4px;font-size:13px">Open on the schedule — not found in WorkflowMax</h3><div class="iv-note">Usually a mistyped job number, or a job closed / cancelled in WorkflowMax but still open here.</div>
+      <table class="iv-tbl"><thead><tr><th>Job</th><th>Branch</th><th>Site</th><th class="n">Value</th><th>Start</th><th>Finish</th></tr></thead><tbody>`+
+      (D.schedOnly.map(g=>`<tr onclick="editJob('${g.j.id}')" style="cursor:pointer"><td>${_esc(g.j.jobno)}</td><td>${BR_CODE[g.j.branch]||g.j.branch}</td><td class="site">${_esc(g.j.site||'')}</td><td class="n">${_fmtK(g.val)}</td><td>${_fmtD(g.start)}</td><td>${_fmtD(g.finish)}</td></tr>`).join('')||`<tr><td colspan="6" style="color:var(--c-muted)">None ✓</td></tr>`)+`</tbody></table>`;
+  } else if(IV.f==='unm'){
+    h+=`<table class="iv-tbl"><thead><tr><th>Invoice</th><th>Date</th><th>Branch</th><th>WFM job</th><th>Client</th><th class="n">Ex GST</th><th>Status</th></tr></thead><tbody>`+
+      (D.unm.sort((a,b)=>b.amt-a.amt).map(x=>`<tr><td>${_esc(x.no)}</td><td>${_fmtD(x.d)}</td><td>${_esc(x.brx)}</td><td class="site">${_esc((x.jn?x.jn+' — ':'')+(x.nm||''))}</td><td>${_esc(x.cl||'')}</td><td class="n">${_fmtK(x.amt)}</td><td>${_esc(x.st||'')}</td></tr>`).join('')||`<tr><td colspan="7" style="color:var(--c-muted)">${has?'None — every invoice matches a schedule job ✓':'Waiting for WorkflowMax'}</td></tr>`)+`</tbody></table>`;
+  } else {
+    h+=`<table class="iv-tbl"><thead><tr><th>Job</th><th>Branch</th><th>Site</th><th class="n">Job value</th><th class="n">Completed ${MONTHS[md.getMonth()].slice(0,3)}</th><th>Start</th><th>Finish</th><th>Schedule</th><th class="n">Invoiced ${MONTHS[md.getMonth()].slice(0,3)}</th><th class="n">Invoiced to date</th><th>Check</th></tr></thead><tbody>`+
+      (shown.map(o=>`<tr onclick="editJob('${o.j.id}')" style="cursor:pointer"><td>${_esc(o.j.jobno||'—')}</td><td>${BR_CODE[o.j.branch]||o.j.branch}</td><td class="site">${_esc(o.j.site||'')}</td><td class="n">${_fmtK(o.g.val)}</td><td class="n">${o.comp?_fmtK(o.comp):'—'}</td><td>${_fmtD(o.g.start)}</td><td>${_fmtD(o.g.finish)}</td><td>${o.co==='invoiced'?'$ Invoiced':o.co==='finished'?'Finished':o.co==='hold'?'On hold':'Open'}${o.pastOpen?' <span class="iv-flag warn">past finish</span>':''}</td><td class="n">${has?(o.g.invM?_fmtK(o.g.invM):'—'):''}</td><td class="n">${has?(o.g.invAll?_fmtK(o.g.invAll):'—'):''}</td><td>${has||!/nvoic/.test(o.chk)?`<span class="iv-flag ${o.cls}">${o.chk}</span>`:''}</td></tr>`).join('')||`<tr><td colspan="11" style="color:var(--c-muted)">Nothing here ✓</td></tr>`)+`</tbody></table>`;
+  }
+  h+=`<div class="iv-note" style="margin-top:8px">Completed = the month's share of a done job's working days (or progress claims made that month). Done = closed off (Finished / $ Invoiced) or finish date passed. Invoiced to date = WorkflowMax invoices of the last 4 months. Click a job to open it.</div></div>`;
+  el.innerHTML=h;
+}
+// ── action list for a branch manager: what needs a finish date updated, closing off, or invoicing
+function _ivActions(b,ym){
+  const D=_ivData([b],ym), has=(S.wfmInvoices||[]).length>0, L=o=>`${o.j.jobno||'—'} · ${(o.j.site||'').split(',')[0]} · ${_fmtD(o.g.start)}–${_fmtD(o.g.finish)} · ${_fmtK(o.g.val)}`;
+  const past=D.rows.filter(o=>o.pastOpen).sort((a,b)=>String(a.g.finish).localeCompare(b.g.finish));
+  const dni=has?D.rows.filter(o=>o.chk==='Done — not invoiced'&&!o.pastOpen):[];
+  const diff=has?D.rows.filter(o=>/Invoiced (under|over)/.test(o.chk)):[];
+  const bef=has?D.rows.filter(o=>o.chk==='Invoiced before done'):[];
+  return {D,has,L,groups:[
+    {t:'Finish date has passed — still open in the schedule',a:'Still working? Update the finish date. Finished? Close it off and invoice.',items:past.map(o=>L(o)+(has&&o.g.invAll?` · invoiced ${_fmtK(o.g.invAll)}`:has?' · not invoiced':''))},
+    {t:'Closed off in the schedule — no invoice found in WorkflowMax',a:'Invoice in WorkflowMax, or tell me if it was billed under another job.',items:dni.map(L)},
+    {t:'Invoiced amount differs from the job value',a:'Check for a variation, a missing invoice, or the job value in the schedule.',items:diff.map(o=>L(o)+` · invoiced ${_fmtK(o.g.invAll)}`)},
+    {t:'Invoiced in full before the schedule finish date',a:'Bring the finish date forward if the work is done.',items:bef.map(o=>L(o)+` · invoiced ${_fmtK(o.g.invM)}`)},
+  ].filter(g=>g.items.length)};
+}
+function _ivMgrs(b){ const em={}; mgrEmailList().forEach(x=>{ if(x&&x.name&&x.email) em[_nm(x.name)]=x; });
+  const out=[]; (getJobList(b,'managers')||[]).forEach(n=>{ const x=em[_nm(n)]; if(x&&!out.some(o=>o.email===x.email)) out.push(x); }); return out; }
+function _ivYm(){ const now=new Date(), md=new Date(now.getFullYear(),now.getMonth()+IV.off,1); return {md,ym:md.getFullYear()+'-'+String(md.getMonth()+1).padStart(2,'0'),mn:MONTHS[md.getMonth()]+' '+md.getFullYear()}; }
+function ivEmailOpen(b){
+  const {ym,mn}=_ivYm(), A=_ivActions(b,ym), mg=_ivMgrs(b);
+  const first=mg.map(x=>String(x.name).split(' ')[0]).join(' / ')||'team';
+  const n=A.groups.reduce((a,g)=>a+g.items.length,0);
+  const body=`Hi ${first},\n\nBelow are the ${b} jobs for ${mn} that need a quick update — please either update the finish date in the schedule (if the job is still going) or close it off / invoice it in WorkflowMax by Friday.\n\n`+
+    (A.groups.map(g=>`${g.t.toUpperCase()} (${g.items.length})\n${g.a}\n`+g.items.map(x=>'  • '+x).join('\n')).join('\n\n')||'Nothing outstanding — thanks!')+
+    `\n\nThanks,\n`;
+  let o=document.getElementById('iv-mail'); if(!o){ o=document.createElement('div'); o.id='iv-mail'; o.className='overlay'; document.body.appendChild(o); }
+  o.innerHTML=`<div class="modal" style="max-width:720px;width:94vw"><div class="modal-head"><h3>Email ${_esc(b)} — ${_esc(mn)} job updates</h3><button class="btn btn-ghost btn-sm" onclick="document.getElementById('iv-mail').classList.remove('open')">✕</button></div>
+    <div style="padding:14px 18px;display:flex;flex-direction:column;gap:8px">
+      <label style="font-size:11px;color:var(--c-muted)">To ${mg.length?'':'<span style="color:#FDD835">— no manager email for '+_esc(b)+' yet (Admin → Setup → Manager / supervisor emails)</span>'}</label>
+      <input id="iv-to" type="text" value="${_esc(mg.map(x=>x.email).join('; '))}" placeholder="name@techclean.co.nz">
+      <label style="font-size:11px;color:var(--c-muted)">Subject</label>
+      <input id="iv-sub" type="text" value="${_esc(b)} — ${_esc(mn)}: ${n} job${n!==1?'s':''} to update (finish date or invoice)">
+      <label style="font-size:11px;color:var(--c-muted)">Message (edit before sending)</label>
+      <textarea id="iv-body" rows="16" style="font-family:var(--font-mono);font-size:11.5px">${_esc(body)}</textarea>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+        <button class="btn btn-ghost btn-sm" onclick="ivMailCopy()">Copy text</button>
+        <button class="btn btn-ghost btn-sm" onclick="ivMailGo('mailto')">Open in Outlook app</button>
+        <button class="btn btn-primary btn-sm" onclick="ivMailGo('o365')">Open in Outlook 365 (web)</button>
+      </div>
+      <div style="font-size:10.5px;color:var(--c-muted)">Opens a draft in your own mailbox — nothing is sent until you press Send.</div></div></div>`;
+  o.classList.add('open');
+}
+function ivMailGo(how){
+  const to=document.getElementById('iv-to').value.replace(/\s*[;,]\s*/g,';').trim(), sub=document.getElementById('iv-sub').value, body=document.getElementById('iv-body').value;
+  const e=encodeURIComponent;
+  let url=how==='o365'?`https://outlook.office.com/mail/deeplink/compose?to=${e(to)}&subject=${e(sub)}&body=${e(body)}`:`mailto:${to.split(';').map(e).join(';')}?subject=${e(sub)}&body=${e(body)}`;
+  if(url.length>7800){ ivMailCopy(); toast('Long list — the message is copied; paste it into the draft','err'); url=how==='o365'?`https://outlook.office.com/mail/deeplink/compose?to=${e(to)}&subject=${e(sub)}`:`mailto:${to}?subject=${e(sub)}`; }
+  window.open(url,how==='o365'?'_blank':'_self');
+}
+function ivMailCopy(){ const t=document.getElementById('iv-body'); try{ navigator.clipboard.writeText(t.value); toast('Message copied ✓'); }catch(e){ t.select(); document.execCommand('copy'); toast('Message copied ✓'); } }
+function ivPrint(){
+  const {ym,mn}=_ivYm(), brs=MG.br==='All'?MG_BR:[MG.br];
+  const esc=_esc, page=b=>{ const A=_ivActions(b,ym), D=A.D, R=D.rows, sum=(a,f)=>a.reduce((t,x)=>t+(f(x)||0),0);
+    const comp=sum(R,o=>o.comp), invOn=sum(R,o=>o.g.invM), invOff=sum(D.unm,x=>x.amt);
+    return `<section><h1><span style="color:${BRANCH_COLORS[b]}">■</span> ${esc(b)} — work vs invoicing · ${esc(mn)}</h1>
+      <div class="sub">Printed ${_fmtD(dsOf(new Date()))} · values ex GST · TechClean Operations Schedule</div>
+      <table class="k"><tr><td><b>${_fmtK(comp)}</b>Completed (pro rata)</td><td><b>${A.has?_fmtK(invOn+invOff):'—'}</b>Invoiced in month</td><td><b>${A.has?_fmtK(invOff):'—'}</b>Invoiced, not on schedule</td><td><b>${R.filter(o=>o.pastOpen).length}</b>Past finish, not closed</td><td><b>${A.has?R.filter(o=>o.chk==='Done — not invoiced').length:'—'}</b>Done, not invoiced</td></tr></table>
+      <div class="note"><b>Action:</b> for each job below, either <b>update the finish date</b> in the schedule (still going) or <b>close it off and invoice</b> in WorkflowMax.</div>
+      ${A.groups.map(g=>`<h2>${esc(g.t)} (${g.items.length})</h2><div class="a">${esc(g.a)}</div><ul>${g.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`).join('')||'<p>Nothing outstanding ✓</p>'}
+      ${A.has&&D.unm.length?`<h2>Invoiced in WorkflowMax — not on the schedule (${D.unm.length})</h2><ul>${D.unm.sort((a,b)=>b.amt-a.amt).map(x=>`<li>${esc(x.no)} · ${_fmtD(x.d)} · ${esc((x.jn?x.jn+' — ':'')+(x.nm||''))} · ${_fmtK(x.amt)}</li>`).join('')}</ul>`:''}
+      ${D.hasJobs&&D.wfmOnly.length?`<h2>Open in WorkflowMax — not on the schedule (${D.wfmOnly.length})</h2><ul>${D.wfmOnly.map(x=>`<li>${esc(x.no)} · ${esc(x.st)} · ${esc(x.nm)}</li>`).join('')}</ul>`:''}
+    </section>`; };
+  const w=window.open('','_blank'); if(!w){ toast('Allow pop-ups to print','err'); return; }
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Work vs invoicing — ${esc(mn)}</title><style>
+    body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:18mm 14mm;font-size:11pt}
+    section{page-break-after:always}section:last-child{page-break-after:auto}
+    h1{font-size:16pt;margin:0 0 2px}h2{font-size:11.5pt;margin:14px 0 2px;border-bottom:1px solid #ccc;padding-bottom:2px}
+    .sub{color:#666;font-size:9pt;margin-bottom:10px}.a{color:#555;font-size:9.5pt;margin:2px 0 4px}
+    table.k{width:100%;border-collapse:collapse;margin:6px 0 10px}table.k td{border:1px solid #ccc;padding:6px 8px;font-size:9pt;color:#555;width:20%}
+    table.k b{display:block;font-size:14pt;color:#111}
+    .note{background:#FFF8D6;border:1px solid #E8D77A;padding:7px 10px;font-size:10pt}
+    ul{margin:4px 0 0 16px;padding:0}li{font-size:10pt;margin:2px 0}
+    @media print{body{margin:0}}</style></head><body>${brs.map(page).join('')}<script>setTimeout(()=>window.print(),300)<\/script></body></html>`);
+  w.document.close();
+}
+function ivExport(){
+  const now=new Date(), md=new Date(now.getFullYear(),now.getMonth()+IV.off,1), ym=md.getFullYear()+'-'+String(md.getMonth()+1).padStart(2,'0');
+  const brs=MG.br==='All'?MG_BR:[MG.br], D=_ivData(brs,ym), q=v=>{ v=v==null?'':String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+  let csv='Schedule jobs '+ym+'\nJob,Branch,Site,Job value,Completed in month,Start,Finish,Schedule status,Invoiced in month,Invoiced to date,Check\n';
+  D.rows.forEach(o=>{ csv+=[o.j.jobno,o.j.branch,o.j.site,Math.round(o.g.val),Math.round(o.comp),o.g.start,o.g.finish,o.co||'open',Math.round(o.g.invM*100)/100,Math.round(o.g.invAll*100)/100,o.chk].map(q).join(',')+'\n'; });
+  csv+='\nInvoices not on the schedule\nInvoice,Date,Branch,WFM job no,WFM job,Client,Ex GST,Status\n';
+  const _wj=D.wfmOnly, _so=D.schedOnly;
+  D.unm.forEach(x=>{ csv+=[x.no,x.d,x.brx,x.jn,x.nm,x.cl,x.amt,x.st].map(q).join(',')+'\n'; });
+  csv+='\nOpen in WorkflowMax - not on the schedule\nWFM job,Status,Branch,Name / site,Client,Start,Due\n'; _wj.forEach(x=>{ csv+=[x.no,x.st,x.br,x.nm,x.cl,x.s,x.d].map(q).join(',')+'\n'; });
+  csv+='\nOpen on the schedule - not in WorkflowMax\nJob,Branch,Site,Value,Start,Finish\n'; _so.forEach(g=>{ csv+=[g.j.jobno,g.j.branch,g.j.site,Math.round(g.val),g.start,g.finish].map(q).join(',')+'\n'; });
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'})); a.download=`Work_vs_invoicing_${MG.br}_${ym}.csv`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000);
 }
 function renderMgmtHS(el){
   const on=hsTestOn(), n=Object.keys(S.hsStatus||{}).length;
@@ -3541,6 +3767,7 @@ function _mgMonth(brs,y,m){
 function renderMgmt(){
   const el=document.getElementById('mgmt-body'); if(!el) return;
   if(MG.view==='hs'){ renderMgmtHS(el); return; }
+  if(MG.view==='inv'){ renderMgmtInv(el); return; }
   const now=new Date(), today=dsOf(now), br=MG.br, brs=br==='All'?MG_BR:[br];
   const rate=Number(S.cfg.rate)||0, hpd=Number(S.cfg.hpd)||8, pmin=Number(S.cfg.pmin)||30, pmax=Number(S.cfg.pmax)||35;
   const months=[...Array(12)].map((_,i)=>{ const d=new Date(now.getFullYear(),now.getMonth()+MG.off+i,1); return [d.getFullYear(),d.getMonth()]; });
@@ -4571,6 +4798,8 @@ async function doSync(silent=false){
           });
         }
         if(data.hsStatus && typeof data.hsStatus==='object'){ S.hsStatus=data.hsStatus; try{ localStorage.setItem('aops_hs_status',JSON.stringify(data.hsStatus)); }catch(e){} }
+        if(Array.isArray(data.wfmJobs)){ S.wfmJobs=data.wfmJobs; try{ localStorage.setItem('aops_wfm_jobs',JSON.stringify(data.wfmJobs)); }catch(e){} }
+        if(Array.isArray(data.wfmInvoices)){ S.wfmInvoices=data.wfmInvoices; try{ localStorage.setItem('aops_wfm_invoices',JSON.stringify(data.wfmInvoices)); }catch(e){} }
         if(Array.isArray(data.wfmUnmatched)){ S.wfmUnmatched=data.wfmUnmatched; try{ localStorage.setItem('aops_wfm_unmatched',JSON.stringify(data.wfmUnmatched)); }catch(e){} }
         // WorkflowMax monthly actuals (invoiced / timesheet hours) — read-only, server copy wins
         if(data.wfmMonthly && typeof data.wfmMonthly==='object'){
