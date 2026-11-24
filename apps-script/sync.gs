@@ -1,5 +1,5 @@
 const SHEET_ID = '1UOabcy7JwNISvqWqFVVWWfEVHfUOogYqVMRZa8ngBIc';
-const MIN_APP_VERSION = 93;   // v57: absence dates kept as yyyy-mm-dd text (Sheets was turning them into dates) · v56: serves WFM_Invoices + WFM_Jobs to Admin → Work vs invoicing · v55: app v91+ only sends the leave/training/allocation entries it changed — older copies put back stale allocations
+const MIN_APP_VERSION = 93;   // v58: monthly leave & sick email to branch managers (installLeaveMonthly) · v57: absence dates kept as yyyy-mm-dd text (Sheets was turning them into dates) · v56: serves WFM_Invoices + WFM_Jobs to Admin → Work vs invoicing · v55: app v91+ only sends the leave/training/allocation entries it changed — older copies put back stale allocations
 
 function doPost(e) {
   // One writer at a time — device syncs and the WorkflowMax import share this lock
@@ -605,4 +605,79 @@ function absDate_(v) {
   if (!s || s.indexOf('__') === 0 || /^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
   const d = new Date(s.replace(/\s*\(.*\)\s*$/, ''));
   return isNaN(d) ? s : Utilities.formatDate(d, 'Pacific/Auckland', 'yyyy-MM-dd');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Monthly leave & sick email (v58) — on the 1st at 7am, each branch's managers get last month's summary:
+// annual leave / sick / training days per person, branch totals, and leave already booked ahead.
+// Who gets it: the branch's Managers list in the app (Setup → Job lists → Managers) matched to the
+// Manager / supervisor emails (Setup). Optional extra recipients: Script Property LEAVE_EMAILS (all branches)
+// or LEAVE_EMAILS_AUCKLAND / _WELLINGTON / _CHRISTCHURCH. Sent through Microsoft 365 (m365Send_).
+// Setup (once): run installLeaveMonthly. leaveMonthlyTest = dry run (logs who would get what, sends nothing).
+// ─────────────────────────────────────────────────────────────────────────────
+function installLeaveMonthly() {
+  ScriptApp.getProjectTriggers().filter(function(t){ return t.getHandlerFunction() === 'leaveMonthly'; }).forEach(function(t){ ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('leaveMonthly').timeBased().onMonthDay(1).atHour(7).inTimezone('Pacific/Auckland').create();
+  return 'Monthly leave email set: 1st of each month, 7am';
+}
+function leaveMonthly() { return leaveMonthlyRun_(false); }
+function leaveMonthlyTest() { const r = leaveMonthlyRun_(true); Logger.log(JSON.stringify(r, null, 2)); return r; }
+
+function leaveMonthlyRun_(dryRun) {
+  const tz = 'Pacific/Auckland', now = new Date();
+  const first = new Date(now.getFullYear(), now.getMonth() - 1, 1), last = new Date(now.getFullYear(), now.getMonth(), 0);
+  const from = Utilities.formatDate(first, tz, 'yyyy-MM-dd'), to = Utilities.formatDate(last, tz, 'yyyy-MM-dd'), today = Utilities.formatDate(now, tz, 'yyyy-MM-dd');
+  const label = Utilities.formatDate(first, tz, 'MMMM yyyy');
+  const BR = ['Auckland', 'Wellington', 'Christchurch'];
+  const ss = SpreadsheetApp.openById(SHEET_ID), ab = ss.getSheetByName('Absences');
+  const rows = ab ? ab.getDataRange().getValues().slice(1) : [];
+  const special = {}, leave = {}, train = {};
+  BR.forEach(function(b){ leave[b] = {}; train[b] = {}; special[b] = {}; });
+  rows.forEach(function(r) {
+    const b = String(r[0] || '').trim(), t = String(r[1] || '').trim(), d = absDate_(r[2]); if (!special[b]) return;
+    let v = []; try { v = JSON.parse(r[3] || '[]'); } catch (e) {}
+    if (String(d).indexOf('__') === 0) { special[b][d] = v; return; }
+    if (t === 'leave') leave[b][d] = v; else if (t === 'training') train[b][d] = v;
+  });
+  // rosters → home branch
+  const home = {}, roster = {};
+  const st = ss.getSheetByName('Staff');
+  BR.forEach(function(b){ roster[b] = []; });
+  if (st) st.getDataRange().getValues().slice(1).forEach(function(r){ const b = String(r[0] || '').trim(), n = String(r[1] || '').trim(); if (String(r[2] || '').toLowerCase() === 'removed') return; if (roster[b] && n) { roster[b].push(n); home[n.toLowerCase()] = b; } });
+  const sick = {};
+  BR.forEach(function(b){ (special[b].__sick || []).forEach(function(x){ sick[String(x).toLowerCase()] = 1; }); });
+  const isSick = function(d, n){ return !!sick[(d + '|' + n).toLowerCase()]; };
+  const P = {};
+  const who = function(n, b){ const k = n.toLowerCase(); return P[k] || (P[k] = {name: n, br: home[k] || b, leave: 0, sick: 0, train: 0, ahead: 0}); };
+  BR.forEach(function(b) {
+    Object.keys(leave[b]).forEach(function(d){ (leave[b][d] || []).forEach(function(n){ if (typeof n !== 'string' || !n.trim()) return; const p = who(n, b);
+      if (d >= from && d <= to) { if (isSick(d, n)) p.sick++; else p.leave++; } else if (d > today && !isSick(d, n)) p.ahead++; }); });
+    Object.keys(train[b]).forEach(function(d){ (train[b][d] || []).forEach(function(n){ if (typeof n !== 'string' || !n.trim()) return; if (d >= from && d <= to) who(n, b).train++; }); });
+    roster[b].forEach(function(n){ who(n, b); });
+  });
+  // recipients: branch Managers list × manager emails (+ optional script properties)
+  const mgrEmail = {};
+  rows.forEach(function(r){ if (String(r[2]) !== '__mgrEmails') return; try { (JSON.parse(r[3] || '[]') || []).forEach(function(m){ if (m && m.name && m.email) mgrEmail[String(m.name).trim().toLowerCase()] = String(m.email).trim(); }); } catch (e) {} });
+  const props = PropertiesService.getScriptProperties(), out = {};
+  BR.forEach(function(b) {
+    const ppl = Object.keys(P).map(function(k){ return P[k]; }).filter(function(p){ return p.br === b; })
+      .sort(function(x, y){ return (y.leave + y.sick + y.train) - (x.leave + x.sick + x.train) || x.name.localeCompare(y.name); });
+    const tot = function(k){ return ppl.reduce(function(a, p){ return a + p[k]; }, 0); };
+    const mgrs = (special[b].__managers || []).map(function(n){ return {name: String(n), email: mgrEmail[String(n).trim().toLowerCase()]}; }).filter(function(m){ return m.email; });
+    const extra = [props.getProperty('LEAVE_EMAILS'), props.getProperty('LEAVE_EMAILS_' + b.toUpperCase())].filter(String).join(',');
+    const to = mgrs.map(function(m){ return m.email; }).concat(extra ? extra.split(/[,;]/) : []).map(function(x){ return x.trim(); }).filter(String)
+      .filter(function(x, i, a){ return a.indexOf(x) === i; });
+    out[b] = {to: to, leave: tot('leave'), sick: tot('sick'), train: tot('train'), people: ppl.filter(function(p){ return p.leave + p.sick + p.train; }).length};
+    if (dryRun || !to.length) return;
+    const td = 'padding:3px 10px;border-bottom:1px solid #eee;font-family:Arial;font-size:13px';
+    const html = '<p style="font-family:Arial">Hi ' + (mgrs.map(function(m){ return m.name.split(' ')[0]; }).join(' / ') || 'team') + ',</p>' +
+      '<p style="font-family:Arial">Here is the ' + b + ' leave summary for <b>' + label + '</b> from the Operations Schedule.</p>' +
+      '<p style="font-family:Arial;font-size:15px"><b>' + tot('leave') + '</b> days annual leave · <b>' + tot('sick') + '</b> days sick · <b>' + tot('train') + '</b> days training · <b>' + (tot('leave') + tot('sick') + tot('train')) + '</b> days off in total</p>' +
+      '<table style="border-collapse:collapse"><tr><th style="' + td + ';text-align:left">Name</th><th style="' + td + '">Annual leave</th><th style="' + td + '">Sick</th><th style="' + td + '">Training</th><th style="' + td + '">Total</th><th style="' + td + '">Leave booked ahead</th></tr>' +
+      ppl.map(function(p){ return '<tr><td style="' + td + '">' + p.name + '</td><td style="' + td + ';text-align:center">' + (p.leave || '') + '</td><td style="' + td + ';text-align:center' + (p.sick >= 3 ? ';color:#C00000;font-weight:700' : '') + '">' + (p.sick || '') + '</td><td style="' + td + ';text-align:center">' + (p.train || '') + '</td><td style="' + td + ';text-align:center"><b>' + ((p.leave + p.sick + p.train) || '') + '</b></td><td style="' + td + ';text-align:center">' + (p.ahead || '') + '</td></tr>'; }).join('') + '</table>' +
+      '<p style="font-family:Arial">Please check it matches what you know — sick days booked as plain leave, or missing days, can be fixed in the schedule (Resources → click the day). Full detail: Admin → Leave &amp; sick.</p>' +
+      '<p style="font-family:Arial;font-size:12px;color:#777">Sent on the 1st of each month by the TechClean Operations Schedule.</p>';
+    m365Send_({to: to.join(','), subject: b + ' — leave & sick summary, ' + label, htmlBody: html});
+  });
+  return {month: label, branches: out, emailReady: !!PropertiesService.getScriptProperties().getProperty('M365_FROM')};
 }
