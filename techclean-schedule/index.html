@@ -1610,6 +1610,7 @@ body.light #version-tag{color:#4A5560!important;background:#E4E6E9!important}
 
 
 
+
 </head>
 <body>
 <script>try{ if(localStorage.getItem('aops_theme')==='light') document.body.classList.add('light'); }catch(e){}</script>
@@ -2667,7 +2668,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const AW = '<svg class="aw-ico" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(-1 0)"><path d="M5.5 12.6V8.4a4.5 4.5 0 0 1 9 0v4.2"/><rect x="6.6" y="6.9" width="6.8" height="2.2" rx="1.1" fill="currentColor" stroke="none"/><circle cx="10" cy="11.7" r="2.15"/><circle cx="10" cy="11.7" r=".8" fill="currentColor" stroke="none"/><rect x="3.1" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(-28 4.6 12.75)"/><rect x="13.9" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(28 15.4 12.75)"/><path d="M8.1 13.7L10 15.6L11.9 13.7"/><path d="M6.9 15.2C4.3 15.9 3 17.7 3 20.2V22.3M13.1 15.2C15.7 15.9 17 17.7 17 20.2V22.3M10 15.6V22.3"/></g><path d="M13.6 19.4L21.2 2.6"/><path fill-rule="evenodd" fill="currentColor" stroke="none" d="M20.4 5.3c.9.8 2.8 2 3 4 .2 1.8-1 3-2.8 3s-3.2-1.2-3.1-3c.1-2 1.9-3.2 2.9-4zM19.7 8.7a.55.55 0 1 0 0 .01zM21.9 9.6a.55.55 0 1 0 0 .01zM20.6 11.1a.5.5 0 1 0 0 .01z"/><path d="M20.4 5.4l-1.4-.6M20.4 5.4l.8-1.3"/></svg>';   // away / out-of-town: suited worker with a bindle
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v97-202611251205';
+const APP_VERSION = 'v98-202611252100';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -3544,7 +3545,7 @@ function mgSet(k,v){
 }
 function hsTestToggle(on){ try{ localStorage.setItem('aops_hs_test',on?'1':'0'); }catch(e){} renderMgmt(); toast(on?'H&S link switched on for this device (testing)':'H&S link switched off'); }
 function mgViewBar(){
-  return `<div class="mg-views"><button class="${MG.view==='setup'?'on':''}" onclick="mgSet('view','setup')">⚙ Setup</button><button class="${MG.view==='overview'?'on':''}" onclick="mgSet('view','overview')">📈 Overview</button><button class="${MG.view==='opt'?'on':''}" onclick="mgSet('view','opt')">📊 Staff optimisation</button><button class="${MG.view==='inv'?'on':''}" onclick="mgSet('view','inv')">🧾 Work vs invoicing</button><button class="${MG.view==='hs'?'on':''}" onclick="mgSet('view','hs')">🦺 H&amp;S <span class="hc-hs-tag">testing</span></button></div>`;
+  return `<div class="mg-views"><button class="${MG.view==='setup'?'on':''}" onclick="mgSet('view','setup')">⚙ Setup</button><button class="${MG.view==='overview'?'on':''}" onclick="mgSet('view','overview')">📈 Overview</button><button class="${MG.view==='opt'?'on':''}" onclick="mgSet('view','opt')">📊 Staff optimisation</button><button class="${MG.view==='inv'?'on':''}" onclick="mgSet('view','inv')">🧾 Work vs invoicing</button><button class="${MG.view==='leave'?'on':''}" onclick="mgSet('view','leave')">🏖 Leave &amp; sick</button><button class="${MG.view==='hs'?'on':''}" onclick="mgSet('view','hs')">🦺 H&amp;S <span class="hc-hs-tag">testing</span></button></div>`;
 }
 // ── Admin → Work vs invoicing: schedule jobs (finished / not complete) against WorkflowMax invoices for a month.
 // Invoices come from the WFM_Invoices sheet (WorkflowMax import v7+), matched to schedule jobs by WorkflowMax job
@@ -3635,6 +3636,7 @@ function renderMgmtInv(el){
   if(!has) h+=`<div class="iv-note" style="color:#FDD835">⚠ No WorkflowMax invoices yet — the invoice side fills in once WorkflowMax is connected (Apps Script → wfm.gs v7). Schedule figures below are live.</div>`;
   else { const upd=(S.wfmInvoices||[]).reduce((a,x)=>a>x.d?a:x.d,''); h+=`<div class="iv-note">Invoices from WorkflowMax (approved + paid) up to ${_fmtD(upd)} · matched to schedule jobs by WorkflowMax job, then job number.</div>`; }
   h+=`<div class="mg-tiles">
+    ${(()=>{ const J=_ivJobsOpen(brs), und=J.filter(j=>!j.start||!j.finish).length; return tile('Jobs scheduled',J.length,`${brs.length>1?brs.map(b=>BR_CODE[b]+' '+_ivJobsOpen([b]).length).join(' · ')+' · ':''}${_fmtK(J.reduce((a,j)=>a+jobOpenVal(j),0))} open${und?` · ${und} undated`:''}`,'','all'); })()}
     ${tile('Est. invoicing · '+MONTHS[md.getMonth()].slice(0,3),_fmtK(D.est.total),D.est.past?'actual invoiced (month closed)':(has?`${_fmtK(D.est.inv)} invoiced + ${_fmtK(D.est.toInv)} to invoice (${D.est.rows.length} jobs)`:`${D.est.rows.length} jobs to invoice · schedule only`),'inv','est')}
     ${tile('Completed in '+MONTHS[md.getMonth()].slice(0,3),_fmtK(sum(finished,o=>o.comp)),finished.length+' jobs · pro rata (schedule)','', 'all')}
     ${tile('Invoiced in '+MONTHS[md.getMonth()].slice(0,3),has?_fmtK(invM):'—',has?`${R.filter(o=>o.g.invM).length} schedule jobs + ${D.unm.length} other`:'needs WorkflowMax','inv','all')}
@@ -3704,13 +3706,17 @@ function ivEmailOpen(b){
   const body=`Hi ${first},\n\nBelow are the ${b} jobs for ${mn} that need a quick update — please either update the finish date in the schedule (if the job is still going) or close it off / invoice it in WorkflowMax by Friday.\n\n`+
     (A.groups.map(g=>`${g.t.toUpperCase()} (${g.items.length})\n${g.a}\n`+g.items.map(x=>'  • '+x).join('\n')).join('\n\n')||'Nothing outstanding — thanks!')+
     `\n\nThanks,\n`;
+  _mailOpen(`Email ${b} — ${mn} job updates`, mg, `${b} — ${mn}: ${n} job${n!==1?'s':''} to update (finish date or invoice)`, body, b);
+}
+// Draft-an-email dialog (Outlook 365 web / Outlook app / copy) — used by Work vs invoicing and Leave & sick
+function _mailOpen(title, mg, subject, body, b){
   let o=document.getElementById('iv-mail'); if(!o){ o=document.createElement('div'); o.id='iv-mail'; o.className='overlay'; document.body.appendChild(o); }
-  o.innerHTML=`<div class="modal" style="max-width:720px;width:94vw"><div class="modal-head"><h3>Email ${_esc(b)} — ${_esc(mn)} job updates</h3><button class="btn btn-ghost btn-sm" onclick="document.getElementById('iv-mail').classList.remove('open')">✕</button></div>
+  o.innerHTML=`<div class="modal" style="max-width:720px;width:94vw"><div class="modal-head"><h3>${_esc(title)}</h3><button class="btn btn-ghost btn-sm" onclick="document.getElementById('iv-mail').classList.remove('open')">✕</button></div>
     <div style="padding:14px 18px;display:flex;flex-direction:column;gap:8px">
       <label style="font-size:11px;color:var(--c-muted)">To ${mg.length?'':'<span style="color:#FDD835">— no manager email for '+_esc(b)+' yet (Admin → Setup → Manager / supervisor emails)</span>'}</label>
       <input id="iv-to" type="text" value="${_esc(mg.map(x=>x.email).join('; '))}" placeholder="name@techclean.co.nz">
       <label style="font-size:11px;color:var(--c-muted)">Subject</label>
-      <input id="iv-sub" type="text" value="${_esc(b)} — ${_esc(mn)}: ${n} job${n!==1?'s':''} to update (finish date or invoice)">
+      <input id="iv-sub" type="text" value="${_esc(subject)}">
       <label style="font-size:11px;color:var(--c-muted)">Message (edit before sending)</label>
       <textarea id="iv-body" rows="16" style="font-family:var(--font-mono);font-size:11.5px">${_esc(body)}</textarea>
       <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
@@ -3736,7 +3742,7 @@ function ivPrint(){
     return `<section><h1><span style="color:${BRANCH_COLORS[b]}">■</span> ${esc(b)} — work vs invoicing · ${esc(mn)}</h1>
       <div class="sub">Printed ${_fmtD(dsOf(new Date()))} · values ex GST · TechClean Operations Schedule</div>
       <table class="k"><tr><td><b>${_fmtK(D.est.total)}</b>Est. invoicing${D.est.past?' (actual)':''}</td><td><b>${_fmtK(comp)}</b>Completed (pro rata)</td><td><b>${A.has?_fmtK(invOn+invOff):'—'}</b>Invoiced in month</td><td><b>${A.has?_fmtK(invOff):'—'}</b>Invoiced, not on schedule</td><td><b>${R.filter(o=>o.pastOpen).length}</b>Past finish, not closed</td><td><b>${A.has?R.filter(o=>o.chk==='Done — not invoiced').length:'—'}</b>Done, not invoiced</td></tr></table>
-      ${(()=>{ const F=ivForecast([b]); return `<table class="k"><tr>${F.map(o=>`<td><b>${_fmtK(o.total)}</b>Est. invoicing ${MONTHS[o.md.getMonth()].slice(0,3)} · running ${_fmtK(o.run)}</td>`).join('')}</tr></table>`; })()}
+      ${(()=>{ const F=ivForecast([b]); return `<table class="k"><tr>${F.map(o=>`<td><b>${_fmtK(o.total)}</b>Est. invoicing ${MONTHS[o.md.getMonth()].slice(0,3)} · running ${_fmtK(o.run)} · ${o.jobs} jobs</td>`).join('')}</tr></table>`; })()}
       <div class="note"><b>Action:</b> for each job below, either <b>update the finish date</b> in the schedule (still going) or <b>close it off and invoice</b> in WorkflowMax.</div>
       ${A.groups.map(g=>`<h2>${esc(g.t)} (${g.items.length})</h2><div class="a">${esc(g.a)}</div><ul>${g.items.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>`).join('')||'<p>Nothing outstanding ✓</p>'}
       ${A.has&&D.unm.length?`<h2>Invoiced in WorkflowMax — not on the schedule (${D.unm.length})</h2><ul>${D.unm.sort((a,b)=>b.amt-a.amt).map(x=>`<li>${esc(x.no)} · ${_fmtD(x.d)} · ${esc((x.jn?x.jn+' — ':'')+(x.nm||''))} · ${_fmtK(x.amt)}</li>`).join('')}</ul>`:''}
@@ -3758,27 +3764,33 @@ function ivPrint(){
 // Estimated invoicing for this month and the next 3, per branch, with a running total (ex GST).
 // This month = invoiced so far + still to invoice; later months = jobs finishing then (less anything already
 // invoiced) + progress-claim shares. Jobs with no dates aren't in it.
+// open scheduled jobs (one per job number; not deleted, closed off or on hold)
+function _ivJobsOpen(brs){ const seen=new Set(); return S.jobs.filter(j=>{ if(j._del||j.done||!brs.includes(j.branch)) return false; const co=closeoutOf(j); if(co==='finished'||co==='invoiced'||co==='hold') return false;
+  const k=String(j.jobno||'').trim().toUpperCase()||('#'+j.id); if(seen.has(k)) return false; seen.add(k); return true; }); }
 function ivForecast(brs){
   const now=new Date(), out=[];
   for(let i=0;i<4;i++){ const md=new Date(now.getFullYear(),now.getMonth()+i,1), ym=md.getFullYear()+'-'+String(md.getMonth()+1).padStart(2,'0');
-    const per={}; brs.forEach(b=>{ const e=_ivData([b],ym).est; per[b]={total:e.total,inv:e.inv,toInv:e.toInv,n:e.rows.length}; });
-    out.push({md,ym,per,total:brs.reduce((a,b)=>a+per[b].total,0)}); }
+    const mS=ym+'-01', mE=dsOf(new Date(md.getFullYear(),md.getMonth()+1,0));
+    const per={}; brs.forEach(b=>{ const e=_ivData([b],ym).est;
+      const jobs=_ivJobsOpen([b]).filter(j=>j.start&&j.finish&&j.start<=mE&&j.finish>=mS);
+      per[b]={total:e.total,inv:e.inv,toInv:e.toInv,n:e.rows.length,jobs:jobs.length,starts:jobs.filter(j=>j.start>=mS).length}; });
+    out.push({md,ym,per,total:brs.reduce((a,b)=>a+per[b].total,0),jobs:brs.reduce((a,b)=>a+per[b].jobs,0)}); }
   let run=0; out.forEach(o=>{ run+=o.total; o.run=run; });
   return out;
 }
 function ivForecastHtml(brs){
   const F=ivForecast(brs), max=Math.max(1,...F.map(o=>o.total)), has=(S.wfmInvoices||[]).length>0;
   let h=`<div class="tr-card"><div class="tr-head"><h3>Estimated invoicing · next 3 months</h3><span class="mg-sub" style="margin-left:8px">ex GST · running total</span></div>
-    <table class="iv-tbl"><thead><tr><th>Month</th>${brs.map(b=>`<th class="n">${brs.length>1?BR_CODE[b]:b}</th>`).join('')}${brs.length>1?'<th class="n">Total</th>':''}<th class="n">Running total</th><th style="width:34%"></th></tr></thead><tbody>`;
+    <table class="iv-tbl"><thead><tr><th>Month</th>${brs.map(b=>`<th class="n">${brs.length>1?BR_CODE[b]:b}</th>`).join('')}${brs.length>1?'<th class="n">Total</th>':''}<th class="n">Running total</th><th class="n">Jobs scheduled</th><th style="width:30%"></th></tr></thead><tbody>`;
   F.forEach((o,i)=>{ const lbl=MONTHS[o.md.getMonth()]+' '+o.md.getFullYear();
     const bar=brs.map(b=>`<i title="${b}: ${_fmtK(o.per[b].total)}" style="display:inline-block;height:10px;width:${(o.per[b].total/max*100).toFixed(1)}%;background:${BRANCH_COLORS[b]};opacity:${i?0.6:0.9}"></i>`).join('');
-    h+=`<tr><td>${lbl}${i===0?` <small style="color:var(--c-muted)">${has?'invoiced + to invoice':'to invoice'}</small>`:''}</td>${brs.map(b=>`<td class="n" title="${o.per[b].n} jobs${i===0&&has?` · invoiced ${_fmtK(o.per[b].inv)} + to invoice ${_fmtK(o.per[b].toInv)}`:''}">${_fmtK(o.per[b].total)}</td>`).join('')}${brs.length>1?`<td class="n"><b>${_fmtK(o.total)}</b></td>`:''}<td class="n"><b>${_fmtK(o.run)}</b></td><td><div style="display:flex;width:100%">${bar}</div></td></tr>`; });
+    h+=`<tr><td>${lbl}${i===0?` <small style="color:var(--c-muted)">${has?'invoiced + to invoice':'to invoice'}</small>`:''}</td>${brs.map(b=>`<td class="n" title="${o.per[b].n} jobs${i===0&&has?` · invoiced ${_fmtK(o.per[b].inv)} + to invoice ${_fmtK(o.per[b].toInv)}`:''}">${_fmtK(o.per[b].total)}</td>`).join('')}${brs.length>1?`<td class="n"><b>${_fmtK(o.total)}</b></td>`:''}<td class="n"><b>${_fmtK(o.run)}</b></td><td class="n" title="${brs.map(b=>`${b}: ${o.per[b].jobs} running (${o.per[b].starts} starting)`).join(' · ')}">${o.jobs}${brs.length>1?` <small style="color:var(--c-muted)">${brs.map(b=>BR_CODE[b]+' '+o.per[b].jobs).join(' · ')}</small>`:''}</td><td><div style="display:flex;width:100%">${bar}</div></td></tr>`; });
   return h+`</tbody></table><div class="iv-note" style="margin-top:6px">Later months = jobs due to finish that month (less anything already invoiced) + progress-claim shares. Undated jobs and jobs not yet on the schedule aren't included, so later months firm up as work is booked.</div></div>`;
 }
 function ivExport(){
   const now=new Date(), md=new Date(now.getFullYear(),now.getMonth()+IV.off,1), ym=md.getFullYear()+'-'+String(md.getMonth()+1).padStart(2,'0');
   const brs=MG.br==='All'?MG_BR:[MG.br], D=_ivData(brs,ym), q=v=>{ v=v==null?'':String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
-  const _F=ivForecast(brs); let csvF='Estimated invoicing (next 3 months),'+brs.join(',')+',Total,Running total\n'; _F.forEach(o=>{ csvF+=o.ym+','+brs.map(b=>Math.round(o.per[b].total)).join(',')+','+Math.round(o.total)+','+Math.round(o.run)+'\n'; });
+  const _F=ivForecast(brs); let csvF='Estimated invoicing (next 3 months),'+brs.join(',')+',Total,Running total,Jobs scheduled\n'; _F.forEach(o=>{ csvF+=o.ym+','+brs.map(b=>Math.round(o.per[b].total)).join(',')+','+Math.round(o.total)+','+Math.round(o.run)+','+o.jobs+'\n'; });
   let csv=csvF+'\nEstimated invoicing '+ym+','+Math.round(D.est.total)+',invoiced so far,'+Math.round(D.est.inv)+',still to invoice,'+Math.round(D.est.toInv)+'\n\nSchedule jobs '+ym+'\nJob,Branch,Site,Job value,Completed in month,Start,Finish,Schedule status,Invoiced in month,Invoiced to date,Check\n';
   D.rows.forEach(o=>{ csv+=[o.j.jobno,o.j.branch,o.j.site,Math.round(o.g.val),Math.round(o.comp),o.g.start,o.g.finish,o.co||'open',Math.round(o.g.invM*100)/100,Math.round(o.g.invAll*100)/100,o.chk].map(q).join(',')+'\n'; });
   csv+='\nInvoices not on the schedule\nInvoice,Date,Branch,WFM job no,WFM job,Client,Ex GST,Status\n';
@@ -3787,6 +3799,96 @@ function ivExport(){
   csv+='\nOpen in WorkflowMax - not on the schedule\nWFM job,Status,Branch,Name / site,Client,Start,Due\n'; _wj.forEach(x=>{ csv+=[x.no,x.st,x.br,x.nm,x.cl,x.s,x.d].map(q).join(',')+'\n'; });
   csv+='\nOpen on the schedule - not in WorkflowMax\nJob,Branch,Site,Value,Start,Finish\n'; _so.forEach(g=>{ csv+=[g.j.jobno,g.j.branch,g.j.site,Math.round(g.val),g.start,g.finish].map(q).join(',')+'\n'; });
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'})); a.download=`Work_vs_invoicing_${MG.br}_${ym}.csv`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+// ── Admin → Leave & sick: days off per person (annual leave, sick, training), by branch and company-wide
+let LV={p:'ytd', q:''};
+function lvSet(k,v){ LV[k]=v; renderMgmt(); }
+function _lvRange(){
+  const now=new Date(), t=dsOf(now), y=now.getFullYear(), m=now.getMonth();
+  const fyS=m>=3?y:y-1;                                                          // NZ financial year 1 Apr – 31 Mar
+  const R={month:[dsOf(new Date(y,m,1)),dsOf(new Date(y,m+1,0)),MONTHS[m]+' '+y],
+    last:[dsOf(new Date(y,m-1,1)),dsOf(new Date(y,m,0)),MONTHS[(m+11)%12]+' '+(m?y:y-1)],
+    q3:[dsOf(new Date(y,m-2,1)),t,'Last 3 months'],
+    ytd:[y+'-01-01',t,'Year to date '+y],
+    fy:[fyS+'-04-01',(fyS+1)+'-03-31','Financial year '+fyS+'/'+String(fyS+1).slice(2)],
+    m12:[dsOf(new Date(y-1,m,now.getDate()+1)),t,'Last 12 months']};
+  return R[LV.p]||R.ytd;
+}
+function _lvData(brs){
+  const [from,to]=_lvRange(), today=dsOf(new Date()), P={};
+  const who=(n,storeBr)=>{ const hb=homeBranch(n)||storeBr; const k=_nm(n); return P[k]||(P[k]={name:n,br:hb,leave:0,sick:0,train:0,ahead:0,aheadSick:0,days:[]}); };
+  ['Auckland','Wellington','Christchurch'].forEach(b=>{
+    [['leave',S.leave],['train',S.training]].forEach(([t,src])=>{ const m=(src&&src[b])||{};
+      Object.keys(m).forEach(d=>{ if(d.startsWith('__')||!/^\d{4}-\d{2}-\d{2}$/.test(d)) return; const v=m[d]; if(!Array.isArray(v)) return;
+        v.forEach(n=>{ if(typeof n!=='string'||!n.trim()) return; const p=who(n,b), sick=t==='leave'&&isSick(n,d);
+          if(d>=from&&d<=to&&d<=today){ if(t==='train') p.train++; else if(sick) p.sick++; else p.leave++; p.days.push(d+(t==='train'?' T':sick?' S':' L')); }
+          if(d>today&&t==='leave'){ if(sick) p.aheadSick++; else p.ahead++; } }); }); });
+  });
+  // everyone on a roster shows, even with nothing booked
+  brs.forEach(b=>(S.staff[b]||[]).forEach(n=>who(n,b)));
+  return Object.values(P).filter(p=>brs.includes(p.br));
+}
+function renderMgmtLeave(el){
+  const br=MG.br, brs=br==='All'?MG_BR:[br], [from,to,lbl]=_lvRange(), rows=_lvData(brs);
+  const q=(LV.q||'').toLowerCase(), shown=rows.filter(p=>!q||p.name.toLowerCase().includes(q));
+  const sum=(a,k)=>a.reduce((t,p)=>t+p[k],0), staffN=b=>(S.staff[b]||[]).length;
+  const tile=(l,v,sub,cls)=>`<div class="mg-tile ${cls||''}"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${sub||''}</div></div>`;
+  const head=sum(rows,'leave'), sick=sum(rows,'sick'), tr=sum(rows,'train'), ppl=brs.reduce((a,b)=>a+staffN(b),0)||1;
+  const sickers=rows.filter(p=>p.sick>0).sort((a,b)=>b.sick-a.sick);
+  let h=mgViewBar()+`<div class="mg-head"><h2>Leave &amp; sick</h2><span class="mg-sub">${br==='All'?'All branches':br} · ${_esc(lbl)} · ${_fmtD(from)} – ${_fmtD(to<dsOf(new Date())?to:dsOf(new Date()))}</span>
+    <div class="tr-seg" style="margin-left:auto">${['All'].concat(MG_BR).map(b=>`<button class="${b===br?'on':''}" onclick="mgSet('br','${b}')">${b==='All'?'All':BR_CODE[b]}</button>`).join('')}</div></div>
+    <div class="iv-chips">${[['month','This month'],['last','Last month'],['q3','Last 3 months'],['ytd','Year to date'],['fy','Financial year'],['m12','Last 12 months']].map(([k,t])=>`<button class="${LV.p===k?'on':''}" onclick="lvSet('p','${k}')">${t}</button>`).join('')}</div>
+    <div class="mg-tiles">
+      ${tile('Annual leave',head+' days',`${(head/ppl).toFixed(1)} per person · ${ppl} crew`)}
+      ${tile('Sick leave',sick+' days',`${(sick/ppl).toFixed(1)} per person · ${sickers.length} people`,sick?'warn':'ok')}
+      ${tile('Training / compliance',tr+' days',`${(tr/ppl).toFixed(1)} per person`)}
+      ${tile('Total days off',head+sick+tr+' days','leave + sick + training')}
+      ${tile('Leave booked ahead',sum(rows,'ahead')+' days',`from tomorrow · ${rows.filter(p=>p.ahead).length} people`,'inv')}
+      ${tile('Most sick days',sickers.length?_esc(sickers[0].name.split(' ')[0])+' · '+sickers[0].sick:'—',sickers.slice(1,4).map(p=>_esc(p.name.split(' ')[0])+' '+p.sick).join(' · ')||'none',sickers.length&&sickers[0].sick>=5?'bad':'')}
+    </div>`;
+  // by branch + company
+  h+=`<div class="tr-card"><div class="tr-head"><h3>By branch · ${_esc(lbl)}</h3></div><table class="iv-tbl"><thead><tr><th>Branch</th><th class="n">Crew</th><th class="n">Annual leave</th><th class="n">Sick</th><th class="n">Sick / person</th><th class="n">Training</th><th class="n">Total days off</th><th class="n">Leave booked ahead</th><th></th></tr></thead><tbody>`;
+  const line=(name,r,n,bold,b)=>`<tr${bold?' style="font-weight:700"':''}><td>${name}</td><td class="n">${n}</td><td class="n">${sum(r,'leave')}</td><td class="n">${sum(r,'sick')}</td><td class="n">${n?(sum(r,'sick')/n).toFixed(1):'—'}</td><td class="n">${sum(r,'train')}</td><td class="n">${sum(r,'leave')+sum(r,'sick')+sum(r,'train')}</td><td class="n">${sum(r,'ahead')}</td><td class="n">${b?`<button class="bd-pill" style="padding:2px 8px" onclick="lvEmailOpen('${b}')">✉ Email manager</button>`:''}</td></tr>`;
+  const all=_lvData(MG_BR);
+  MG_BR.forEach(b=>{ h+=line(`<b style="color:${BRANCH_COLORS[b]}">${b}</b>`,all.filter(p=>p.br===b),staffN(b),false,b); });
+  h+=line('Company-wide',all,MG_BR.reduce((a,b)=>a+staffN(b),0),true)+`</tbody></table></div>`;
+  // per person
+  h+=`<div class="tr-card"><div class="tr-head"><h3>Per person · ${_esc(lbl)}</h3><input type="search" placeholder="Find a person…" value="${_esc(LV.q||'')}" oninput="LV.q=this.value;clearTimeout(window._lvT);window._lvT=setTimeout(()=>{renderMgmt();const i=document.querySelector('#mgmt-body input[type=search]');if(i){i.focus();i.setSelectionRange(i.value.length,i.value.length);}},250)" style="margin-left:auto;max-width:200px">
+    <button class="bd-pill" style="margin-left:6px" onclick="lvExport()">⬇ Download (Excel)</button><button class="bd-pill" style="margin-left:6px" onclick="lvPrint()">🖨 Print / PDF</button></div>
+    <table class="iv-tbl"><thead><tr><th>Name</th><th>Branch</th><th class="n">Annual leave</th><th class="n">Sick</th><th class="n">Training</th><th class="n">Total</th><th class="n">Booked ahead</th><th>Recent days off</th></tr></thead><tbody>`;
+  (br==='All'?MG_BR:[br]).forEach(b=>{ const r=shown.filter(p=>p.br===b).sort((a,c)=>(c.leave+c.sick+c.train)-(a.leave+a.sick+a.train)||a.name.localeCompare(c.name)); if(!r.length) return;
+    if(br==='All') h+=`<tr><td colspan="8" style="color:${BRANCH_COLORS[b]};font-weight:700;padding-top:10px">${b}</td></tr>`;
+    r.forEach(p=>{ const last=p.days.sort().slice(-4).reverse().map(x=>`${_fmtD(x.slice(0,10)).split(' ').slice(1).join(' ')}${x.endsWith('S')?' 🤒':x.endsWith('T')?' 📋':''}`).join(', ');
+      h+=`<tr><td>${_esc(p.name)}</td><td>${BR_CODE[p.br]||p.br}</td><td class="n">${p.leave||'—'}</td><td class="n">${p.sick?`<span class="iv-flag ${p.sick>=5?'bad':'warn'}">${p.sick}</span>`:'—'}</td><td class="n">${p.train||'—'}</td><td class="n"><b>${p.leave+p.sick+p.train||'—'}</b></td><td class="n">${p.ahead||'—'}</td><td style="color:var(--c-muted);font-size:11px">${last}</td></tr>`; }); });
+  h+=`</tbody></table><div class="iv-note" style="margin-top:8px">Counts the days booked in the schedule (one entry = one day; weekends only if they were booked). Sick = days booked as 🤒 Sick leave from 25 Nov 2026 — earlier sick days were booked as plain leave. People are grouped by their home branch.</div></div>`;
+  el.innerHTML=h;
+}
+function lvEmailOpen(b){
+  const [from,to,lbl]=_lvRange(), r=_lvData([b]).sort((x,y)=>(y.leave+y.sick+y.train)-(x.leave+x.sick+x.train)||x.name.localeCompare(y.name)), mg=_ivMgrs(b);
+  const sum=k=>r.reduce((t,p)=>t+p[k],0), first=mg.map(x=>String(x.name).split(' ')[0]).join(' / ')||'team';
+  const pad=(v,n)=>String(v).padEnd(n), off=r.filter(p=>p.leave+p.sick+p.train);
+  const body=`Hi ${first},\n\nHere's the ${b} leave summary for ${lbl} (${_fmtD(from)} – ${_fmtD(to)}), from the schedule:\n\n`+
+    `  Annual leave: ${sum('leave')} days · Sick: ${sum('sick')} days · Training: ${sum('train')} days · Total: ${sum('leave')+sum('sick')+sum('train')} days\n\n`+
+    (off.length?`  ${pad('Name',24)}${pad('Leave',7)}${pad('Sick',6)}${pad('Train',7)}Total\n`+off.map(p=>`  ${pad(p.name,24)}${pad(p.leave,7)}${pad(p.sick,6)}${pad(p.train,7)}${p.leave+p.sick+p.train}`).join('\n'):'  No leave, sick or training days booked.')+
+    (r.some(p=>p.ahead)?`\n\nLeave already booked ahead: `+r.filter(p=>p.ahead).map(p=>`${p.name.split(' ')[0]} ${p.ahead}d`).join(', '):'')+
+    `\n\nPlease check it matches what you know — any sick days booked as plain leave, or days missing, update in the schedule (Resources → click the day).\n\nThanks,\n`;
+  _mailOpen(`Email ${b} — leave & sick, ${lbl}`, mg, `${b} — leave & sick summary, ${lbl}`, body, b);
+}
+function lvExport(){
+  const [from,to,lbl]=_lvRange(), rows=_lvData(MG.br==='All'?MG_BR:[MG.br]), q=v=>{ v=v==null?'':String(v); return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v; };
+  let csv='Leave & sick - '+lbl+' ('+from+' to '+to+')\nName,Branch,Annual leave days,Sick days,Training days,Total days off,Leave booked ahead\n';
+  rows.sort((a,b)=>a.br.localeCompare(b.br)||a.name.localeCompare(b.name)).forEach(p=>{ csv+=[p.name,p.br,p.leave,p.sick,p.train,p.leave+p.sick+p.train,p.ahead].map(q).join(',')+'\n'; });
+  csv+='\nDays off\nName,Date,Type\n'; rows.forEach(p=>p.days.sort().forEach(x=>{ csv+=[p.name,x.slice(0,10),x.endsWith('S')?'Sick':x.endsWith('T')?'Training':'Annual leave'].map(q).join(',')+'\n'; }));
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'})); a.download=`Leave_and_sick_${MG.br}_${LV.p}.csv`; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+}
+function lvPrint(){
+  const [from,to,lbl]=_lvRange(), brs=MG.br==='All'?MG_BR:[MG.br], all=_lvData(brs), esc=_esc;
+  const w=window.open('','_blank'); if(!w){ toast('Allow pop-ups to print','err'); return; }
+  const tbl=r=>`<table><tr><th>Name</th><th>Annual leave</th><th>Sick</th><th>Training</th><th>Total</th><th>Booked ahead</th></tr>${r.sort((a,b)=>(b.leave+b.sick+b.train)-(a.leave+a.sick+a.train)).map(p=>`<tr><td>${esc(p.name)}</td><td>${p.leave}</td><td>${p.sick}</td><td>${p.train}</td><td><b>${p.leave+p.sick+p.train}</b></td><td>${p.ahead}</td></tr>`).join('')}</table>`;
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Leave & sick — ${esc(lbl)}</title><style>body{font-family:Arial,sans-serif;margin:16mm 12mm;font-size:10pt}h1{font-size:15pt;margin:0}h2{font-size:12pt;margin:14px 0 4px}.sub{color:#666;font-size:9pt;margin-bottom:8px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:3px 6px;text-align:right}th:first-child,td:first-child{text-align:left}th{background:#f2f2f2}</style></head><body>
+    <h1>Leave &amp; sick — ${esc(lbl)}</h1><div class="sub">${_fmtD(from)} – ${_fmtD(to)} · printed ${_fmtD(dsOf(new Date()))} · TechClean Operations Schedule</div>
+    ${brs.map(b=>`<h2>${esc(b)}</h2>`+tbl(all.filter(p=>p.br===b))).join('')}<script>setTimeout(()=>window.print(),300)<\/script></body></html>`);
+  w.document.close();
 }
 function renderMgmtHS(el){
   const on=hsTestOn(), n=Object.keys(S.hsStatus||{}).length;
@@ -3818,6 +3920,7 @@ function renderMgmt(){
   const el=document.getElementById('mgmt-body'); if(!el) return;
   if(MG.view==='hs'){ renderMgmtHS(el); return; }
   if(MG.view==='inv'){ renderMgmtInv(el); return; }
+  if(MG.view==='leave'){ renderMgmtLeave(el); return; }
   const now=new Date(), today=dsOf(now), br=MG.br, brs=br==='All'?MG_BR:[br];
   const rate=Number(S.cfg.rate)||0, hpd=Number(S.cfg.hpd)||8, pmin=Number(S.cfg.pmin)||30, pmax=Number(S.cfg.pmax)||35;
   const months=[...Array(12)].map((_,i)=>{ const d=new Date(now.getFullYear(),now.getMonth()+MG.off+i,1); return [d.getFullYear(),d.getMonth()]; });
@@ -6265,7 +6368,7 @@ function _sickSet(br, ds, name, on){
   if(!S.training[br]) S.training[br]={};
   const k=ds+'|'+_nm(name), l=_sickList(br).filter(x=>{ const p=String(x).split('|'); return !(p[0]===ds&&_nm(p.slice(1).join('|'))===_nm(name)); });
   if(on) l.push(ds+'|'+name);
-  const cut=dsOf(addD(new Date(),-120)); const out=l.filter(x=>String(x).slice(0,10)>=cut);   // drop markers older than ~4 months
+  const cut=dsOf(addD(new Date(),-400)); const out=l.filter(x=>String(x).slice(0,10)>=cut);   // keep ~13 months for leave tracking
   if(out.length) S.training[br].__sick=out; else delete S.training[br].__sick;
 }
 function isSick(name, d){ const k=_nm(name); return ['Auckland','Wellington','Christchurch'].some(b=>_sickList(b).some(x=>{ const p=String(x).split('|'); return p[0]===d&&_nm(p.slice(1).join('|'))===k; })); }
