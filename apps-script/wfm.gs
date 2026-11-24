@@ -374,10 +374,12 @@ function wfmJobClass_(job) {
     if (/^\s*\/?\s*(needle)/i.test(d)) return 'Needle';
     return '';
   }
+  if (/^\s*\/?\s*class\s*a\s*(&|and|\/|\+)\s*(class\s*)?b\b/i.test(d)) return 'AB';   // "Class A & B" — both classes on one job
   const m = /^\s*\/?\s*class\s*([ab])\b/i.exec(d);
   if (m) return m[1].toUpperCase();
   if (/^\s*\/?\s*(meth)/i.test(d)) return 'Meth';
   if (/^\s*\/?\s*(mou?ld)/i.test(d)) return 'Mould';
+  if (wfmTick_(job, WFM.CF_FRIABLE) && wfmTick_(job, WFM.CF_NONFRIABLE)) return 'AB';
   if (wfmTick_(job, WFM.CF_FRIABLE)) return 'A';
   if (wfmTick_(job, WFM.CF_NONFRIABLE)) return 'B';
   return wfmClass_(wfmCF_(job, WFM.CF_CLASS));
@@ -655,7 +657,7 @@ function wfmRun_(dryRun) {
       const oldStart = String(row[8] || ''), oldFinish = String(row[9] || '');
 
       set(1, jobNo, 'job no');
-      const handPicked = ['Roof', 'Meth', 'Mould', 'Needle'].indexOf(String(row[2])) >= 0 && prev;   // classes set in the schedule stay
+      const handPicked = ['Roof', 'Meth', 'Mould', 'Needle', 'AB'].indexOf(String(row[2])) >= 0 && prev;   // classes set in the schedule stay
       if (cls && !handPicked) set(2, cls, 'class');
       if (!prev && !cls && (wfmTick_(j, WFM.CF_TESTING) || wfmTick_(j, WFM.CF_RESTORATION))) w.needClass = wfmTick_(j, WFM.CF_TESTING) ? 'testing' : 'restoration';   // new job only — cleared in the schedule
       set(3, site, 'site');
