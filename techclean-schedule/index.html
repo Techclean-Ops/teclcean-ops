@@ -710,6 +710,9 @@ body.tv #hovercard{display:none}
 .rm-dot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
 .rm-short{margin-left:auto;font-size:9px;background:#E040FB;color:#fff;border-radius:6px;padding:0 5px}
 .rm-btns{display:flex;gap:6px;margin-top:4px}
+.cl-row{display:flex;gap:6px;align-items:center;margin-bottom:4px}
+.cl-row input[type=month]{width:150px}.cl-row input[type=number]{width:140px}
+.cl-wfm{font-size:11px;color:#8E9093;margin-top:4px}.cl-sum{font-size:11px;color:#C9CBCE;margin-top:2px}
 #rs-menu .rm-line{border-top:2px solid #4A4D51;margin:8px 4px 0}
 #rs-menu .rm-sec.oth{border-top:0;color:#9AA0A6}
 .rm-when{margin-left:auto;font-size:9px;color:#8E9093;font-family:var(--font-mono);flex-shrink:0}
@@ -1359,6 +1362,11 @@ body.light #rs-menu .rm-h{color:#787A7E}
 body.light #rs-menu .rm-sec{color:#8A8B8E;border-top:1px solid #C3C5C9}
 body.light .rm-job:hover{background:#E6E7E8}
 body.light .rm-jt{color:#282828}
+body.light .cl-wfm{color:#787A7E}
+body.light .cl-sum{color:#404246}
+body.light #rs-menu .rm-line{border-top:2px solid #A2A5AA}
+body.light #rs-menu .rm-sec.oth{color:#656C73}
+body.light .rm-when{color:#787A7E}
 body.light #rs-menu .rm-btns button, body.light .rs-side .rm-btns button{border:1px solid #B5B9BC;color:#404246}
 body.light #rs-menu button{color:#282828}
 body.light #rs-menu button:hover{background:#E2E3E5}
@@ -1551,6 +1559,7 @@ body.light #theme-btn{background:#FFFFFF}
 body.light #version-tag{color:#4A5560!important;background:#E4E6E9!important}
 
 </style><!--/light-css-->
+
 
 
 
@@ -1995,6 +2004,12 @@ body.light #version-tag{color:#4A5560!important;background:#E4E6E9!important}
           <option value="finished">✓ Finished — work complete, to invoice</option>
           <option value="invoiced">$ Invoiced — closed</option>
         </select>
+      </div>
+      <div class="field full">
+        <label>Progress claims <small style="font-weight:400;color:#8E9093">(ex GST — for jobs invoiced in stages)</small></label>
+        <div id="f-claims"></div>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="claimRowAdd()">+ Add claim</button>
+        <div id="f-claims-wfm" class="cl-wfm"></div>
       </div>
       <div class="field full">
         <label>Away work</label>
@@ -2620,7 +2635,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const AW = '<svg class="aw-ico" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(-1 0)"><path d="M5.5 12.6V8.4a4.5 4.5 0 0 1 9 0v4.2"/><rect x="6.6" y="6.9" width="6.8" height="2.2" rx="1.1" fill="currentColor" stroke="none"/><circle cx="10" cy="11.7" r="2.15"/><circle cx="10" cy="11.7" r=".8" fill="currentColor" stroke="none"/><rect x="3.1" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(-28 4.6 12.75)"/><rect x="13.9" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(28 15.4 12.75)"/><path d="M8.1 13.7L10 15.6L11.9 13.7"/><path d="M6.9 15.2C4.3 15.9 3 17.7 3 20.2V22.3M13.1 15.2C15.7 15.9 17 17.7 17 20.2V22.3M10 15.6V22.3"/></g><path d="M13.6 19.4L21.2 2.6"/><path fill-rule="evenodd" fill="currentColor" stroke="none" d="M20.4 5.3c.9.8 2.8 2 3 4 .2 1.8-1 3-2.8 3s-3.2-1.2-3.1-3c.1-2 1.9-3.2 2.9-4zM19.7 8.7a.55.55 0 1 0 0 .01zM21.9 9.6a.55.55 0 1 0 0 .01zM20.6 11.1a.5.5 0 1 0 0 .01z"/><path d="M20.4 5.4l-1.4-.6M20.4 5.4l.8-1.3"/></svg>';   // away / out-of-town: suited worker with a bindle
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v90-202611252100';
+const APP_VERSION = 'v90-202611252105';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -3924,6 +3939,7 @@ function openForm(br){
   {const w=document.getElementById('f-wknd'); if(w) w.value='none';}
   {const el=document.getElementById('f-wfm-note'); if(el){ el.style.display='none'; el.innerHTML=''; }}
   ['f-scope','f-contract','f-away-note'].forEach(id=>{const e=document.getElementById(id); if(e) e.value='';});
+  claimRowsFill({},null);
   { const a=document.getElementById('f-away'); if(a) a.checked=false; }
   {const co=document.getElementById('f-closeout'); if(co) co.value='';}
   fillJobLists(br||S.branch,'','');
@@ -3944,7 +3960,7 @@ function editJob(id){
   {const w=document.getElementById('f-wknd'); if(w) w.value=j.workSat&&j.workSun?'both':j.workSat?'sat':j.workSun?'sun':'none';}
   {const w=wfmOf(j), el=document.getElementById('f-wfm-note');
    if(el){ if(w){ el.style.display=''; el.innerHTML=`<div class="wfm-note">🔗 <b>Linked to WorkflowMax</b> (${_esc(w.status||'')}). Job no, site, client, value and class update automatically; dates follow WorkflowMax until someone changes them here, then the schedule's dates are kept. Crew, assessor, contact and everything else are set here.${w.flag==='dates'?`<br><b style="color:#FCD34D">📅 Dates changed in WorkflowMax</b> — was ${_esc(w.oldStart)} → ${_esc(w.oldFinish)}. Check the crew, then Save to clear this.`:''}${w.flag==='wfmdiff'?`<br><b style="color:#FCD34D">📅 WorkflowMax dates differ</b> — WorkflowMax has ${_esc(w.wfmStart||'?')} → ${_esc(w.wfmFinish||'?')}. The schedule's dates are kept; change them here if WorkflowMax is right, then Save to clear this.`:''}${w.flag==='new'?'<br><b style="color:#8AB4F8">📥 New from WorkflowMax</b> — add the crew and any missing details, then Save.':''}${wfmNeedsClass(j)==='restoration'?'<br><b style="color:#43A047">🧪 Restoration / Other in WorkflowMax</b> — set the Class above to <b>Meth</b>, <b>Mould</b> or <b>Needle sweep</b>.':''}${wfmNeedsClass(j)==='testing'?'<br><b style="color:#43A047">🧪 Asbestos / Mould Testing in WorkflowMax</b> — set the right Class above, then Save.':''}${w.flag==='dupaddr'?`<br><b style="color:#FFB74D">⚠ Possible duplicate</b> — same address as ${_esc(w.dupOf||'')} ${_esc(w.dupSite||'')}. If it's the same job, delete the extra one; if not, add the crew and Save.`:''}</div>`; } else { el.style.display='none'; el.innerHTML=''; } }}
-  {const c=j.checklist||{}; document.getElementById('f-away').checked=!!c.away; document.getElementById('f-away-note').value=c.awayNote||'';}
+  {const c=j.checklist||{}; document.getElementById('f-away').checked=!!c.away; document.getElementById('f-away-note').value=c.awayNote||''; claimRowsFill(c.claims||{}, (c.wfm&&c.wfm.claims)||null, j);}
   {const c=j.checklist||{}; document.getElementById('f-scope').value=c.scope||''; document.getElementById('f-contract').value=c.contact||c.contract||'';
    document.getElementById('f-closeout').value=closeoutOf(j);
    fillJobLists(j.branch||S.branch, c.manager||'', c.assessor||'');}
@@ -4101,6 +4117,7 @@ function saveJob(){
       contact:(document.getElementById('f-contract').value||'').trim(),
       away:!!(document.getElementById('f-away')||{}).checked,
       awayNote:(document.getElementById('f-away-note').value||'').trim(),
+      claims:claimRowsRead(),
       closeout:document.getElementById('f-closeout').value||'',
       closedAt:(function(){ const ex=id&&S.jobs.find(x=>x.id===id); const v=document.getElementById('f-closeout').value; const was=ex&&ex.checklist&&ex.checklist.closeout; return (v==='finished'||v==='invoiced')?(was===v&&ex.checklist.closedAt?ex.checklist.closedAt:new Date().toISOString()):''; })(),
     },
@@ -5214,7 +5231,22 @@ function boardLegend(){
 
 // Pipeline value a job contributes to a calendar month — same rule as the Gantt stat:
 // undated = full value; outside month = 0; single-month = full; multi-month = value ÷ months spanned
+// ── Progress claims (ex GST) by month 'YYYY-MM': typed in the job form, or read from WorkflowMax invoices (WorkflowMax wins for a month)
+function jobClaims(j){ const c=(j&&j.checklist)||{}; return Object.assign({}, c.claims||{}, (c.wfm&&c.wfm.claims)||{}); }
+function claimedTotal(j){ return Object.values(jobClaims(j)).reduce((a,v)=>a+(Number(v)||0),0); }
+function jobOpenVal(j){ return Math.max(0,(Number(j.val)||0)-claimedTotal(j)); }   // still to claim
 function pipelineMonthVal(j,y,m){
+  const claimed=claimedTotal(j);
+  if(claimed>0){   // job has progress claims: only what's left to claim, spread from this month to the finish
+    const rem=jobOpenVal(j); if(!rem) return 0;
+    if(!j.start||!j.finish) return rem;
+    const now=new Date(), cur=new Date(now.getFullYear(),now.getMonth(),1);
+    const ms=new Date(y,m,1), fi=new Date(j.finish+'T00:00:00'), st0=new Date(j.start+'T00:00:00');
+    const st=st0>cur?new Date(st0.getFullYear(),st0.getMonth(),1):cur;
+    if(ms<st||ms>fi) return 0;
+    const n=(fi.getFullYear()-st.getFullYear())*12+(fi.getMonth()-st.getMonth())+1;
+    return rem/Math.max(1,n);
+  }
   const v=Number(j.val)||0; if(!v) return 0;
   if(!j.start||!j.finish) return v;
   const ms=new Date(y,m,1), me=new Date(y,m+1,0,23,59,59);
@@ -5227,7 +5259,7 @@ const _fmtK=v=>'$'+Math.round(v).toLocaleString('en-NZ');
 function renderBoardStats(start,end){
   const br=S.branch, today=dsOf(new Date());
   const active=S.jobs.filter(j=>j.branch===br&&!j._del&&!j.done);
-  const total=active.reduce((a,j)=>a+(Number(j.val)||0),0);
+  const total=active.reduce((a,j)=>a+jobOpenVal(j),0);   // less any progress claims already made
   // every month the board touches (always include the current month)
   const months=[]; const seen=new Set();
   const add=(y,m)=>{const k=y*12+m; if(!seen.has(k)){seen.add(k);months.push([y,m]);}};
@@ -5254,10 +5286,12 @@ function renderBoardStats(start,end){
   // A job running across months counts only the share of its working days that fall in this month (pro rata). On hold left out.
   const _today=dsOf(now);
   const _mShare=j=>{ let all=0,inM=0; for(let d=toD(j.start); d<=toD(j.finish); d=addD(d,1)){ const x=dsOf(d); if(!jobActiveOnDay(j,x)) continue; all++; if(x.slice(0,7)===_mk) inM++; } return all?inM/all:(String(j.finish).slice(0,7)===_mk?1:0); };
-  const compM=S.jobs.filter(j=>j.branch===br&&!j._del&&j.start&&j.finish&&String(j.start).slice(0,7)<=_mk&&String(j.finish).slice(0,7)>=_mk&&closeoutOf(j)!=='hold'&&(closeoutOf(j)==='finished'||closeoutOf(j)==='invoiced'||j.finish<_today))
-    .map(j=>({j,v:(Number(j.val)||0)*_mShare(j)})).filter(o=>o.v>0);
+  // jobs with progress claims count what was CLAIMED this month (open or closed); others count their pro-rata share once completed
+  const compM=S.jobs.filter(j=>j.branch===br&&!j._del&&claimedTotal(j)>0).map(j=>({j,v:Number(jobClaims(j)[_mk])||0})).filter(o=>o.v>0)
+    .concat(S.jobs.filter(j=>j.branch===br&&!j._del&&!(claimedTotal(j)>0)&&j.start&&j.finish&&String(j.start).slice(0,7)<=_mk&&String(j.finish).slice(0,7)>=_mk&&closeoutOf(j)!=='hold'&&(closeoutOf(j)==='finished'||closeoutOf(j)==='invoiced'||j.finish<_today))
+    .map(j=>({j,v:(Number(j.val)||0)*_mShare(j)})).filter(o=>o.v>0));
   const _cTot=compM.reduce((a,o)=>a+o.v,0);
-h+=`<div class="bd-stat invd" title="Completed work this month: jobs closed off or past their finish date. Jobs running across months count only this month\'s share of working days. Resets on the 1st."><div class="l">Completed · ${MONTHS[now.getMonth()].slice(0,3)} ${now.getFullYear()}</div><div class="v">${_fmtK(_cTot)}</div><div class="s">${compM.length} job${compM.length!==1?'s':''} · resets each month</div></div>`;
+h+=`<div class="bd-stat invd" title="Completed work this month: jobs closed off or past their finish date. Jobs running across months count only this month\'s share of working days; jobs with progress claims count what was claimed this month. Resets on the 1st."><div class="l">Completed · ${MONTHS[now.getMonth()].slice(0,3)} ${now.getFullYear()}</div><div class="v">${_fmtK(_cTot)}</div><div class="s">${compM.length} job${compM.length!==1?'s':''} · resets each month</div></div>`;
   // Away this week (Mon–Sun containing today): jobs flagged away + crew on them
   { const wm=wkMonday(today), wd=[...Array(7)].map((_,i)=>{const d=new Date(wm+'T12:00:00'); d.setDate(d.getDate()+i); return dsOf(d);});
     const awJ=S.jobs.filter(j=>j.branch===br&&!j._del&&isAway(j)&&wd.some(d=>jobActiveOnDay(j,d)));
@@ -6046,6 +6080,19 @@ function _putOnDay(j, ds, name){
   if(!cur.some(x=>_nm(x)===_nm(name))) cur.push(name);
   j.dayOverrides[ds]=cur.join(', ');
 }
+// progress-claim rows in the job form
+function claimRowHTML(ym,amt){ return `<div class="cl-row"><input type="month" value="${ym||''}"><input type="number" step="0.01" min="0" placeholder="$ ex GST" value="${amt!=null&&amt!==''?amt:''}"><button type="button" class="btn btn-ghost btn-sm" onclick="this.parentElement.remove()" title="Remove">✕</button></div>`; }
+function claimRowAdd(){ const b=document.getElementById('f-claims'); if(b) b.insertAdjacentHTML('beforeend', claimRowHTML(dsOf(new Date()).slice(0,7),'')); }
+function claimRowsFill(manual, wfm, j){
+  const b=document.getElementById('f-claims'), w=document.getElementById('f-claims-wfm'); if(!b) return;
+  b.innerHTML=Object.keys(manual||{}).sort().map(k=>claimRowHTML(k,manual[k])).join('');
+  if(w){ const ks=Object.keys(wfm||{}).sort();
+    const tot=j?claimedTotal(j):0, val=j?(Number(j.val)||0):0;
+    w.innerHTML=(ks.length?'From WorkflowMax invoices: '+ks.map(k=>`${MONTHS[+k.slice(5,7)-1].slice(0,3)} ${k.slice(0,4)} ${_fmtK(wfm[k])}`).join(' · '):'')
+      +(tot?`<div class="cl-sum">Claimed to date ${_fmtK(tot)} of ${_fmtK(val)} · still to claim ${_fmtK(Math.max(0,val-tot))}</div>`:''); }
+}
+function claimRowsRead(){ const o={}; document.querySelectorAll('#f-claims .cl-row').forEach(r=>{ const [m,a]=r.querySelectorAll('input'); const v=Number(a.value); if(m.value&&v>0) o[m.value]=Math.round(((o[m.value]||0)+v)*100)/100; }); return o; }
+
 function rsMoveJobHere(jobId, ds, key){
   const j=S.jobs.find(x=>x.id===jobId); if(!j) return;
   const name=_personName(key); document.getElementById('rs-menu').style.display='none';
