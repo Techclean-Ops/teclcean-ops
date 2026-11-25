@@ -1612,6 +1612,7 @@ body.light #version-tag{color:#4A5560!important;background:#E4E6E9!important}
 
 
 
+
 </head>
 <body>
 <script>try{ if(localStorage.getItem('aops_theme')==='light') document.body.classList.add('light'); }catch(e){}</script>
@@ -2288,7 +2289,7 @@ function saveDayEdit() {
 
   if (!dayOn) {
     job.dayOverrides[dateStr] = '__OFF__';
-    job.ts = new Date().toISOString();   // bump ts so this edit wins the sync merge
+    job.ts = nowIso();   // bump ts so this edit wins the sync merge
     save(); if(S.gsUrl)autoSync(); closeDayModal(); renderAll();
     toast('Day marked as not working');
     return;
@@ -2300,7 +2301,7 @@ function saveDayEdit() {
   const all = checked.concat(extras).filter(function(s){return s});
 
   job.dayOverrides[dateStr] = all.join(', ');
-  job.ts = new Date().toISOString();   // bump ts so this edit wins the sync merge
+  job.ts = nowIso();   // bump ts so this edit wins the sync merge
   save(); if(S.gsUrl)autoSync(); closeDayModal(); renderAll();
   toast(all.length + ' staff saved for this day ✓');
 }
@@ -2669,7 +2670,7 @@ const PRELOAD_STAFF = {"Auckland":[],"Wellington":[],"Christchurch":[]};
 // Asbestos worker icon: hooded suit, goggles, full-face respirator with twin filters
 const AW = '<svg class="aw-ico" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><g transform="translate(-1 0)"><path d="M5.5 12.6V8.4a4.5 4.5 0 0 1 9 0v4.2"/><rect x="6.6" y="6.9" width="6.8" height="2.2" rx="1.1" fill="currentColor" stroke="none"/><circle cx="10" cy="11.7" r="2.15"/><circle cx="10" cy="11.7" r=".8" fill="currentColor" stroke="none"/><rect x="3.1" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(-28 4.6 12.75)"/><rect x="13.9" y="11.1" width="3" height="3.3" rx="1" fill="currentColor" stroke="none" transform="rotate(28 15.4 12.75)"/><path d="M8.1 13.7L10 15.6L11.9 13.7"/><path d="M6.9 15.2C4.3 15.9 3 17.7 3 20.2V22.3M13.1 15.2C15.7 15.9 17 17.7 17 20.2V22.3M10 15.6V22.3"/></g><path d="M13.6 19.4L21.2 2.6"/><path fill-rule="evenodd" fill="currentColor" stroke="none" d="M20.4 5.3c.9.8 2.8 2 3 4 .2 1.8-1 3-2.8 3s-3.2-1.2-3.1-3c.1-2 1.9-3.2 2.9-4zM19.7 8.7a.55.55 0 1 0 0 .01zM21.9 9.6a.55.55 0 1 0 0 .01zM20.6 11.1a.5.5 0 1 0 0 .01z"/><path d="M20.4 5.4l-1.4-.6M20.4 5.4l.8-1.3"/></svg>';   // away / out-of-town: suited worker with a bindle
 const WK = '<svg class="wk-ico" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 12.6V7.6a5 5 0 0 1 10 0v5"/><rect x="8.2" y="5.9" width="7.6" height="2.4" rx="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="11.3" r="2.4"/><circle cx="12" cy="11.3" r=".9" fill="currentColor" stroke="none"/><rect x="4.3" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(-28 5.95 12.4)"/><rect x="16.4" y="10.6" width="3.3" height="3.6" rx="1.1" fill="currentColor" stroke="none" transform="rotate(28 18.05 12.4)"/><path d="M9.8 13.4L12 15.6L14.2 13.4"/><path d="M8.3 15C5.3 15.7 3.9 17.6 3.9 20.3V22.3M15.7 15C18.7 15.7 20.1 17.6 20.1 20.3V22.3M12 15.6V22.3"/></svg>';
-const APP_VERSION = 'v99-202611252100';
+const APP_VERSION = 'v100-202611261245';
 let _staffDirty = false; // true only after the user adds/removes a staff member; gates roster push
 // v57: staff changes are sent as operations (add / remove / rename / setAll) so removals stick on the server
 let _staffOps = (function(){ try{ return JSON.parse(localStorage.getItem('aops_staff_ops')||'[]'); }catch(e){ return []; } })();
@@ -3294,12 +3295,12 @@ function tsTag(j,d){
 function tsUse(jobId,d){
   const j=S.jobs.find(x=>x.id===jobId); if(!j) return; const ck=_chk(j), ts=tsDiffOf(j,d); if(!ts) return;
   if(!j.dayOverrides) j.dayOverrides={};
-  j.dayOverrides[d]=ts.join(', '); delete ck.tsDiff[d]; j.ts=new Date().toISOString();
+  j.dayOverrides[d]=ts.join(', '); delete ck.tsDiff[d]; j.ts=nowIso();
   save(); if(S.gsUrl) autoSync(); renderAll(); toast('Crew set from timesheets ✓');
 }
 function tsKeep(jobId,d){
   const j=S.jobs.find(x=>x.id===jobId); if(!j) return; const ck=_chk(j);
-  if(ck.tsDiff) delete ck.tsDiff[d]; ck.tsOk=ck.tsOk||{}; ck.tsOk[d]=1; j.ts=new Date().toISOString();
+  if(ck.tsDiff) delete ck.tsDiff[d]; ck.tsOk=ck.tsOk||{}; ck.tsOk[d]=1; j.ts=nowIso();
   save(); if(S.gsUrl) autoSync(); renderAll(); toast('Kept the schedule crew');
 }
 function tsSideCard(br){
@@ -3512,7 +3513,7 @@ function drEvenHours(){ const n=DR.stops.length; if(!n) return; const h=Math.rou
 function closeDayRun(){ const ov=document.getElementById('dr-overlay'); if(ov) ov.remove(); DR=null; }
 function saveDayRun(){
   if(!DR||!DR.stops.length) return;
-  const {name,key,d}=DR, now=new Date().toISOString(), N=DR.stops.length, skipped=[];
+  const {name,key,d}=DR, now=nowIso(), N=DR.stops.length, skipped=[];
   DR.stops.forEach((s,i)=>{
     const j=S.jobs.find(x=>x.id===s.id); if(!j) return;
     if(!personDaysFor(j,d,name,false).days.includes(d)){ skipped.push((j.site||j.jobno||'').split(',')[0]); return; }
@@ -4608,7 +4609,7 @@ function saveJob(){
     },
     workSat:['sat','both'].includes((document.getElementById('f-wknd')||{}).value),workSun:['sun','both'].includes((document.getElementById('f-wknd')||{}).value),
     done:['finished','invoiced'].includes(document.getElementById('f-closeout').value),
-    ts:new Date().toISOString(),
+    ts:nowIso(),
   };
   // Preserve dayOverrides from existing job, but PRUNE any outside the new date range
   // This fixes ghost overrides accumulating when a job is moved to different dates
@@ -4658,7 +4659,7 @@ function delJob(){
   const id=document.getElementById('f-id').value;
   if(!id||!confirm('Delete this job?'))return;
   const i=S.jobs.findIndex(j=>j.id===id);
-  if(i>=0){ S.jobs[i]._del=true; S.jobs[i].ts=new Date().toISOString(); } // update ts so GAS knows this is newest
+  if(i>=0){ S.jobs[i]._del=true; S.jobs[i].ts=nowIso(); } // update ts so GAS knows this is newest
   save();closeForm();renderAll();toast('Deleted');
   if(S.gsUrl)autoSync();
 }
@@ -4683,7 +4684,7 @@ function setCloseout(id,val){
   j.checklist.closeout=val||'';
   j.checklist.closedAt=(val==='finished'||val==='invoiced')?new Date().toISOString():'';
   j.done=(val==='finished'||val==='invoiced');
-  j.ts=new Date().toISOString(); // update ts so GAS timestamp check works
+  j.ts=nowIso(); // update ts so GAS timestamp check works
   save();renderAll();
   toast(val==='hold'?'⏸ On hold — start TBC. Crew removed from this job':val==='finished'?'✓ Finished — removed from pipeline, ready to invoice':val==='invoiced'?'$ Invoiced — job closed':'Re-opened — job active');
   if(S.gsUrl)autoSync();
@@ -4823,7 +4824,7 @@ function replaceOnJobs(){
   const br=RP.br, from=document.getElementById('rp-from').value, to=document.getElementById('rp-to').value, date=document.getElementById('rp-date').value||dsOf(new Date());
   if(!from||!to){ toast('Pick who to replace and who with','err'); return; }
   if(_nm(from)===_nm(to)){ toast('Pick two different people','err'); return; }
-  const kf=_nm(from), kt=_nm(to), now=new Date().toISOString();
+  const kf=_nm(from), kt=_nm(to), now=nowIso();
   const swap=str=>{ const a=String(str||'').split(',').map(x=>x.trim()).filter(Boolean); const out=[]; a.forEach(x=>{ const y=_nm(x)===kf?to:x; if(!out.some(z=>_nm(z)===_nm(y))) out.push(y); }); return out.join(', '); };
   const has=str=>String(str||'').split(',').some(x=>_nm(x)===kf);
   const jobs=S.jobs.filter(j=>j.branch===br&&!j._del&&!j.done&&(j.finish||j.start||'9999')>=date);
@@ -4855,7 +4856,7 @@ function renameStaff(br,i){
   const to=(prompt(`Rename ${from} to:`, from)||'').trim().replace(/\s+/g,' ');
   if(!to||to===from) return;
   if(S.staff[br].some((x,k)=>k!==i&&_nm(x)===_nm(to))){ toast(`${to} is already in ${br}`,'err'); return; }
-  const kf=_nm(from), kt=_nm(to), now=new Date().toISOString();
+  const kf=_nm(from), kt=_nm(to), now=nowIso();
   const swapList=str=>String(str||'').split(',').map(x=>x.trim()).filter(Boolean).map(x=>_nm(x)===kf?to:x).join(', ');
   const swapArr=a=>Array.isArray(a)?a.map(x=>typeof x==='string'&&_nm(x)===kf?to:x):a;
   let jobsChanged=0;
@@ -4939,6 +4940,11 @@ function _absDelta(type){
 }
 function _absSetBase(){ const b={}; ['leave','training'].forEach(t=>{ b[t]={}; ['Auckland','Wellington','Christchurch'].forEach(br=>{ b[t][br]={}; const m=(S[t]||{})[br]||{}; Object.keys(m).forEach(k=>{ b[t][br][k]=JSON.stringify(m[k]); }); }); });
   try{ localStorage.setItem('aops_abs_base',JSON.stringify(b)); }catch(e){} }
+// Device clocks: edits are stamped with this device's time and the newest stamp wins on the server, so a PC
+// whose clock runs slow loses its changes. Every sync the server sends its time; we keep the difference and
+// stamp edits with corrected time (v100).
+let _clockOff=(()=>{ try{ return Number(localStorage.getItem('aops_clock_off'))||0; }catch(e){ return 0; } })();
+function nowIso(){ return new Date(Date.now()+_clockOff).toISOString(); }
 function _absIso(k){ if(/^\d{4}-\d{2}-\d{2}$/.test(k)) return k; const x=new Date(k); return isNaN(x)?k:dsOf(x); }
 function _absNorm(L){ if(!L||typeof L!=='object') return L;
   Object.keys(L).forEach(br=>{ const m=L[br]; if(!m||typeof m!=='object') return;
@@ -4951,11 +4957,12 @@ async function doSync(silent=false){
   if(!S.gsUrl){if(!silent)toast('No Sheets URL — go to Setup','err');return}
   document.getElementById('sync-pill').textContent='SYNCING…';
   try{
-    const _syncStart=new Date().toISOString();
+    const _syncStart=nowIso();
     // Deleted jobs ARE sent (flagged _del) so the Sheet removes them — previously they were held back,
     // so a delete only hid the job on this device and it came back everywhere else.
     migrateNames20261123();
-    const _payload={action:'sync',ver:APP_VERSION,jobs:S.jobs,leave:_absDelta('leave'),training:_absDelta('training'),absDelta:true,ts:_syncStart};
+    const _sentAt=Date.now(), _lastOk0=localStorage.getItem('aops_lastsync')||'';
+    const _payload={action:'sync',ver:APP_VERSION,clientNow:new Date().toISOString(),jobs:S.jobs,leave:_absDelta('leave'),training:_absDelta('training'),absDelta:true,ts:_syncStart};
     try{ _payload.hsFeed=buildHsFeed(); }catch(e){ console.error('hsFeed',e); }
     const _opsSent=_staffOps.length;
     if(_staffDirty){ _payload.staff=S.staff; _payload.staffEdit=true; if(_opsSent) _payload.staffOps=_staffOps.slice(); }   // v53 server applies staffOps (removals stick); older servers use staff
@@ -4968,6 +4975,15 @@ async function doSync(silent=false){
       document.getElementById('sync-pill').className='pill live';
       document.getElementById('gs-status').textContent='⬤ Connected — last sync '+new Date().toLocaleTimeString('en-NZ');
       document.getElementById('gs-status').className='gs-status live';
+      // device clock check + changes the server kept its newer copy for
+      if(data.serverTime){ const mid=(_sentAt+Date.now())/2, off=new Date(data.serverTime).getTime()-mid;
+        if(Math.abs(off)>60000){ _clockOff=off; try{ localStorage.setItem('aops_clock_off',String(off)); }catch(e){}
+          if(!window._clockWarned){ window._clockWarned=1; setTimeout(()=>toast(`⚠ This computer's clock is ${Math.round(Math.abs(off)/60000)} min ${off>0?'slow':'fast'} — the schedule is correcting for it, but please fix the PC's date/time`,'err'),1500); } }
+        else if(_clockOff){ _clockOff=0; try{ localStorage.removeItem('aops_clock_off'); }catch(e){} } }
+      if(Array.isArray(data.skipped)&&data.skipped.length){
+        const mine=data.skipped.filter(x=>{ const l=S.jobs.find(j=>j.id===x.id); return l&&l.ts&&(!_lastOk0||new Date(l.ts)>new Date(_lastOk0)); });
+        if(mine.length) setTimeout(()=>toast(`⚠ ${mine.length} change${mine.length!==1?'s':''} not saved — someone else edited ${mine.slice(0,2).map(x=>x.jobno||'the job').join(', ')} more recently. Check and redo.`,'err'),2500);
+      }
       if(data.jobs){
         // Merge server jobs with local — server wins on core fields but preserve local-only fields
         const localMap = {};
@@ -5225,7 +5241,7 @@ function handleSync(data) {
       if (!br || !name || BRS.indexOf(br) < 0) return;
       rows[br + '|' + nk(name)] = {br: br, name: name, removed: String(r[2] || '').toLowerCase() === 'removed', changed: r[3] || ''};
     });
-    const now = new Date().toISOString();
+    const now=nowIso();
     const setActive = function(br, name) { if (BRS.indexOf(br) < 0 || !String(name || '').trim()) return; rows[br + '|' + nk(name)] = {br: br, name: String(name).trim(), removed: false, changed: now}; };
     const setRemoved = function(br, name) { const k = br + '|' + nk(name); if (rows[k]) { rows[k].removed = true; rows[k].changed = now; } else if (BRS.indexOf(br) >= 0 && name) rows[k] = {br: br, name: String(name).trim(), removed: true, changed: now}; };
     if (Array.isArray(data.staffOps) && data.staffOps.length) {
@@ -5533,7 +5549,7 @@ function hsStoreFeed_(ss, feed) {
   const sh = ss.getSheetByName('HS_Feed') || ss.insertSheet('HS_Feed');
   const rows = sh.getLastRow() > 1 ? sh.getRange(2, 1, sh.getLastRow() - 1, HS_FEED_HEADERS.length).getValues() : [];
   const byId = {}; rows.forEach(function(r, i) { if (r[0]) byId[String(r[0])] = i; });
-  const now = new Date().toISOString();
+  const now=nowIso();
   feed.jobs.forEach(function(j) {
     if (!j || !j.id) return;
     const row = [j.id, j.jobKey || j.id, j.branch || '', j.start || '', j.finish || '', j.updatedAt || '', JSON.stringify(j), now];
@@ -6332,7 +6348,7 @@ function _dupTargets(){
   return [c].concat(all&&all.checked?_sameSet(c):[]);
 }
 function _dupCommit(msg){
-  const now=new Date().toISOString();
+  const now=nowIso();
   _dupQ[_dupI].jobs.forEach(j=>{ j.ts=now; });
   save(); if(S.gsUrl) autoSync(); toast(msg); dupNext();
 }
@@ -6343,7 +6359,7 @@ function dupSplit(){
     const ck=_chk(j);
     (ck.splits[c.d]=ck.splits[c.d]||{})[c.key]=hrs[j.id]!=null?hrs[j.id]:0;
     if(ck.dupFlags[c.d]) delete ck.dupFlags[c.d][c.key];
-    j.ts=new Date().toISOString();
+    j.ts=nowIso();
   }));
   _dupCommit(`Hours split for ${_dupQ[_dupI].name.split(' ')[0]} — ${T.length} day${T.length!==1?'s':''} ✓`);
 }
@@ -6354,7 +6370,7 @@ function dupFlag(){
     const ck=_chk(j);
     (ck.dupFlags[c.d]=ck.dupFlags[c.d]||{})[c.key]=note;
     if(ck.splits[c.d]) delete ck.splits[c.d][c.key];
-    j.ts=new Date().toISOString();
+    j.ts=nowIso();
   }));
   _dupCommit(`Flagged as a schedule error — ${T.length} day${T.length!==1?'s':''}`);
 }
@@ -6368,7 +6384,7 @@ function dupKeepOnly(jobId){
       if(!j.dayOverrides) j.dayOverrides={};
       j.dayOverrides[c.d]=getStaffForDay(j,c.d).split(',').map(s=>s.trim()).filter(n=>n&&_nm(n)!==c.key).join(', ');
     }
-    j.ts=new Date().toISOString();
+    j.ts=nowIso();
   }));
   const keep=S.jobs.find(j=>j.id===jobId);
   _dupCommit(`${_dupQ[_dupI].name.split(' ')[0]} kept on ${keep?keep.site||keep.jobno:'job'} only ✓`);
@@ -6545,7 +6561,7 @@ function _removeFromJob(j,days,name){
   days.forEach(d=>{ if(!jobActiveOnDay(j,d)) return;
     j.dayOverrides[d]=getStaffForDay(j,d).split(',').map(x=>x.trim()).filter(x=>x&&_nm(x)!==_nm(name)).join(', ');
     const ck=j.checklist; if(ck&&ck.splits&&ck.splits[d]) delete ck.splits[d][_nm(name)]; });
-  j.ts=new Date().toISOString();
+  j.ts=nowIso();
 }
 function rsChipMenu(el,jobId,ds,key){
   const j=S.jobs.find(x=>x.id===jobId); if(!j) return;
@@ -6657,7 +6673,7 @@ function rsMoveJobHere(jobId, ds, key){
   const to=`${_fmtD(probe.start)}${probe.finish!==probe.start?' – '+_fmtD(probe.finish):''}`;
   if(!confirm(`Move ${(j.site||j.jobno||'job').split(',')[0]}\n\nfrom  ${was}\nto      ${to}\n\nand put ${name} on it from ${_fmtD(ds)}?\n(Any day-by-day crew moves with the job.)`)) return;
   shiftJobToStart(j, ds); _putOnDay(j, ds, name);
-  j.ts=new Date().toISOString(); save(); if(S.gsUrl) autoSync(); renderAll();
+  j.ts=nowIso(); save(); if(S.gsUrl) autoSync(); renderAll();
   toast(`${(j.site||'Job').split(',')[0]} moved to ${to} · ${name.split(' ')[0]} on ${_fmtD(ds)} ✓`);
   setTimeout(()=>{ const cl=findClashes(j.start,j.finish).filter(c=>c.status==='open'); if(cl.length) showDupModal(cl.slice(0,1)); },300);
 }
@@ -6669,7 +6685,7 @@ function rsStretchJob(jobId, ds, key){
   if(!jobActiveOnDay(j,ds)){ if(!j.dayOverrides) j.dayOverrides={}; j.dayOverrides[ds]=''; }   // weekend / holiday picked on purpose — make it a work day
   _putOnDay(j, ds, name);
   // days that the stretch pulled in between the old dates and the new one stay as normal working days (default crew)
-  j.ts=new Date().toISOString(); save(); if(S.gsUrl) autoSync(); renderAll();
+  j.ts=nowIso(); save(); if(S.gsUrl) autoSync(); renderAll();
   toast(`${(j.site||'Job').split(',')[0]} now ${_fmtD(j.start)} – ${_fmtD(j.finish)} · ${name.split(' ')[0]} on ${_fmtD(ds)} ✓`);
 }
 
@@ -6686,7 +6702,7 @@ function rsAddToJob(jobId, ds, key, rest){
     if(!cur.some(x=>_nm(x)===_nm(name))) cur.push(name);
     j.dayOverrides[d]=cur.join(', ');
   });
-  j.ts=new Date().toISOString();
+  j.ts=nowIso();
   save(); if(S.gsUrl) autoSync(); renderAll();
   toast(`${name.split(' ')[0]} added to ${(j.site||j.jobno||'job').split(',')[0]} — ${days.length} day${days.length!==1?'s':''} ✓`);
   // flag any clash / leave on those days
@@ -6993,7 +7009,7 @@ function findDuplicates(br){
 }
 async function markNotDup(ids){
   ids.forEach(id=>{ const j=S.jobs.find(x=>x.id===id); if(!j) return; j.checklist=j.checklist||{};
-    j.checklist.notDup=[...new Set([...(j.checklist.notDup||[]),...ids.filter(x=>x!==id)])]; j.ts=new Date().toISOString(); });
+    j.checklist.notDup=[...new Set([...(j.checklist.notDup||[]),...ids.filter(x=>x!==id)])]; j.ts=nowIso(); });
   save(); renderAll(); try{ await doSync(true); }catch(e){}
 }
 function wfmBadge(j, big){
@@ -7045,7 +7061,7 @@ function migrateInvoicedBeforeNov2026(){
   try{ localStorage.setItem('aops_mig_inv_202611','1'); }catch(e){}
   return;
   try{ if(localStorage.getItem('aops_mig_inv_202611')) return; }catch(e){}
-  let n=0; const now=new Date().toISOString();
+  let n=0; const now=nowIso();
   S.jobs.forEach(j=>{
     if(j._del||!j.finish||j.finish>='2026-11-01') return;
     if(closeoutOf(j)==='invoiced'||closeoutOf(j)==='hold') return;

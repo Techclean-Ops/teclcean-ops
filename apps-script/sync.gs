@@ -1,5 +1,5 @@
 const SHEET_ID = '1UOabcy7JwNISvqWqFVVWWfEVHfUOogYqVMRZa8ngBIc';
-const MIN_APP_VERSION = 93;   // v58: monthly leave & sick email to branch managers (installLeaveMonthly) · v57: absence dates kept as yyyy-mm-dd text (Sheets was turning them into dates) · v56: serves WFM_Invoices + WFM_Jobs to Admin → Work vs invoicing · v55: app v91+ only sends the leave/training/allocation entries it changed — older copies put back stale allocations
+const MIN_APP_VERSION = 93;   // v59: SyncLog sheet (skipped / refused saves) + serverTime for device clock correction · v58: monthly leave & sick email to branch managers (installLeaveMonthly) · v57: absence dates kept as yyyy-mm-dd text (Sheets was turning them into dates) · v56: serves WFM_Invoices + WFM_Jobs to Admin → Work vs invoicing · v55: app v91+ only sends the leave/training/allocation entries it changed — older copies put back stale allocations
 
 function doPost(e) {
   // One writer at a time — device syncs and the WorkflowMax import share this lock
@@ -11,6 +11,7 @@ function doPost(e) {
       // v54: out-of-date copies of the app (open in a browser that hasn't been refreshed) are not allowed to save —
       // on 23 Nov 2026 one overwrote 261 jobs with stale data. They get told to refresh instead.
       const ver = parseInt(String(data.ver || '').replace(/^v/i, ''), 10) || 0;
+      if (ver < MIN_APP_VERSION) syncLog_([[new Date(), 'refused', String(data.ver || ''), String(data.clientNow || ''), '', '', '', 'old app version — told to update']]);
       if (ver < MIN_APP_VERSION) return json({ ok: false, update: true,
         error: 'This copy of the schedule is out of date — press Ctrl+F5 (or Update now) to load the latest version. Your changes are kept on this device and will save after the update.' });
       return handleSync(data);
@@ -48,6 +49,7 @@ function handleSync(data) {
     'Project','Client','Checklist','SchedPattern','DayOverrides','Timestamp'
   ];
   const incomingJobs = data.jobs || [];
+  const _skipped = [];
 
   for (const branch of ['Auckland','Wellington','Christchurch']) {
     let sheet = ss.getSheetByName(branch);
@@ -73,7 +75,12 @@ function handleSync(data) {
       const prevTs = prev ? String(prev[20]||'') : '';   // col 20 = ts
       const incTs  = String(j.ts||'');
       // If we already hold a strictly newer version, keep it — skip this push.
-      if (prev && prevTs && incTs && new Date(incTs) < new Date(prevTs)) continue;
+      if (prev && prevTs && incTs && new Date(incTs) < new Date(prevTs)) {
+        // only worth logging when the device's copy actually differs (crew / dates / day crew)
+        if (String(prev[10]||'') !== String(j.resource||'') || String(prev[19]||'{}') !== JSON.stringify(j.dayOverrides||{}) || fmtDate(prev[8]) !== String(j.start||'') || fmtDate(prev[9]) !== String(j.finish||''))
+          _skipped.push({id: id, jobno: String(j.jobno||''), branch: branch, inc: incTs, prev: prevTs});
+        continue;
+      }
       existing[id] = [
         id,
         j.jobno||'',
@@ -339,7 +346,8 @@ function handleGetJobs() {
     });
   }
 
-  return json({ok:true, jobs:allJobs, staff:staff, leave:leave, training:training, wfmMonthly:wfmMonthly, wfmInvoices:wfmInvoices, wfmJobs:wfmJobs, wfmUnmatched:wfmUnmatched, hsStatus:hsStatus, count:allJobs.length});
+  if (_skipped.length) syncLog_(_skipped.map(function(x){ return [new Date(), 'kept newer', String(data.ver||''), String(data.clientNow||''), x.branch, x.jobno || x.id, x.inc, 'server copy ' + x.prev + ' is newer — device change not saved']; }));
+  return json({ok:true, serverTime:new Date().toISOString(), skipped:_skipped, jobs:allJobs, staff:staff, leave:leave, training:training, wfmMonthly:wfmMonthly, wfmInvoices:wfmInvoices, wfmJobs:wfmJobs, wfmUnmatched:wfmUnmatched, hsStatus:hsStatus, count:allJobs.length});
 }
 
 function json(obj) {
@@ -680,4 +688,16 @@ function leaveMonthlyRun_(dryRun) {
     m365Send_({to: to.join(','), subject: b + ' — leave & sick summary, ' + label, htmlBody: html});
   });
   return {month: label, branches: out, emailReady: !!PropertiesService.getScriptProperties().getProperty('M365_FROM')};
+}
+
+// SyncLog sheet (v59): saves the server refused (old app) or kept its own newer copy for — to diagnose
+// "my changes didn't stick". Columns: Time | What | App version | Device clock | Branch | Job | Device's copy | Note. Last 1000 rows kept.
+function syncLog_(rows) {
+  try {
+    const ss = SpreadsheetApp.openById(SHEET_ID);
+    const sh = ss.getSheetByName('SyncLog') || ss.insertSheet('SyncLog');
+    if (sh.getLastRow() === 0) sh.appendRow(['Time', 'What', 'App version', 'Device clock', 'Branch', 'Job', "Device's copy", 'Note']);
+    sh.getRange(sh.getLastRow() + 1, 1, rows.length, 8).setValues(rows);
+    const extra = sh.getLastRow() - 1001; if (extra > 0) sh.deleteRows(2, extra);
+  } catch (e) {}
 }
