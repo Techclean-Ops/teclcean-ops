@@ -49,7 +49,7 @@ function handleSync(data) {
     'Project','Client','Checklist','SchedPattern','DayOverrides','Timestamp'
   ];
   const incomingJobs = data.jobs || [];
-  const _skipped = [];
+  _skipped = []; _syncVer = String(data.ver||''); _syncNow = String(data.clientNow||'');
 
   for (const branch of ['Auckland','Wellington','Christchurch']) {
     let sheet = ss.getSheetByName(branch);
@@ -346,7 +346,7 @@ function handleGetJobs() {
     });
   }
 
-  if (_skipped.length) syncLog_(_skipped.map(function(x){ return [new Date(), 'kept newer', String(data.ver||''), String(data.clientNow||''), x.branch, x.jobno || x.id, x.inc, 'server copy ' + x.prev + ' is newer — device change not saved']; }));
+  if (_skipped.length) syncLog_(_skipped.map(function(x){ return [new Date(), 'kept newer', _syncVer, _syncNow, x.branch, x.jobno || x.id, x.inc, 'server copy ' + x.prev + ' is newer — device change not saved']; }));
   return json({ok:true, serverTime:new Date().toISOString(), skipped:_skipped, jobs:allJobs, staff:staff, leave:leave, training:training, wfmMonthly:wfmMonthly, wfmInvoices:wfmInvoices, wfmJobs:wfmJobs, wfmUnmatched:wfmUnmatched, hsStatus:hsStatus, count:allJobs.length});
 }
 
@@ -690,6 +690,7 @@ function leaveMonthlyRun_(dryRun) {
   return {month: label, branches: out, emailReady: !!PropertiesService.getScriptProperties().getProperty('M365_FROM')};
 }
 
+var _skipped = [], _syncVer = '', _syncNow = '';   // jobs whose save was kept-newer this sync (set in handleSync, read when building the reply)
 // SyncLog sheet (v59): saves the server refused (old app) or kept its own newer copy for — to diagnose
 // "my changes didn't stick". Columns: Time | What | App version | Device clock | Branch | Job | Device's copy | Note. Last 1000 rows kept.
 function syncLog_(rows) {
