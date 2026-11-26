@@ -1,5 +1,5 @@
 const SHEET_ID = '1UOabcy7JwNISvqWqFVVWWfEVHfUOogYqVMRZa8ngBIc';
-const MIN_APP_VERSION = 101;   // v60: app v101+ only (leave/sick edits during a sync no longer reverted) · v59: SyncLog sheet (skipped / refused saves) + serverTime for device clock correction · v58: monthly leave & sick email to branch managers (installLeaveMonthly) · v57: absence dates kept as yyyy-mm-dd text (Sheets was turning them into dates) · v56: serves WFM_Invoices + WFM_Jobs to Admin → Work vs invoicing · v55: app v91+ only sends the leave/training/allocation entries it changed — older copies put back stale allocations
+const MIN_APP_VERSION = 102;   // v61: app v102+ only (each tab tracks its own leave changes — a second tab can't put old leave back) · v60: app v101+ only (leave/sick edits during a sync no longer reverted) · v59: SyncLog sheet (skipped / refused saves) + serverTime for device clock correction · v58: monthly leave & sick email to branch managers (installLeaveMonthly) · v57: absence dates kept as yyyy-mm-dd text (Sheets was turning them into dates) · v56: serves WFM_Invoices + WFM_Jobs to Admin → Work vs invoicing · v55: app v91+ only sends the leave/training/allocation entries it changed — older copies put back stale allocations
 
 function doPost(e) {
   // One writer at a time — device syncs and the WorkflowMax import share this lock
